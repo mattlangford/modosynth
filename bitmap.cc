@@ -38,6 +38,24 @@ Bitmap::Bitmap(const std::filesystem::path& path) {
 // #############################################################################
 //
 
+size_t Bitmap::get_width() const { return info_header_.width; }
+
+//
+// #############################################################################
+//
+
+size_t Bitmap::get_height() const { return info_header_.height; }
+
+//
+// #############################################################################
+//
+
+auto Bitmap::get_pixels() const -> const std::vector<Color>& { return pixels_; }
+
+//
+// #############################################################################
+//
+
 auto Bitmap::parse_file_header(std::istream& stream) const -> FileHeader {
     FileHeader header = read<FileHeader>(stream);
     if (header.type != 19778)  // "BM"
@@ -73,6 +91,10 @@ auto Bitmap::parse_info_header(std::istream& stream) const -> InfoHeader {
         throw std::runtime_error("Only supporting 1 plane.");
     }
 
+    if (header.bits_per_pixel != 24) {
+        throw std::runtime_error("Only supporting 24 bits per pixel.");
+    }
+
     if (header.compression != 0) {
         throw std::runtime_error("Unable to handle compression.");
     }
@@ -89,23 +111,27 @@ auto Bitmap::parse_info_header(std::istream& stream) const -> InfoHeader {
 //
 
 auto Bitmap::parse_pixels(std::istream& stream, const InfoHeader& header) const -> std::vector<Color> {
-    std::vector<char> pixel_bytes;
+    std::vector<uint8_t> pixel_bytes;
     pixel_bytes.resize(header.image_size);
-    stream.read(pixel_bytes.data(), pixel_bytes.size());
+    stream.read(reinterpret_cast<char*>(pixel_bytes.data()), pixel_bytes.size());
 
     const size_t num_pixels = header.width * header.height;
-    const size_t row_bytes = std::ceil(header.bits_per_pixel * header.width / 32) / 4;
 
     std::vector<Color> pixels;
-    pixels.reserve(num_pixels);
+    pixels.reserve(3 * num_pixels);
 
+    size_t index = 0;
     for (size_t row = 0; row < header.height; ++row) {
-        size_t index = row * row_bytes;
-        for (size_t col = 0; col < header.height; ++col) {
+        // Make sure the row starting indices 4 byte aligned
+        if (index % 4 != 0) {
+            index += std::remainder(index, 4);
+        }
+
+        for (size_t col = 0; col < header.width; ++col) {
             auto& pixel = pixels.emplace_back();
-            pixel.blue = pixel_bytes.at(index++);
-            pixel.green = pixel_bytes.at(index++);
-            pixel.red = pixel_bytes.at(index++);
+            pixel.blue = pixel_bytes[index++];
+            pixel.green = pixel_bytes[index++];
+            pixel.red = pixel_bytes[index++];
         }
     }
 

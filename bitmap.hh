@@ -3,9 +3,6 @@
 #include <vector>
 
 class Bitmap {
-public:
-    Bitmap(const std::filesystem::path& path);
-
 private:
     struct FileHeader {
         // Should always be "BM" (19778)
@@ -40,11 +37,21 @@ private:
         uint32_t important_colors;
     };
 
+public:
+    // using Color = uint8_t;
     struct Color {
         uint8_t blue;
         uint8_t green;
         uint8_t red;
     };
+    static_assert(sizeof(Color) == 3);
+
+public:
+    Bitmap(const std::filesystem::path& path);
+
+    size_t get_width() const;
+    size_t get_height() const;
+    const std::vector<Color>& get_pixels() const;
 
 private:
     FileHeader parse_file_header(std::istream& stream) const;
