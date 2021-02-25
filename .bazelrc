@@ -1,0 +1,5 @@
+try-import %workspace%/user.bazelrc
+
+build --cxxopt='-Wall' --cxxopt='-Wextra' --cxxopt='-Wpedantic'
+build --cxxopt='-std=c++17' --cxxopt='-O3'
+test --test_output=errors --color=yes
