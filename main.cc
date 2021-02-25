@@ -1,6 +1,6 @@
 #include <GLFW/glfw3.h>
-#include <Eigen/Dense>
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <iostream>
 
@@ -29,82 +29,70 @@ struct PanAndZoom {
     }
 
     void update_mouse_position_incremental(Eigen::Vector2d increment) {
-        if (clicked)
-        {
-            double current_scale = scale();
-            top_left -= increment * current_scale;
-            bottom_right -= increment * current_scale;
+        if (clicked) {
+            center -= scale() * increment;
         }
     }
-
-    void click() {
-        clicked = true;
-    }
-
-    void release() { clicked = false; }
 
     void update_scroll(double /*x*/, double y) {
-        double current_scale = scale();
-        std::cout << current_scale << "\n";
-        if ((current_scale < 0.25 && y > 0) || (current_scale > 10.0 && y < 0))
-        {
-            return;
+        double zoom_factor = -y;
+        Eigen::Vector2d new_half_dim = half_dim + zoom_factor * half_dim;
+
+        if (new_half_dim.x() < kMinHalfDim.x() || new_half_dim.y() < kMinHalfDim.y()) {
+            new_half_dim = kMinHalfDim;
+        } else if (new_half_dim.x() > kMaxHalfDim.x() || new_half_dim.y() > kMaxHalfDim.y()) {
+            new_half_dim = kMaxHalfDim;
         }
 
-        Eigen::Vector2d min_top_left = mouse_position - kMinDim / 2;
-        Eigen::Vector2d min_bottom_right = mouse_position + kMinDim / 2;
-
-        double zoom_factor = std::max(std::min(0.1 * y, 0.1), -0.1);
-        top_left += zoom_factor * (min_top_left - top_left);
-        bottom_right += zoom_factor * (min_bottom_right - bottom_right);
+        double translate_factor = new_half_dim.norm() / half_dim.norm() - 1;
+        center += translate_factor * (center - mouse_position);
+        half_dim = new_half_dim;
 
         update_mouse_position();
     }
+
+    void click() { clicked = true; }
+
+    void release() { clicked = false; }
 
     void set_model_view_matrix() {
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
 
-        // this creates a canvas to do 2D drawing on
-        double left = top_left.x();
-        double right = bottom_right.x();
-        double bottom = bottom_right.y();
-        double top = top_left.y();
-        glOrtho(left, right, bottom, top, 0.0, 1.0);
+        Eigen::Vector2d top_left = center - half_dim;
+        Eigen::Vector2d bottom_right = center + half_dim;
+        glOrtho(top_left.x(), bottom_right.x(), bottom_right.y(), top_left.y(), 0.0, 1.0);
 
-        glBegin(GL_POINTS);
-        glColor3d(1, 0, 0);
-        for (int i = -5; i < 5; ++i)
-            for (int j = -5; j < 5; ++j)
-                glVertex2d(mouse_position.x() + i, mouse_position.y() + j);
+        glBegin(GL_QUADS);
+        glColor3d(1.0, 0.0, 0.0);
+        glVertex2d(mouse_position.x() - 5, mouse_position.y() - 5);
+        glVertex2d(mouse_position.x() + 5, mouse_position.y() - 5);
+        glVertex2d(mouse_position.x() + 5, mouse_position.y() + 5);
+        glVertex2d(mouse_position.x() - 5, mouse_position.y() + 5);
         glEnd();
     }
 
-    void reset()
-    {
-        top_left = Eigen::Vector2d{0, 0};
-        bottom_right = kInitalDim;
+    void reset() {
+        center = kInitialHalfDim;
+        half_dim = kInitialHalfDim;
+        update_mouse_position();
     }
 
-    double scale() const
-    {
-        return (bottom_right - top_left).norm() / kInitalDim.norm();
-    }
+    double scale() const { return (half_dim).norm() / kInitialHalfDim.norm(); }
 
-    void update_mouse_position()
-    {
+    void update_mouse_position() {
+        Eigen::Vector2d top_left = center - half_dim;
+        Eigen::Vector2d bottom_right = center + half_dim;
         Eigen::Vector2d screen_position{previous_position.x() / kWidth, previous_position.y() / kHeight};
         mouse_position = screen_position.cwiseProduct(bottom_right - top_left) + top_left;
     }
 
+    const Eigen::Vector2d kInitialHalfDim = 0.5 * Eigen::Vector2d{kWidth, kHeight};
+    const Eigen::Vector2d kMinHalfDim = 0.5 * Eigen::Vector2d{0.1 * kWidth, 0.1 * kHeight};
+    const Eigen::Vector2d kMaxHalfDim = 0.5 * Eigen::Vector2d{3.0 * kWidth, 3.0 * kHeight};
 
-    const Eigen::Vector2d kInitalDim{kWidth, kHeight};
-    const Eigen::Vector2d kMinDim{0.1 * kWidth, 0.1 * kHeight};
-    const Eigen::Vector2d kMaxDim{2.0 * kWidth, 2.0 * kHeight};
-
-    // Corners
-    Eigen::Vector2d top_left {0, 0};
-    Eigen::Vector2d bottom_right {kWidth, kHeight};
+    Eigen::Vector2d center = kInitialHalfDim;
+    Eigen::Vector2d half_dim = kInitialHalfDim;
 
     Eigen::Vector2d previous_position;
 
@@ -133,10 +121,8 @@ void mouse_button_callback(GLFWwindow* /*window*/, int button, int action, int /
     }
 }
 
-void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
-{
-    if (key == GLFW_KEY_R && action == GLFW_PRESS)
-        pan_and_zoom.reset();
+void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/) {
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) pan_and_zoom.reset();
 }
 
 int main() {
