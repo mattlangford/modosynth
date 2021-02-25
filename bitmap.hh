@@ -3,10 +3,10 @@
 #include <vector>
 
 class Bitmap {
-   public:
+public:
     Bitmap(const std::filesystem::path& path);
 
-   private:
+private:
     struct FileHeader {
         // Should always be "BM" (19778)
         uint16_t type;
@@ -46,12 +46,12 @@ class Bitmap {
         uint8_t red;
     };
 
-   private:
+private:
     FileHeader parse_file_header(std::istream& stream) const;
     InfoHeader parse_info_header(std::istream& stream) const;
     std::vector<Color> parse_pixels(std::istream& stream, const InfoHeader& header) const;
 
-   private:
+private:
     FileHeader file_header_;
     InfoHeader info_header_;
 
