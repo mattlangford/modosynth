@@ -1,4 +1,5 @@
 #include <GLFW/glfw3.h>
+#include <Eigen/Dense>
 
 #include <cmath>
 #include <iostream>
@@ -20,79 +21,94 @@ void init_view() {
 
 struct PanAndZoom {
     void update_mouse_position(double x, double y) {
-        current_x = x;
-        current_y = y;
+        Eigen::Vector2d position(x, y);
+        update_mouse_position_incremental(position - previous_position);
+        previous_position = position;
 
+        update_mouse_position();
+    }
+
+    void update_mouse_position_incremental(Eigen::Vector2d increment) {
         if (clicked)
         {
-            center_dx += current_x - previous_x;
-            center_dy += current_y - previous_y;
-            center_x += current_x - previous_x;
-            center_y += current_y - previous_y;
+            double current_scale = scale();
+            top_left -= increment * current_scale;
+            bottom_right -= increment * current_scale;
         }
     }
 
     void click() {
-        previous_x = current_x;
-        previous_y = current_y;
         clicked = true;
     }
 
     void release() { clicked = false; }
 
     void update_scroll(double /*x*/, double y) {
-        zoom_x = current_x - center_x;
-        zoom_y = current_y - center_y;
+        double current_scale = scale();
+        std::cout << current_scale << "\n";
+        if ((current_scale < 0.25 && y > 0) || (current_scale > 10.0 && y < 0))
+        {
+            return;
+        }
 
-        dzoom += y;
-        current_zoom += y;
+        Eigen::Vector2d min_top_left = mouse_position - kMinDim / 2;
+        Eigen::Vector2d min_bottom_right = mouse_position + kMinDim / 2;
+
+        double zoom_factor = std::max(std::min(0.1 * y, 0.1), -0.1);
+        top_left += zoom_factor * (min_top_left - top_left);
+        bottom_right += zoom_factor * (min_bottom_right - bottom_right);
+
+        update_mouse_position();
     }
 
     void set_model_view_matrix() {
-        glMatrixMode(GL_MODELVIEW);
-        glTranslatef(center_dx, center_dy, 0.0);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
 
-        // Compute the zoom matrix
-        constexpr double kMiddleX = kWidth / 2;
-        constexpr double kMiddleY = kHeight / 2;
-        double x = zoom_x - kMiddleX;
-        double y = zoom_y - kMiddleY;
-
-        if (dzoom != 0)
-        {
-        }
+        // this creates a canvas to do 2D drawing on
+        double left = top_left.x();
+        double right = bottom_right.x();
+        double bottom = bottom_right.y();
+        double top = top_left.y();
+        glOrtho(left, right, bottom, top, 0.0, 1.0);
 
         glBegin(GL_POINTS);
         glColor3d(1, 0, 0);
         for (int i = -5; i < 5; ++i)
             for (int j = -5; j < 5; ++j)
-                glVertex2d(zoom_x + i, zoom_y + j);
+                glVertex2d(mouse_position.x() + i, mouse_position.y() + j);
         glEnd();
-
-        previous_x = current_x;
-        previous_y = current_y;
-        previous_zoom = current_zoom;
-        center_dx = 0;
-        center_dy = 0;
-        dzoom = 0;
     }
 
-    double center_x = 0;
-    double center_y = 0;
-    double center_dx = 0;
-    double center_dy = 0;
-    double dzoom = 0;
+    void reset()
+    {
+        top_left = Eigen::Vector2d{0, 0};
+        bottom_right = kInitalDim;
+    }
 
-    double current_x = 0;
-    double current_y = 0;
-    double current_zoom = 0;
+    double scale() const
+    {
+        return (bottom_right - top_left).norm() / kInitalDim.norm();
+    }
 
-    double previous_x = 0;
-    double previous_y = 0;
-    double previous_zoom = 0;
+    void update_mouse_position()
+    {
+        Eigen::Vector2d screen_position{previous_position.x() / kWidth, previous_position.y() / kHeight};
+        mouse_position = screen_position.cwiseProduct(bottom_right - top_left) + top_left;
+    }
 
-    double zoom_x = 0;
-    double zoom_y = 0;
+
+    const Eigen::Vector2d kInitalDim{kWidth, kHeight};
+    const Eigen::Vector2d kMinDim{0.1 * kWidth, 0.1 * kHeight};
+    const Eigen::Vector2d kMaxDim{2.0 * kWidth, 2.0 * kHeight};
+
+    // Corners
+    Eigen::Vector2d top_left {0, 0};
+    Eigen::Vector2d bottom_right {kWidth, kHeight};
+
+    Eigen::Vector2d previous_position;
+
+    Eigen::Vector2d mouse_position;
 
     bool clicked = false;
 };
@@ -115,6 +131,12 @@ void mouse_button_callback(GLFWwindow* /*window*/, int button, int action, int /
     } else if (action == GLFW_RELEASE) {
         pan_and_zoom.release();
     }
+}
+
+void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
+{
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+        pan_and_zoom.reset();
 }
 
 int main() {
@@ -140,6 +162,7 @@ int main() {
     glfwSetCursorPosCallback(window, cursor_position_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
 
     init_view();
 
