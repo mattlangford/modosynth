@@ -8,6 +8,14 @@ cc_binary(
     ]
 )
 
+cc_binary(
+    name = "test",
+    srcs = ["test.cc"],
+    deps = [
+        "@glfw//:glfw",
+    ]
+)
+
 cc_library(
     name = "bitmap",
     srcs = ["bitmap.cc"],
