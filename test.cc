@@ -1,100 +1,90 @@
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <vector>
+#include <sstream>
 
-static const struct {
-    float x, y;
-    float r, g, b;
-} vertices[3] = {{-0.6f, -0.4f, 1.f, 0.f, 0.f}, {0.6f, -0.4f, 0.f, 1.f, 0.f}, {0.f, 0.6f, 0.f, 0.f, 1.f}};
+#include "bitmap.hh"
 
-static const char* vertex_shader_text =
-    "#version 110\n"
-    "attribute vec3 vCol;\n"
-    "attribute vec2 vPos;\n"
-    "varying vec3 color;\n"
-    "void main()\n"
-    "{\n"
-    "    gl_Position = vec4(vPos, 0.0, 1.0);\n"
-    "    color = vCol;\n"
-    "}\n";
+void check_gl_error(std::string action = "") {
+    std::stringstream ss;
+    if (!action.empty()) ss << action << " failed. ";
+    ss << "Error code: 0x" << std::hex;
 
-static const char* fragment_shader_text =
-    "#version 110\n"
-    "varying vec3 color;\n"
-    "void main()\n"
-    "{\n"
-    "    gl_FragColor = vec4(color, 1.0);\n"
-    "}\n";
-
-static void error_callback(int error, const char* description) { fprintf(stderr, "Error: %s\n", description); }
-
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) glfwSetWindowShouldClose(window, GLFW_TRUE);
+    auto error = glGetError();
+    switch (error) {
+        case GL_NO_ERROR:
+            return;
+        case GL_INVALID_ENUM:
+            ss << GL_INVALID_ENUM << " (GL_INVALID_ENUM).";
+            break;
+        case GL_INVALID_VALUE:
+            ss << GL_INVALID_VALUE << " (GL_INVALID_VALUE).";
+            break;
+        default:
+            ss << error;
+            break;
+    }
+    throw std::runtime_error(ss.str());
 }
 
-int main(void) {
+int main() {
+    Bitmap bitmap{"/Users/mlangford/Downloads/sample_640×426.bmp"};
     GLFWwindow* window;
-    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
-    GLint mvp_location, vpos_location, vcol_location;
 
-    glfwSetErrorCallback(error_callback);
-
-    if (!glfwInit()) exit(EXIT_FAILURE);
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-
-    window = glfwCreateWindow(640, 480, "Simple example", NULL, NULL);
-    if (!window) {
-        glfwTerminate();
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW\n";
         exit(EXIT_FAILURE);
     }
 
-    glfwSetKeyCallback(window, key_callback);
+    // Upgrade to a newer GLSL version for the shaders
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    window = glfwCreateWindow(1000, 1000, "Window", NULL, NULL);
+    if (!window) {
+        std::cerr << "Unable to create window!\n";
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
     glfwMakeContextCurrent(window);
-    // gladLoadGL(glfwGetProcAddress);
-    glfwSwapInterval(1);
+    check_gl_error("window");
 
-    // NOTE: OpenGL error checks have been omitted for brevity
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-    glGenBuffers(1, &vertex_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
-    glCompileShader(vertex_shader);
-
-    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
-    glCompileShader(fragment_shader);
-
-    program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);
-
-    mvp_location = glGetUniformLocation(program, "MVP");
-    vpos_location = glGetAttribLocation(program, "vPos");
-    vcol_location = glGetAttribLocation(program, "vCol");
-
-    glEnableVertexAttribArray(vpos_location);
-    glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (void*)0);
-    glEnableVertexAttribArray(vcol_location);
-    glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (void*)(sizeof(float) * 2));
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR, GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
+    glEnable(GL_TEXTURE_2D);
+    check_gl_error("Image mapping");
 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(program);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, 1000, 1000, 0, -1.0, 1.0);
+        glGetError();
+
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBegin(GL_QUADS);
+            glTexCoord2f(0.0, 0.0); glVertex2f(100, 100);
+            glTexCoord2f(1.0, 0.0); glVertex2f(200, 100);
+            glTexCoord2f(1.0, 1.0); glVertex2f(200, 200);
+            glTexCoord2f(0.0, 1.0); glVertex2f(100, 200);
+        glEnd();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    glfwDestroyWindow(window);
 
     glfwTerminate();
     exit(EXIT_SUCCESS);

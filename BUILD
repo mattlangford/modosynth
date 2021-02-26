@@ -13,6 +13,7 @@ cc_binary(
     srcs = ["test.cc"],
     deps = [
         "@glfw//:glfw",
+        ":bitmap",
     ]
 )
 
