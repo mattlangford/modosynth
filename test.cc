@@ -45,28 +45,30 @@ typedef struct Vertex {
     float col[3];
 } Vertex;
 
-static const Vertex vertices[3] = {
-    {{-0.6f, -0.4f}, {1.f, 0.f, 0.f}}, {{0.6f, -0.4f}, {0.f, 1.f, 0.f}}, {{0.f, 0.6f}, {0.f, 0.f, 1.f}}};
+static const Vertex vertices[4] = {{{0.f, 0.f}, {1.f, 0.f, 0.f}},
+                                   {{1.0f, 0.0f}, {0.f, 1.f, 0.f}},
+                                   {{0.f, 1.0f}, {0.f, 0.f, 1.f}},
+                                   {{1.f, 1.f}, {1.f, 1.f, 1.f}}};
 
 static const char* vertex_shader_text =
     "#version 330\n"
     "uniform mat4 MVP;\n"
-    "in vec3 vCol;\n"
     "in vec2 vPos;\n"
-    "out vec3 color;\n"
+    "out vec2 uv;\n"
     "void main()\n"
     "{\n"
-    "    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
-    "    color = vCol;\n"
+    "    gl_Position = MVP * vec4(vPos.x - 0.5, vPos.y - 0.5, 0.0, 1.0);\n"
+    "    uv = vPos;\n"
     "}\n";
 
 static const char* fragment_shader_text =
     "#version 330\n"
-    "in vec3 color;\n"
+    "in vec2 uv;\n"
     "out vec4 fragment;\n"
+    "uniform sampler2D sampler;\n"
     "void main()\n"
     "{\n"
-    "    fragment = vec4(color, 1.0);\n"
+    "    fragment = texture(sampler, uv).rgba;\n"
     "}\n";
 
 static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
@@ -107,18 +109,71 @@ int main() {
     with_error_check(glShaderSource, vertex_shader, 1, &vertex_shader_text, NULL);
     with_error_check(glCompileShader, vertex_shader);
 
+    int compiled = 0;
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &compiled);
+    if (compiled == GL_FALSE) {
+        int length = 0;
+        glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &length);
+
+        // The maxLength includes the NULL character
+        std::string log;
+        log.resize(length);
+        glGetShaderInfoLog(vertex_shader, length, &length, &log[0]);
+
+        // We don't need the shader anymore.
+        glDeleteShader(vertex_shader);
+
+        throw std::runtime_error("Failed to compile shader: " + log);
+    }
+
     const GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     with_error_check(glShaderSource, fragment_shader, 1, &fragment_shader_text, NULL);
     with_error_check(glCompileShader, fragment_shader);
+
+    compiled = 0;
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &compiled);
+    if (compiled == GL_FALSE) {
+        int length = 0;
+        glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &length);
+
+        // The maxLength includes the NULL character
+        std::string log;
+        log.resize(length);
+        glGetShaderInfoLog(fragment_shader, length, &length, &log[0]);
+
+        // We don't need the shader anymore.
+        glDeleteShader(fragment_shader);
+
+        throw std::runtime_error("Failed to compile shader: " + log);
+    }
 
     const GLuint program = glCreateProgram();
     with_error_check(glAttachShader, program, vertex_shader);
     with_error_check(glAttachShader, program, fragment_shader);
     with_error_check(glLinkProgram, program);
 
+    int linked = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (linked == GL_FALSE) {
+        int length = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+
+        std::string log;
+        log.resize(length);
+        glGetProgramInfoLog(program, length, &length, &log[0]);
+
+        // We don't need the program anymore.
+        glDeleteProgram(program);
+        // Don't leak shaders either.
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+
+        throw std::runtime_error("Failed to link shaders: " + log);
+    }
+
     const GLint mvp_location = glGetUniformLocation(program, "MVP");
     const GLint vpos_location = glGetAttribLocation(program, "vPos");
-    const GLint vcol_location = glGetAttribLocation(program, "vCol");
+    // const GLint vcol_location = glGetAttribLocation(program, "vCol");
 
     GLuint vertex_array;
     with_error_check(glGenVertexArrays, 1, &vertex_array);
@@ -126,9 +181,28 @@ int main() {
     with_error_check(glEnableVertexAttribArray, vpos_location);
     with_error_check(glVertexAttribPointer, vpos_location, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                      (void*)offsetof(Vertex, pos));
-    with_error_check(glEnableVertexAttribArray, vcol_location);
-    with_error_check(glVertexAttribPointer, vcol_location, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                     (void*)offsetof(Vertex, col));
+    // with_error_check(glEnableVertexAttribArray, vcol_location);
+    // with_error_check(glVertexAttribPointer, vcol_location, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+    //                  (void*)offsetof(Vertex, col));
+
+    unsigned int texture;
+    with_error_check(glGenTextures, 1, &texture);
+    with_error_check(glBindTexture, GL_TEXTURE_2D, texture);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    std::vector<uint8_t> data;
+    for (size_t i = 0; i < 256 * 256; ++i) {
+        data.push_back(0xFF);
+        data.push_back(0x00);
+        data.push_back(0x00);
+        data.push_back(0xFF);
+    }
+    with_error_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
+    with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR,
+                     GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
 
     float i = 0;
     while (!glfwWindowShouldClose(window)) {
@@ -150,7 +224,7 @@ int main() {
         with_error_check(glUseProgram, program);
         with_error_check(glUniformMatrix4fv, mvp_location, 1, GL_FALSE, (const GLfloat*)&mvp);
         with_error_check(glBindVertexArray, vertex_array);
-        with_error_check(glDrawArrays, GL_TRIANGLES, 0, 3);
+        with_error_check(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
