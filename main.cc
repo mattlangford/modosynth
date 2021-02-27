@@ -42,7 +42,7 @@ void check_gl_error(std::string action = "") {
     check_gl_error(std::string("\nline ") + std::to_string(__LINE__) + ": " + std::string(#func) + "(" + \
                    std::string(#__VA_ARGS__) + ")")
 
-struct PanAndZoom {
+struct Window {
     void update_mouse_position(double x, double y) {
         Eigen::Vector2f position(x, y);
         update_mouse_position_incremental(position - previous_position);
@@ -123,28 +123,28 @@ struct PanAndZoom {
     bool clicked = false;
 };
 
-static PanAndZoom pan_and_zoom{};
+static Window window_control{};
 
 void scroll_callback(GLFWwindow* /*window*/, double scroll_x, double scroll_y) {
-    pan_and_zoom.update_scroll(scroll_x, scroll_y);
+    window_control.update_scroll(scroll_x, scroll_y);
 }
 
 void cursor_position_callback(GLFWwindow* /*window*/, double pos_x, double pos_y) {
-    pan_and_zoom.update_mouse_position(pos_x, pos_y);
+    window_control.update_mouse_position(pos_x, pos_y);
 }
 
 void mouse_button_callback(GLFWwindow* /*window*/, int button, int action, int /*mods*/) {
     if (button != GLFW_MOUSE_BUTTON_RIGHT) return;
 
     if (action == GLFW_PRESS) {
-        pan_and_zoom.click();
+        window_control.click();
     } else if (action == GLFW_RELEASE) {
-        pan_and_zoom.release();
+        window_control.release();
     }
 }
 
 void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/) {
-    if (key == GLFW_KEY_R && action == GLFW_PRESS) pan_and_zoom.reset();
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) window_control.reset();
 }
 
 int compile_shader(int type, const std::string& source) {
@@ -181,12 +181,15 @@ std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
 in vec2 world_position;
+in vec2 vertex_uv;
+
 out vec2 uv;
+
 void main()
 {
     vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
     gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
-    uv = vec2(0.5, 0.5);
+    uv = vertex_uv;
 }
 )";
 
@@ -197,7 +200,7 @@ out vec4 fragment;
 uniform sampler2D sampler;
 void main()
 {
-    fragment = vec4(1.0, 1.0, 0.0, 1.0); //texture(sampler, uv).rgba;
+    fragment = texture(sampler, uv);
 }
 )";
 
@@ -247,13 +250,18 @@ int link_shaders() {
 }
 typedef struct Vertex {
     float pos[2];
+    float uv[2];
 } Vertex;
 
-static const Vertex vertices[4] = {{200, 100}, {200, 200}, {100, 100}, {100, 200}};
-// static const Vertex vertices[4] = {{0.2, 0.1}, {0.2, 0.2}, {0.1, 0.1}, {0.1, 0.2}};
-
 int main() {
-    Bitmap bitmap{"/Users/mlangford/Downloads/sample_640×426.bmp"};
+    Bitmap bitmap{"/Users/mlangford/Downloads/test.bmp"};
+    std::vector<Vertex> vertices;
+    float x = 100;
+    float y = 300;
+    vertices.emplace_back(Vertex{{x + bitmap.get_width(), y}, {1.0, 1.0}});                        // top right
+    vertices.emplace_back(Vertex{{x + bitmap.get_width(), y + bitmap.get_height()}, {1.0, 0.0}});  // bottom right
+    vertices.emplace_back(Vertex{{x, y}, {0.0, 1.0}});                                             // top left
+    vertices.emplace_back(Vertex{{x, y + bitmap.get_height()}, {0.0, 0.0}});                       // bottom left
 
     glfwSetErrorCallback(
         [](int code, const char* desc) { std::cerr << "GLFW Error (" << code << "):" << desc << "\n"; });
@@ -284,52 +292,44 @@ int main() {
 
     int program = link_shaders();
 
-    const GLint mvp_location = glGetUniformLocation(program, "screen_from_world");
-    const GLint vpos_location = glGetAttribLocation(program, "world_position");
+    const int screen_from_world_loc = glGetUniformLocation(program, "screen_from_world");
+    const int world_position_loc = glGetAttribLocation(program, "world_position");
+    const int vertex_uv_loc = glGetAttribLocation(program, "vertex_uv");
 
-    GLuint vertex_buffer;
+    unsigned int vertex_buffer;
     with_error_check(glGenBuffers, 1, &vertex_buffer);
     with_error_check(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer);
-    with_error_check(glBufferData, GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    with_error_check(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
 
-    GLuint vertex_array;
+    unsigned int vertex_array;
     with_error_check(glGenVertexArrays, 1, &vertex_array);
     with_error_check(glBindVertexArray, vertex_array);
-    with_error_check(glEnableVertexAttribArray, vpos_location);
-    with_error_check(glVertexAttribPointer, vpos_location, 2, GL_FLOAT, GL_FALSE, 0, (void*)offsetof(Vertex, pos));
+    with_error_check(glEnableVertexAttribArray, world_position_loc);
+    with_error_check(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                     (void*)offsetof(Vertex, pos));
+    with_error_check(glEnableVertexAttribArray, vertex_uv_loc);
+    with_error_check(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                     (void*)offsetof(Vertex, uv));
 
     unsigned int texture;
     with_error_check(glGenTextures, 1, &texture);
     with_error_check(glBindTexture, GL_TEXTURE_2D, texture);
     with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     with_error_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
     with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR,
                      GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
 
-    float i = 0;
     while (!glfwWindowShouldClose(window)) {
-        i += 0.01;
-        int width, height;
-        with_error_check(glfwGetFramebufferSize, window, &width, &height);
-
-        with_error_check(glViewport, 0, 0, width, height);
         with_error_check(glClear, GL_COLOR_BUFFER_BIT);
 
-        Eigen::Matrix3f screen_from_world = pan_and_zoom.get_screen_from_world().cast<float>();
-
-        Eigen::Vector3f screen_point = screen_from_world * Eigen::Vector3f(640, 360, 1);
-        // std::cout << screen_from_world << "\npoints:\n"
-        //    << "  " << (screen_from_world * Eigen::Vector3f(0, 0, 1)).transpose() << "\n"
-        //    << "  " << (screen_from_world * Eigen::Vector3f(kWidth, 0, 1)).transpose() << "\n"
-        //    << "  " << (screen_from_world * Eigen::Vector3f(kWidth, kHeight, 1)).transpose() << "\n"
-        //    << "  " << (screen_from_world * Eigen::Vector3f(0, kHeight, 1)).transpose() << "\n";
+        Eigen::Matrix3f screen_from_world = window_control.get_screen_from_world();
 
         with_error_check(glUseProgram, program);
-        with_error_check(glUniformMatrix3fv, mvp_location, 1, GL_FALSE, screen_from_world.data());
+        with_error_check(glUniformMatrix3fv, screen_from_world_loc, 1, GL_FALSE, screen_from_world.data());
         with_error_check(glBindVertexArray, vertex_array);
         with_error_check(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 
