@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <cmath>
 #include <iostream>
 
@@ -10,7 +11,6 @@
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
-
 
 void check_gl_error(std::string action = "") {
     std::stringstream ss;
@@ -42,25 +42,26 @@ void check_gl_error(std::string action = "") {
     check_gl_error(std::string("\nline ") + std::to_string(__LINE__) + ": " + std::string(#func) + "(" + \
                    std::string(#__VA_ARGS__) + ")")
 
-
 struct PanAndZoom {
     void update_mouse_position(double x, double y) {
-        Eigen::Vector2d position(x, y);
+        Eigen::Vector2f position(x, y);
         update_mouse_position_incremental(position - previous_position);
         previous_position = position;
 
         update_mouse_position();
     }
 
-    void update_mouse_position_incremental(Eigen::Vector2d increment) {
+    void update_mouse_position_incremental(Eigen::Vector2f increment) {
         if (clicked) {
-            center -= scale() * increment;
+            double current_scale = scale();
+            center.x() -= current_scale * increment.x();
+            center.y() -= current_scale * increment.y();
         }
     }
 
     void update_scroll(double /*x*/, double y) {
         double zoom_factor = 0.1 * -y;
-        Eigen::Vector2d new_half_dim = half_dim + zoom_factor * half_dim;
+        Eigen::Vector2f new_half_dim = half_dim + zoom_factor * half_dim;
 
         if (new_half_dim.x() < kMinHalfDim.x() || new_half_dim.y() < kMinHalfDim.y()) {
             new_half_dim = kMinHalfDim;
@@ -79,10 +80,18 @@ struct PanAndZoom {
 
     void release() { clicked = false; }
 
-    void set_model_view_matrix() {
-        Eigen::Vector2d top_left = center - half_dim;
-        Eigen::Vector2d bottom_right = center + half_dim;
-        //glOrtho(top_left.x(), bottom_right.x(), bottom_right.y(), top_left.y(), 0.0, 1.0);
+    Eigen::Matrix3f get_screen_from_world() const {
+        using Transform = Eigen::Matrix3f;
+
+        Transform translate = Transform::Identity();
+        Transform scale = Transform::Identity();
+
+        translate(0, 2) = -center.x();
+        translate(1, 2) = -center.y();
+        scale.diagonal() = Eigen::Vector3f{1 / half_dim.x(), -1 / half_dim.y(), 1};
+
+        return scale * translate;
+        // glOrtho(top_left.x(), bottom_right.x(), bottom_right.y(), top_left.y(), 0.0, 1.0);
     }
 
     void reset() {
@@ -94,22 +103,22 @@ struct PanAndZoom {
     double scale() const { return (half_dim).norm() / kInitialHalfDim.norm(); }
 
     void update_mouse_position() {
-        Eigen::Vector2d top_left = center - half_dim;
-        Eigen::Vector2d bottom_right = center + half_dim;
-        Eigen::Vector2d screen_position{previous_position.x() / kWidth, previous_position.y() / kHeight};
+        Eigen::Vector2f top_left = center - half_dim;
+        Eigen::Vector2f bottom_right = center + half_dim;
+        Eigen::Vector2f screen_position{previous_position.x() / kWidth, previous_position.y() / kHeight};
         mouse_position = screen_position.cwiseProduct(bottom_right - top_left) + top_left;
     }
 
-    const Eigen::Vector2d kInitialHalfDim = 0.5 * Eigen::Vector2d{kWidth, kHeight};
-    const Eigen::Vector2d kMinHalfDim = 0.5 * Eigen::Vector2d{0.1 * kWidth, 0.1 * kHeight};
-    const Eigen::Vector2d kMaxHalfDim = 0.5 * Eigen::Vector2d{3.0 * kWidth, 3.0 * kHeight};
+    const Eigen::Vector2f kInitialHalfDim = 0.5 * Eigen::Vector2f{kWidth, kHeight};
+    const Eigen::Vector2f kMinHalfDim = 0.5 * Eigen::Vector2f{0.1 * kWidth, 0.1 * kHeight};
+    const Eigen::Vector2f kMaxHalfDim = 0.5 * Eigen::Vector2f{3.0 * kWidth, 3.0 * kHeight};
 
-    Eigen::Vector2d center = kInitialHalfDim;
-    Eigen::Vector2d half_dim = kInitialHalfDim;
+    Eigen::Vector2f center = kInitialHalfDim;
+    Eigen::Vector2f half_dim = kInitialHalfDim;
 
-    Eigen::Vector2d previous_position;
+    Eigen::Vector2f previous_position;
 
-    Eigen::Vector2d mouse_position;
+    Eigen::Vector2f mouse_position;
 
     bool clicked = false;
 };
@@ -170,13 +179,14 @@ int compile_shader(int type, const std::string& source) {
 
 std::string vertex_shader_text = R"(
 #version 330
-uniform mat4 MVP;
-in vec2 vPos;
+uniform mat3 screen_from_world;
+in vec2 world_position;
 out vec2 uv;
 void main()
 {
-    gl_Position = MVP * vec4(vPos.x - 0.5, vPos.y - 0.5, 0.0, 1.0);
-    uv = vPos;
+    vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
+    gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
+    uv = vec2(0.5, 0.5);
 }
 )";
 
@@ -187,7 +197,7 @@ out vec4 fragment;
 uniform sampler2D sampler;
 void main()
 {
-    fragment = texture(sampler, uv).rgba;
+    fragment = vec4(1.0, 1.0, 0.0, 1.0); //texture(sampler, uv).rgba;
 }
 )";
 
@@ -237,18 +247,16 @@ int link_shaders() {
 }
 typedef struct Vertex {
     float pos[2];
-    float col[3];
 } Vertex;
 
-static const Vertex vertices[4] = {{{0.f, 0.f}, {1.f, 0.f, 0.f}},
-                                   {{1.0f, 0.0f}, {0.f, 1.f, 0.f}},
-                                   {{0.f, 1.0f}, {0.f, 0.f, 1.f}},
-                                   {{1.f, 1.f}, {1.f, 1.f, 1.f}}};
+static const Vertex vertices[4] = {{200, 100}, {200, 200}, {100, 100}, {100, 200}};
+// static const Vertex vertices[4] = {{0.2, 0.1}, {0.2, 0.2}, {0.1, 0.1}, {0.1, 0.2}};
 
 int main() {
     Bitmap bitmap{"/Users/mlangford/Downloads/sample_640×426.bmp"};
 
-    glfwSetErrorCallback([](int code, const char* desc) { std::cerr << "GLFW Error (" << code << "):" << desc << "\n"; });
+    glfwSetErrorCallback(
+        [](int code, const char* desc) { std::cerr << "GLFW Error (" << code << "):" << desc << "\n"; });
 
     if (!glfwInit()) exit(EXIT_FAILURE);
 
@@ -258,22 +266,26 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    GLFWwindow* window = glfwCreateWindow(1000, 1000, "Window", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(kWidth, kHeight, "Window", NULL, NULL);
     if (!window) {
         std::cerr << "Unable to create window!\n";
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-    glfwSetKeyCallback(window, key_callback);
     glfwMakeContextCurrent(window);
+
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
 
     std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
     std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
 
     int program = link_shaders();
 
-    const GLint mvp_location = glGetUniformLocation(program, "MVP");
-    const GLint vpos_location = glGetAttribLocation(program, "vPos");
+    const GLint mvp_location = glGetUniformLocation(program, "screen_from_world");
+    const GLint vpos_location = glGetAttribLocation(program, "world_position");
 
     GLuint vertex_buffer;
     with_error_check(glGenBuffers, 1, &vertex_buffer);
@@ -284,8 +296,7 @@ int main() {
     with_error_check(glGenVertexArrays, 1, &vertex_array);
     with_error_check(glBindVertexArray, vertex_array);
     with_error_check(glEnableVertexAttribArray, vpos_location);
-    with_error_check(glVertexAttribPointer, vpos_location, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                     (void*)offsetof(Vertex, pos));
+    with_error_check(glVertexAttribPointer, vpos_location, 2, GL_FLOAT, GL_FALSE, 0, (void*)offsetof(Vertex, pos));
 
     unsigned int texture;
     with_error_check(glGenTextures, 1, &texture);
@@ -295,13 +306,6 @@ int main() {
     with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    std::vector<uint8_t> data;
-    for (size_t i = 0; i < 256 * 256; ++i) {
-        data.push_back(0xFF);
-        data.push_back(0x00);
-        data.push_back(0x00);
-        data.push_back(0xFF);
-    }
     with_error_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
     with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR,
                      GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
@@ -315,16 +319,17 @@ int main() {
         with_error_check(glViewport, 0, 0, width, height);
         with_error_check(glClear, GL_COLOR_BUFFER_BIT);
 
-        float mvp[16] = {0};
-        mvp[0] = cos(i);
-        mvp[1] = -sin(i);
-        mvp[4] = sin(i);
-        mvp[5] = cos(i);
-        mvp[10] = 1;
-        mvp[15] = 1;
+        Eigen::Matrix3f screen_from_world = pan_and_zoom.get_screen_from_world().cast<float>();
+
+        Eigen::Vector3f screen_point = screen_from_world * Eigen::Vector3f(640, 360, 1);
+        // std::cout << screen_from_world << "\npoints:\n"
+        //    << "  " << (screen_from_world * Eigen::Vector3f(0, 0, 1)).transpose() << "\n"
+        //    << "  " << (screen_from_world * Eigen::Vector3f(kWidth, 0, 1)).transpose() << "\n"
+        //    << "  " << (screen_from_world * Eigen::Vector3f(kWidth, kHeight, 1)).transpose() << "\n"
+        //    << "  " << (screen_from_world * Eigen::Vector3f(0, kHeight, 1)).transpose() << "\n";
 
         with_error_check(glUseProgram, program);
-        with_error_check(glUniformMatrix4fv, mvp_location, 1, GL_FALSE, (const GLfloat*)&mvp);
+        with_error_check(glUniformMatrix3fv, mvp_location, 1, GL_FALSE, screen_from_world.data());
         with_error_check(glBindVertexArray, vertex_array);
         with_error_check(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 
