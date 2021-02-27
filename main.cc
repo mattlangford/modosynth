@@ -319,7 +319,8 @@ int main() {
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR, GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR, GL_UNSIGNED_BYTE,
+                 bitmap.get_pixels().data());
     check_gl_error("Image mapping");
 
     glEnable(GL_TEXTURE_2D);
@@ -335,10 +336,14 @@ int main() {
         glColor4d(1.0, 1.0, 1.0, 1.0);
         glBindTexture(GL_TEXTURE_2D, texture);
         glBegin(GL_QUADS);
-            glTexCoord2f(0.0, 0.0); glVertex2f(100, 100);
-            glTexCoord2f(1.0, 0.0); glVertex2f(200, 100);
-            glTexCoord2f(1.0, 1.0); glVertex2f(200, 200);
-            glTexCoord2f(0.0, 1.0); glVertex2f(100, 200);
+        glTexCoord2f(0.0, 0.0);
+        glVertex2f(100, 100);
+        glTexCoord2f(1.0, 0.0);
+        glVertex2f(200, 100);
+        glTexCoord2f(1.0, 1.0);
+        glVertex2f(200, 200);
+        glTexCoord2f(0.0, 1.0);
+        glVertex2f(100, 200);
         glEnd();
 
         pan_and_zoom.set_model_view_matrix();
