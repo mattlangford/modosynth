@@ -1,3 +1,5 @@
+#include <OpenGL/gl3.h>
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #include <Eigen/Dense>
@@ -8,6 +10,7 @@
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
+
 
 void check_gl_error(std::string action = "") {
     std::stringstream ss;
@@ -24,6 +27,9 @@ void check_gl_error(std::string action = "") {
         case GL_INVALID_VALUE:
             ss << GL_INVALID_VALUE << " (GL_INVALID_VALUE).";
             break;
+        case GL_INVALID_OPERATION:
+            ss << GL_INVALID_OPERATION << " (GL_INVALID_OPERATION).";
+            break;
         default:
             ss << error;
             break;
@@ -31,16 +37,11 @@ void check_gl_error(std::string action = "") {
     throw std::runtime_error(ss.str());
 }
 
-void init_view() {
-    // set up view
-    // glViewport(-100, -100, kWidth + 100, kHeight + 100);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+#define with_error_check(func, ...)                                                                      \
+    func(__VA_ARGS__);                                                                                   \
+    check_gl_error(std::string("\nline ") + std::to_string(__LINE__) + ": " + std::string(#func) + "(" + \
+                   std::string(#__VA_ARGS__) + ")")
 
-    // this creates a canvas to do 2D drawing on
-    glOrtho(0.0, kWidth, kHeight, 0.0, -1.0, 1.0);
-    glGetError();
-}
 
 struct PanAndZoom {
     void update_mouse_position(double x, double y) {
@@ -79,20 +80,9 @@ struct PanAndZoom {
     void release() { clicked = false; }
 
     void set_model_view_matrix() {
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-
         Eigen::Vector2d top_left = center - half_dim;
         Eigen::Vector2d bottom_right = center + half_dim;
-        glOrtho(top_left.x(), bottom_right.x(), bottom_right.y(), top_left.y(), 0.0, 1.0);
-
-        glBegin(GL_QUADS);
-        glColor3d(1.0, 0.0, 0.0);
-        glVertex2d(mouse_position.x() - 1, mouse_position.y() - 1);
-        glVertex2d(mouse_position.x() + 1, mouse_position.y() - 1);
-        glVertex2d(mouse_position.x() + 1, mouse_position.y() + 1);
-        glVertex2d(mouse_position.x() - 1, mouse_position.y() + 1);
-        glEnd();
+        //glOrtho(top_left.x(), bottom_right.x(), bottom_right.y(), top_left.y(), 0.0, 1.0);
     }
 
     void reset() {
@@ -178,32 +168,32 @@ int compile_shader(int type, const std::string& source) {
     return shader;
 }
 
+std::string vertex_shader_text = R"(
+#version 330
+uniform mat4 MVP;
+in vec2 vPos;
+out vec2 uv;
+void main()
+{
+    gl_Position = MVP * vec4(vPos.x - 0.5, vPos.y - 0.5, 0.0, 1.0);
+    uv = vPos;
+}
+)";
+
+std::string fragment_shader_text = R"(
+#version 330
+in vec2 uv;
+out vec4 fragment;
+uniform sampler2D sampler;
+void main()
+{
+    fragment = texture(sampler, uv).rgba;
+}
+)";
+
 int link_shaders() {
-    std::string vertex = R"(
-#version 110
-attribute vec2 position;
-attribute vec2 uv;
-
-varying vec2 v_uv;
-
-void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
-    v_uv = uv;
-})";
-    std::string fragment = R"(
-#version 110
-varying vec2 v_uv;
-
-uniform sampler2D texture_sampler;
-
-void main() {
-    gl_FragColor = texture2D(texture_sampler, v_uv);
-})";
-
-    // auto vertex_shader = compile_shader(GL_VERTEX_SHADER, std::string(vertex_shader_text));
-    // auto fragment_shader = compile_shader(GL_FRAGMENT_SHADER, std::string(fragment_shader_text));
-    auto vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex);
-    auto fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment);
+    auto vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex_shader_text);
+    auto fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_text);
     if (vertex_shader < 0 || fragment_shader < 0) {
         throw std::runtime_error("Failed to build at least one of the shaders.");
     }
@@ -245,116 +235,105 @@ void main() {
     glDetachShader(program, fragment_shader);
     return program;
 }
+typedef struct Vertex {
+    float pos[2];
+    float col[3];
+} Vertex;
+
+static const Vertex vertices[4] = {{{0.f, 0.f}, {1.f, 0.f, 0.f}},
+                                   {{1.0f, 0.0f}, {0.f, 1.f, 0.f}},
+                                   {{0.f, 1.0f}, {0.f, 0.f, 1.f}},
+                                   {{1.f, 1.f}, {1.f, 1.f, 1.f}}};
 
 int main() {
     Bitmap bitmap{"/Users/mlangford/Downloads/sample_640×426.bmp"};
-    GLFWwindow* window;
 
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW\n";
-        exit(EXIT_FAILURE);
-    }
+    glfwSetErrorCallback([](int code, const char* desc) { std::cerr << "GLFW Error (" << code << "):" << desc << "\n"; });
 
-    // Upgrade to a newer GLSL version for the shaders
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    if (!glfwInit()) exit(EXIT_FAILURE);
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    window = glfwCreateWindow(kWidth, kHeight, "Window", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1000, 1000, "Window", NULL, NULL);
     if (!window) {
         std::cerr << "Unable to create window!\n";
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-    check_gl_error("window");
-
-    glfwMakeContextCurrent(window);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetScrollCallback(window, scroll_callback);
     glfwSetKeyCallback(window, key_callback);
-    check_gl_error("callbacks");
+    glfwMakeContextCurrent(window);
 
-    init_view();
-    check_gl_error("init_view");
-    /*
-
-    float vertices[] = {-0.5f, -0.5f, 0.0, 0.0, 0.5f, -0.5f, 1.0, 0.0, 0.5f, 0.5f, 0.0, 1.0};
-
-    unsigned int vbo;
-    glGenBuffers(1, &vbo);
-    check_gl_error("glGenBuffers");
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    check_gl_error("glBindBuffer");
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    check_gl_error("glBufferData");
+    std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
+    std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
 
     int program = link_shaders();
-    check_gl_error("link_shaders");
-    glUseProgram(program);
 
-    // then set our vertex attributes pointers
-    int position = glGetAttribLocation(program, "position");
-    glVertexAttribPointer(position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    check_gl_error("glVertexAttribPointer/position");
-    glEnableVertexAttribArray(position);
-    check_gl_error("glEnableVertexAttribArray/position");
+    const GLint mvp_location = glGetUniformLocation(program, "MVP");
+    const GLint vpos_location = glGetAttribLocation(program, "vPos");
 
-    int uv = glGetAttribLocation(program, "uv");
-    glVertexAttribPointer(uv, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    check_gl_error("glVertexAttribPointer/uv");
-    glEnableVertexAttribArray(uv);
-    check_gl_error("glEnableVertexAttribArray/uv");
-    */
+    GLuint vertex_buffer;
+    with_error_check(glGenBuffers, 1, &vertex_buffer);
+    with_error_check(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer);
+    with_error_check(glBufferData, GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    GLuint vertex_array;
+    with_error_check(glGenVertexArrays, 1, &vertex_array);
+    with_error_check(glBindVertexArray, vertex_array);
+    with_error_check(glEnableVertexAttribArray, vpos_location);
+    with_error_check(glVertexAttribPointer, vpos_location, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                     (void*)offsetof(Vertex, pos));
 
     unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    with_error_check(glGenTextures, 1, &texture);
+    with_error_check(glBindTexture, GL_TEXTURE_2D, texture);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR, GL_UNSIGNED_BYTE,
-                 bitmap.get_pixels().data());
-    check_gl_error("Image mapping");
+    std::vector<uint8_t> data;
+    for (size_t i = 0; i < 256 * 256; ++i) {
+        data.push_back(0xFF);
+        data.push_back(0x00);
+        data.push_back(0x00);
+        data.push_back(0xFF);
+    }
+    with_error_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
+    with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR,
+                     GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
 
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    check_gl_error("glEnable");
-
-    // Main loop
+    float i = 0;
     while (!glfwWindowShouldClose(window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        i += 0.01;
+        int width, height;
+        with_error_check(glfwGetFramebufferSize, window, &width, &height);
 
-        glColor4d(1.0, 1.0, 1.0, 1.0);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glBegin(GL_QUADS);
-        glTexCoord2f(0.0, 0.0);
-        glVertex2f(100, 100);
-        glTexCoord2f(1.0, 0.0);
-        glVertex2f(200, 100);
-        glTexCoord2f(1.0, 1.0);
-        glVertex2f(200, 200);
-        glTexCoord2f(0.0, 1.0);
-        glVertex2f(100, 200);
-        glEnd();
+        with_error_check(glViewport, 0, 0, width, height);
+        with_error_check(glClear, GL_COLOR_BUFFER_BIT);
 
-        pan_and_zoom.set_model_view_matrix();
+        float mvp[16] = {0};
+        mvp[0] = cos(i);
+        mvp[1] = -sin(i);
+        mvp[4] = sin(i);
+        mvp[5] = cos(i);
+        mvp[10] = 1;
+        mvp[15] = 1;
+
+        with_error_check(glUseProgram, program);
+        with_error_check(glUniformMatrix4fv, mvp_location, 1, GL_FALSE, (const GLfloat*)&mvp);
+        with_error_check(glBindVertexArray, vertex_array);
+        with_error_check(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // Terminate GLFW
-    glfwTerminate();
+    glfwDestroyWindow(window);
 
-    // Exit program
+    glfwTerminate();
     exit(EXIT_SUCCESS);
 }
