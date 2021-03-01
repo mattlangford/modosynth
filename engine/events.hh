@@ -31,9 +31,6 @@ struct MouseEvent {
 };
 
 class MouseEventManager {
-private:
-    static MouseEventManager* instance_;
-
 public:
     using CallbackFunction = std::function<void(const MouseEvent&)>;
 
@@ -44,8 +41,6 @@ public:
     void scroll_callback(GLFWwindow* window, double scroll_x, double scroll_y);
     void cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y);
     void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-
-    static MouseEventManager* instance_ptr();
 
 private:
     CallbackFunction callback_;
@@ -76,6 +71,14 @@ struct KeyboardEvent {
     bool control;
     bool shift;
     bool space;
+    bool enter;
+    bool tab;
+    bool backspace;
+    bool right_arrow;
+    bool left_arrow;
+    bool up_arrow;
+    bool down_arrow;
+    bool escape;
 };
 
 class KeyboardEventManager {
@@ -84,11 +87,13 @@ public:
 
 public:
     KeyboardEventManager(CallbackFunction callback);
+    ~KeyboardEventManager();
 
     void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 private:
     CallbackFunction callback_;
+    bool was_clicked = false;
 };
 
 void setup_glfw_callbacks(GLFWwindow* window);

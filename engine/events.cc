@@ -10,22 +10,23 @@ namespace engine {
 // #############################################################################
 //
 
-MouseEventManager* MouseEventManager::instance_ = nullptr;
+static MouseEventManager* mouse_instance = nullptr;
+static KeyboardEventManager* keyboard_instance = nullptr;
 
 //
 // #############################################################################
 //
 
 MouseEventManager::MouseEventManager(CallbackFunction callback) : callback_(std::move(callback)) {
-    if (instance_) throw std::runtime_error("Trying to create another MouseEventManager. Only one allowed.");
-    instance_ = this;
+    if (mouse_instance) throw std::runtime_error("Trying to create multiple MouseEventManager. Only one allowed.");
+    mouse_instance = this;
 }
 
 //
 // #############################################################################
 //
 
-MouseEventManager::~MouseEventManager() { instance_ = nullptr; }
+MouseEventManager::~MouseEventManager() { mouse_instance = nullptr; }
 
 //
 // #############################################################################
@@ -109,20 +110,73 @@ void MouseEventManager::mouse_button_callback(GLFWwindow* /*window*/, int button
 // #############################################################################
 //
 
-MouseEventManager* MouseEventManager::instance_ptr() { return instance_; }
+KeyboardEventManager::KeyboardEventManager(CallbackFunction callback) : callback_(std::move(callback)) {
+    if (keyboard_instance)
+        throw std::runtime_error("Trying to create multiple KeyboardEventManagers. Only one allowed.");
+    keyboard_instance = this;
+}
 
 //
 // #############################################################################
 //
 
-KeyboardEventManager::KeyboardEventManager(CallbackFunction callback) : callback_(std::move(callback)) {}
+KeyboardEventManager::~KeyboardEventManager() { keyboard_instance = nullptr; }
 
 //
 // #############################################################################
 //
 
-void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int /*key*/, int /*scancode*/, int /*action*/,
-                                        int /*mods*/) {}
+void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int mods) {
+    KeyboardEvent event;
+    event.was_clicked = was_clicked;
+
+    event.clicked = action == GLFW_PRESS;
+    event.control = (mods | GLFW_MOD_CONTROL) != 0;
+    event.shift = (mods | GLFW_MOD_SHIFT) != 0;
+
+    event.enter = false;
+    event.backspace = false;
+    event.tab = false;
+    event.right_arrow = false;
+    event.left_arrow = false;
+    event.up_arrow = false;
+    event.down_arrow = false;
+    event.escape = false;
+
+    switch (key) {
+        case GLFW_KEY_ENTER:
+            event.enter = true;
+            break;
+        case GLFW_KEY_TAB:
+            event.tab = true;
+            break;
+        case GLFW_KEY_BACKSPACE:
+            event.backspace = true;
+            break;
+        case GLFW_KEY_RIGHT:
+            event.right_arrow = true;
+            break;
+        case GLFW_KEY_LEFT:
+            event.left_arrow = true;
+            break;
+        case GLFW_KEY_UP:
+            event.up_arrow = true;
+            break;
+        case GLFW_KEY_DOWN:
+            event.down_arrow = true;
+            break;
+        case GLFW_KEY_ESCAPE:
+            event.escape = true;
+            break;
+        default:
+            if (key > 32 && key < 100) event.key = std::tolower(key);
+            break;
+    }
+
+    callback_(event);
+
+    was_clicked = event.clicked;
+}
 
 //
 // #############################################################################
@@ -130,17 +184,19 @@ void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int /*key*/, int
 
 void setup_glfw_callbacks(GLFWwindow* window) {
     glfwSetScrollCallback(window, [](GLFWwindow* w, double x, double y) {
-        if (auto ptr = MouseEventManager::instance_ptr()) ptr->scroll_callback(w, x, y);
+        if (mouse_instance) mouse_instance->scroll_callback(w, x, y);
     });
 
     glfwSetCursorPosCallback(window, [](GLFWwindow* w, double x, double y) {
-        if (auto ptr = MouseEventManager::instance_ptr()) ptr->cursor_position_callback(w, x, y);
+        if (mouse_instance) mouse_instance->cursor_position_callback(w, x, y);
     });
 
     glfwSetMouseButtonCallback(window, [](GLFWwindow* w, int button, int action, int mods) {
-        if (auto ptr = MouseEventManager::instance_ptr()) ptr->mouse_button_callback(w, button, action, mods);
+        if (mouse_instance) mouse_instance->mouse_button_callback(w, button, action, mods);
     });
 
-    // glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
+        if (keyboard_instance) keyboard_instance->key_callback(w, key, scancode, action, mods);
+    });
 }
 }  // namespace engine

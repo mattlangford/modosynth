@@ -33,6 +33,7 @@ private:
 
 private:
     MouseEventManager mouse_;
+    KeyboardEventManager keyboard_;
 
     GLFWwindow* window_;
     const size_t height_;

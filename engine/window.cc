@@ -8,6 +8,7 @@ namespace engine {
 
 Window::Window(size_t height, size_t width)
     : mouse_([this](const MouseEvent& event) { handle_mouse_event(event); }),
+      keyboard_([this](const KeyboardEvent& event) { handle_keyboard_event(event); }),
       height_(height),
       width_(width),
       kInitialHalfDim_{0.5 * Eigen::Vector2f{width_, height_}},
@@ -87,7 +88,7 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     }
 
     if (event.delta_scroll != 0.0) {
-        double zoom_factor = 0.1 * -event.delta_scroll;
+        double zoom_factor = 0.05 * -event.delta_scroll;
         Eigen::Vector2f new_half_dim_ = half_dim_ + zoom_factor * half_dim_;
 
         if (new_half_dim_.x() < kMinHalfDim_.x() || new_half_dim_.y() < kMinHalfDim_.y()) {
@@ -106,6 +107,20 @@ void Window::handle_mouse_event(const MouseEvent& event) {
         center_ += translate_factor * (center_ - mouse_position);
         half_dim_ = new_half_dim_;
     }
+
+    object_manager_.handle_mouse_event(event);
+}
+
+//
+// #############################################################################
+//
+
+void Window::handle_keyboard_event(const KeyboardEvent& event) {
+    if (event.escape) {
+        glfwSetWindowShouldClose(window_, true);
+    }
+
+    object_manager_.handle_keyboard_event(event);
 }
 
 //

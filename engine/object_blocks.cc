@@ -78,7 +78,7 @@ void BlockObjectManager::init() {
 
     int world_position_loc = glGetAttribLocation(shader_.get_program_id(), "world_position");
     int vertex_uv_loc = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
-    int screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
+    screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
 
     unsigned int vertex_buffer;
     gl_safe(glGenBuffers, 1, &vertex_buffer);
