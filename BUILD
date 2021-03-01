@@ -6,15 +6,6 @@ cc_binary(
     ]
 )
 
-cc_binary(
-    name = "test",
-    srcs = ["test.cc"],
-    deps = [
-        "@glfw//:glfw",
-        ":bitmap",
-    ]
-)
-
 cc_library(
     name = "engine",
     srcs = glob(["engine/*.cc"]),
@@ -22,5 +13,16 @@ cc_library(
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
+        "@iterate//:iterate",
+    ]
+)
+
+cc_test(
+    name = "engine_test",
+    srcs = glob(["engine/test/*.cc"]),
+    deps = [
+        ":engine",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
     ]
 )

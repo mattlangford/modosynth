@@ -53,7 +53,7 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
-    vertices_.resize(vertices_size + 1);
+    vertices_.resize(vertices_size + 2);
     bind_vertex_data();
 }
 
@@ -71,29 +71,7 @@ void BlockObjectManager::init() {
     // important to initialize at the start
     shader_.init();
 
-    float x = 100;
-    float y = 300;
-    float h = 64;
-    float w = 128;
-
-    vertices_.emplace_back(Vertex{{x + w, y}, {1.0, 1.0}});      // top right
-    vertices_.emplace_back(Vertex{{x + w, y + h}, {1.0, 0.0}});  // bottom right
-    vertices_.emplace_back(Vertex{{x, y}, {0.0, 1.0}});          // top left
-    vertices_.emplace_back(Vertex{{x, y + h}, {0.0, 0.0}});      // bottom left
-
-    int world_position_loc = glGetAttribLocation(shader_.get_program_id(), "world_position");
-    int vertex_uv_loc = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
-    screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
-
     bind_vertex_data();
-
-    gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
-    gl_safe(glBindVertexArray, vertex_array_index_);
-    gl_safe(glEnableVertexAttribArray, world_position_loc);
-    gl_safe(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-            (void*)offsetof(Vertex, pos));
-    gl_safe(glEnableVertexAttribArray, vertex_uv_loc);
-    gl_safe(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
 
     gl_safe(glBindVertexArray, 0);
 }
@@ -108,19 +86,19 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     shader_.activate();
 
     size_t index = 0;
-    for (auto id = pool_->first(); id != pool_->last(); id = pool_->next(id)) {
-        auto& object = pool_->get(id);
+    for (auto object : pool_->iterate()) {
+        auto& top_left_vertex = vertices_.at(index++);
+        auto& bottom_right_vertex = vertices_.at(index++);
 
-        auto& top_left_vertex = vertices_[index++];
-        auto& bottom_right_vertex = vertices_[index++];
-
-        const Eigen::Vector2f top_left = object.get_top_left();
-        const Eigen::Vector2f bottom_right = object.get_bottom_right();
-        top_left_vertex.pos[0] = top_left.x();
-        top_left_vertex.pos[1] = top_left.y();
-        bottom_right_vertex.pos[0] = bottom_right.x();
-        bottom_right_vertex.pos[1] = bottom_right.y();
+        const Eigen::Vector2f top_left = object->get_top_left();
+        const Eigen::Vector2f bottom_right = object->get_bottom_right();
+        top_left_vertex.pos[0] = 100;            // top_left.x();
+        top_left_vertex.pos[1] = 200;            // top_left.y();
+        bottom_right_vertex.pos[0] = 100 + 129;  // bottom_right.x();
+        bottom_right_vertex.pos[1] = 200 + 64;   // bottom_right.y();
     }
+
+    std::cout << vertices_.at(0).pos[0] << ", " << vertices_.at(0).pos[1] << "\n";
 
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
     gl_safe(glBindVertexArray, vertex_array_index_);
@@ -147,6 +125,8 @@ void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {
     } else {
         selected_ = select(event.mouse_position);
     }
+
+    std::cout << "selected: " << (long)selected_ << "\n";
 }
 
 //
@@ -184,10 +164,9 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     };
 
     // Iterating backwards like this will ensure we always select the newest object
-    for (auto id = pool_->last(); id != pool_->first(); id = pool_->previous(id)) {
-        auto& object = pool_->get(id);
-        if (is_in_object(object)) {
-            return &object;
+    for (auto object : pool_->iterate()) {
+        if (is_in_object(*object)) {
+            return object;
         }
     }
     return nullptr;
@@ -198,8 +177,27 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 //
 
 void BlockObjectManager::bind_vertex_data() {
+    if (vertex_buffer_index_ < 0) {
+        glDeleteBuffers(1, &vertex_buffer_index_);
+    }
+    if (vertex_array_index_ < 0) {
+        glDeleteVertexArrays(1, &vertex_array_index_);
+    }
+
+    int world_position_loc = glGetAttribLocation(shader_.get_program_id(), "world_position");
+    int vertex_uv_loc = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
+    screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
+
     gl_safe(glGenBuffers, 1, &vertex_buffer_index_);
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_DYNAMIC_DRAW);
+
+    gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
+    gl_safe(glBindVertexArray, vertex_array_index_);
+    gl_safe(glEnableVertexAttribArray, world_position_loc);
+    gl_safe(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+            (void*)offsetof(Vertex, pos));
+    gl_safe(glEnableVertexAttribArray, vertex_uv_loc);
+    gl_safe(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
 }
 }  // namespace engine

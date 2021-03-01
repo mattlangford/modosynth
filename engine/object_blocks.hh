@@ -61,8 +61,8 @@ private:
 
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
 
-    unsigned int vertex_buffer_index_;
-    unsigned int vertex_array_index_;
+    unsigned int vertex_buffer_index_ = -1;
+    unsigned int vertex_array_index_ = -1;
     int screen_from_world_loc_;
 
     struct Vertex {

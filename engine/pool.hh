@@ -2,6 +2,7 @@
 
 #include <list>
 #include <utility>
+#include <vector>
 
 namespace engine {
 struct ObjectId {
@@ -29,10 +30,10 @@ public:
     virtual const Object& get(const ObjectId& id) const = 0;
 
     virtual bool empty() const = 0;
-    virtual ObjectId first() const = 0;
-    virtual ObjectId last() const = 0;
-    virtual ObjectId next(const ObjectId& id) const = 0;
-    virtual ObjectId previous(const ObjectId& id) const = 0;
+
+    // TODO: something better than the vector
+    virtual std::vector<const Object*> iterate() const = 0;
+    virtual std::vector<Object*> iterate() = 0;
 };
 
 //
@@ -44,8 +45,9 @@ class ListObjectPool : public AbstractObjectPool<Object_> {
 private:
     using iterator = typename std::list<Object_>::iterator;
     using const_iterator = typename std::list<Object_>::const_iterator;
+    static_assert(sizeof(iterator) <= sizeof(size_t));
 
-    ObjectId id_from_it(const const_iterator& it) const { return ObjectId{*reinterpret_cast<const size_t*>(&*it)}; }
+    ObjectId id_from_it(const const_iterator& it) const { return ObjectId{*reinterpret_cast<const size_t*>(&it)}; }
     iterator it_from_id(const ObjectId& id) const { return reinterpret_cast<const iterator&>(id.key); }
 
 public:
@@ -55,7 +57,7 @@ public:
 
     std::pair<ObjectId, Object&> add(Object object) override {
         Object& emplaced = pool_.emplace_back(std::move(object));
-        return {last(), emplaced};
+        return {id_from_it(std::prev(pool_.end())), emplaced};
     }
 
     void remove(const ObjectId& id) override { pool_.erase(it_from_id(id)); }
@@ -63,10 +65,20 @@ public:
     const Object& get(const ObjectId& id) const override { return *it_from_id(id); }
 
     bool empty() const override { return pool_.empty(); }
-    ObjectId first() const override { return id_from_it(pool_.begin()); }
-    ObjectId last() const override { return id_from_it(std::prev(pool_.end())); }
-    ObjectId next(const ObjectId& id) const override { return id_from_it(it_from_id(id)++); }
-    ObjectId previous(const ObjectId& id) const override { return id_from_it(it_from_id(id)--); }
+
+    std::vector<const Object*> iterate() const override {
+        std::vector<const Object*> objects;
+        objects.reserve(pool_.size());
+        for (const auto& object : pool_) objects.emplace_back(&object);
+        return objects;
+    }
+
+    std::vector<Object*> iterate() override {
+        std::vector<Object*> objects;
+        objects.reserve(pool_.size());
+        for (auto& object : pool_) objects.emplace_back(&object);
+        return objects;
+    }
 
 private:
     std::list<Object_> pool_;
