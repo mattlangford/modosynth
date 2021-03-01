@@ -1,13 +1,3 @@
-#include <OpenGL/gl3.h>
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
-#include <cmath>
-#include <iostream>
-#include <list>
-
 #include "engine/bitmap.hh"
 #include "engine/gl.hh"
 #include "engine/objects.hh"
@@ -17,35 +7,23 @@
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
 
-static engine::Window window_control{kHeight, kWidth};
-
-void scroll_callback(GLFWwindow* /*window*/, double scroll_x, double scroll_y) {
-    window_control.update_scroll(scroll_x, scroll_y);
-}
-
-void cursor_position_callback(GLFWwindow* /*window*/, double pos_x, double pos_y) {
-    window_control.update_mouse_position(pos_x, pos_y);
-}
-
-void mouse_button_callback(GLFWwindow* /*window*/, int button, int action, int /*mods*/) {
-    if (button != GLFW_MOUSE_BUTTON_RIGHT) return;
-
-    if (action == GLFW_PRESS) {
-        window_control.click();
-    } else if (action == GLFW_RELEASE) {
-        window_control.release();
-    }
-}
-
-void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/) {
-    if (key == GLFW_KEY_R && action == GLFW_PRESS) window_control.reset();
-}
-
 typedef struct Vertex {
     float pos[2];
     float uv[2];
 } Vertex;
 
+int main() {
+    engine::Window window{kHeight, kWidth};
+
+    window.init();
+
+    while (window.render_loop()) {
+    }
+
+    exit(EXIT_SUCCESS);
+}
+
+/*
 int main() {
     engine::Bitmap bitmap{"/Users/mlangford/Downloads/test.bmp"};
     std::vector<Vertex> vertices;
@@ -138,3 +116,4 @@ int main() {
     glfwTerminate();
     exit(EXIT_SUCCESS);
 }
+*/
