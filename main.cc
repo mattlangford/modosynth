@@ -1,6 +1,6 @@
 #include "engine/bitmap.hh"
 #include "engine/gl.hh"
-#include "engine/objects.hh"
+#include "engine/object_global.hh"
 #include "engine/shader.hh"
 #include "engine/window.hh"
 
