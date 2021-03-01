@@ -9,42 +9,13 @@
 #include <list>
 
 #include "engine/bitmap.hh"
+#include "engine/gl.hh"
 #include "engine/objects.hh"
 #include "engine/shader.hh"
 #include "engine/window.hh"
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
-
-void check_gl_error(std::string action = "") {
-    std::stringstream ss;
-    if (!action.empty()) ss << action << " failed. ";
-    ss << "Error code: 0x" << std::hex;
-
-    auto error = glGetError();
-    switch (error) {
-        case GL_NO_ERROR:
-            return;
-        case GL_INVALID_ENUM:
-            ss << GL_INVALID_ENUM << " (GL_INVALID_ENUM).";
-            break;
-        case GL_INVALID_VALUE:
-            ss << GL_INVALID_VALUE << " (GL_INVALID_VALUE).";
-            break;
-        case GL_INVALID_OPERATION:
-            ss << GL_INVALID_OPERATION << " (GL_INVALID_OPERATION).";
-            break;
-        default:
-            ss << error;
-            break;
-    }
-    throw std::runtime_error(ss.str());
-}
-
-#define with_error_check(func, ...)                                                                      \
-    func(__VA_ARGS__);                                                                                   \
-    check_gl_error(std::string("\nline ") + std::to_string(__LINE__) + ": " + std::string(#func) + "(" + \
-                   std::string(#__VA_ARGS__) + ")")
 
 static engine::Window window_control{kHeight, kWidth};
 
@@ -112,8 +83,8 @@ int main() {
     std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
     std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
 
-    with_error_check(glEnable, GL_BLEND);
-    with_error_check(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gl_safe(glEnable, GL_BLEND);
+    gl_safe(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     int program = link_shaders();
 
@@ -122,42 +93,41 @@ int main() {
     const int vertex_uv_loc = glGetAttribLocation(program, "vertex_uv");
 
     unsigned int vertex_buffer;
-    with_error_check(glGenBuffers, 1, &vertex_buffer);
-    with_error_check(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer);
-    with_error_check(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+    gl_safe(glGenBuffers, 1, &vertex_buffer);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
 
     unsigned int vertex_array;
-    with_error_check(glGenVertexArrays, 1, &vertex_array);
-    with_error_check(glBindVertexArray, vertex_array);
-    with_error_check(glEnableVertexAttribArray, world_position_loc);
-    with_error_check(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                     (void*)offsetof(Vertex, pos));
-    with_error_check(glEnableVertexAttribArray, vertex_uv_loc);
-    with_error_check(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                     (void*)offsetof(Vertex, uv));
+    gl_safe(glGenVertexArrays, 1, &vertex_array);
+    gl_safe(glBindVertexArray, vertex_array);
+    gl_safe(glEnableVertexAttribArray, world_position_loc);
+    gl_safe(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+            (void*)offsetof(Vertex, pos));
+    gl_safe(glEnableVertexAttribArray, vertex_uv_loc);
+    gl_safe(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
 
     unsigned int texture;
-    with_error_check(glGenTextures, 1, &texture);
-    with_error_check(glBindTexture, GL_TEXTURE_2D, texture);
-    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl_safe(glGenTextures, 1, &texture);
+    gl_safe(glBindTexture, GL_TEXTURE_2D, texture);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    with_error_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
-    with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, bitmap.get_width(), bitmap.get_height(), 0, GL_BGRA,
-                     GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
+    gl_safe(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
+    gl_safe(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, bitmap.get_width(), bitmap.get_height(), 0, GL_BGRA,
+            GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
 
     while (!glfwWindowShouldClose(window)) {
-        with_error_check(glClear, GL_COLOR_BUFFER_BIT);
-        with_error_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
+        gl_safe(glClear, GL_COLOR_BUFFER_BIT);
+        gl_safe(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
         Eigen::Matrix3f screen_from_world = window_control.get_screen_from_world();
 
-        with_error_check(glUseProgram, program);
-        with_error_check(glUniformMatrix3fv, screen_from_world_loc, 1, GL_FALSE, screen_from_world.data());
-        with_error_check(glBindVertexArray, vertex_array);
-        with_error_check(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
+        gl_safe(glUseProgram, program);
+        gl_safe(glUniformMatrix3fv, screen_from_world_loc, 1, GL_FALSE, screen_from_world.data());
+        gl_safe(glBindVertexArray, vertex_array);
+        gl_safe(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
