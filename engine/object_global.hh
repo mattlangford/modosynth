@@ -1,3 +1,4 @@
+#pragma once
 #include "engine/object_blocks.hh"
 #include "engine/object_manager.hh"
 

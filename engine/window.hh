@@ -1,3 +1,4 @@
+#pragma once
 #include <OpenGL/gl3.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -6,6 +7,7 @@
 #include <iostream>
 
 #include "engine/gl.hh"
+#include "engine/object_global.hh"
 
 namespace engine {
 
@@ -64,6 +66,8 @@ private:
     Eigen::Vector2f mouse_position;
 
     bool clicked_ = false;
+
+    GlobalObjectManager object_manager_;
 };
 
 }  // namespace engine

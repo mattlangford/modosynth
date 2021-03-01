@@ -121,6 +121,8 @@ void Window::init() {
 
     gl_safe(glEnable, GL_BLEND);
     gl_safe(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    object_manager_.init();
 }
 
 //
@@ -131,12 +133,7 @@ bool Window::render_loop() {
     gl_safe(glClear, GL_COLOR_BUFFER_BIT);
     gl_safe(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
-    // Eigen::Matrix3f screen_from_world = get_screen_from_world();
-
-    // gl_safe(glUseProgram, program_);
-    // gl_safe(glUniformMatrix3fv, screen_from_world_loc, 1, GL_FALSE, screen_from_world.data());
-    // gl_safe(glBindVertexArray, vertex_array);
-    // gl_safe(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
+    object_manager_.render(get_screen_from_world());
 
     glfwSwapBuffers(window_);
     glfwPollEvents();

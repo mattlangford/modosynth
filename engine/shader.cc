@@ -120,6 +120,7 @@ void Shader::activate() const {
     if (program_ < 0) {
         throw std::runtime_error("Invalid program set, did you call init()?");
     }
+    gl_safe(glUseProgram, program_);
 }
 
 //

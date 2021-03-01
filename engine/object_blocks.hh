@@ -1,8 +1,10 @@
 #pragma once
 #include <Eigen/Dense>
+#include <vector>
 
 #include "engine/object_manager.hh"
 #include "engine/pool.hh"
+#include "engine/shader.hh"
 #include "engine/texture.hh"
 
 namespace engine {
@@ -28,7 +30,7 @@ struct BlockObject {
 
 class BlockObjectManager : AbstractObjectManager {
 public:
-    BlockObjectManager() = default;
+    BlockObjectManager();
     virtual ~BlockObjectManager() = default;
 
     void spawn_object(BlockObject object_);
@@ -50,6 +52,16 @@ private:
     BlockObject* selected = nullptr;
 
     TextureManager texture_manager_;
+    Shader shader_;
+
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
+
+    unsigned int vertex_array_index_;
+
+    struct Vertex {
+        float pos[2];
+        float uv[2];
+    };
+    std::vector<Vertex> vertices_;
 };
 }  // namespace engine

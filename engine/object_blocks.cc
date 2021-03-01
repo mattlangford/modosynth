@@ -1,7 +1,13 @@
 #include "engine/object_blocks.hh"
 
-namespace engine {
+#include <OpenGL/gl3.h>
 
+#include <iostream>
+
+#include "engine/gl.hh"
+
+namespace engine {
+namespace {
 std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
@@ -25,9 +31,21 @@ out vec4 fragment;
 uniform sampler2D sampler;
 void main()
 {
-    fragment = texture(sampler, uv);
+    fragment = vec4(uv.x, uv.y, 0.0, 1.0); //texture(sampler, uv);
 }
 )";
+}  // namespace
+
+//
+// #############################################################################
+//
+
+BlockObjectManager::BlockObjectManager()
+    : shader_(vertex_shader_text, fragment_shader_text), pool_(std::make_unique<ListObjectPool<BlockObject>>()) {}
+
+//
+// #############################################################################
+//
 
 void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
@@ -44,13 +62,49 @@ void BlockObjectManager::despawn_object(const ObjectId& id) { pool_->remove(id);
 // #############################################################################
 //
 
-void BlockObjectManager::init() {}
+void BlockObjectManager::init() {
+    float x = 100;
+    float y = 300;
+    float h = 64;
+    float w = 128;
+
+    vertices_.emplace_back(Vertex{{x + w, y}, {1.0, 1.0}});      // top right
+    vertices_.emplace_back(Vertex{{x + w, y + h}, {1.0, 0.0}});  // bottom right
+    vertices_.emplace_back(Vertex{{x, y}, {0.0, 1.0}});          // top left
+    vertices_.emplace_back(Vertex{{x, y + h}, {0.0, 0.0}});      // bottom left
+
+    int world_position_loc = glGetAttribLocation(shader_.get_program_id(), "world_position");
+    int vertex_uv_loc = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
+
+    unsigned int vertex_buffer;
+    gl_safe(glGenBuffers, 1, &vertex_buffer);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STATIC_DRAW);
+
+    gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
+    gl_safe(glBindVertexArray, vertex_array_index_);
+    gl_safe(glEnableVertexAttribArray, world_position_loc);
+    gl_safe(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+            (void*)offsetof(Vertex, pos));
+    gl_safe(glEnableVertexAttribArray, vertex_uv_loc);
+    gl_safe(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+
+    gl_safe(glBindVertexArray, 0);
+}
 
 //
 // #############################################################################
 //
 
-void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {}
+void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
+    std::cout << "render!\n";
+    shader_.activate();
+
+    int screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
+    gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
+    gl_safe(glBindVertexArray, vertex_array_index_);
+    gl_safe(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
+}
 
 //
 // #############################################################################

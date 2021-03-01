@@ -45,7 +45,7 @@ struct KeyboardEvent {
 
 class AbstractObjectManager {
 public:
-    virtual ~AbstractObjectManager() = 0;
+    virtual ~AbstractObjectManager() = default;
 
     ///
     /// @brief Initialize the object manager
