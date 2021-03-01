@@ -19,6 +19,11 @@ public:
 
     void handle_keyboard_event(const KeyboardEvent& event) override;
 
+    template <typename T>
+    T& get_manager() {
+        return std::get<T>(managers_);
+    }
+
 private:
     std::tuple<BlockObjectManager> managers_;
 };

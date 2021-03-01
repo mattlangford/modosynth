@@ -6,84 +6,23 @@ namespace engine {
 // #############################################################################
 //
 
-void scroll_callback(GLFWwindow* /*window*/, double scroll_x, double scroll_y) {
-    Window::instance().update_scroll(scroll_x, scroll_y);
-}
-
-//
-// #############################################################################
-//
-
-void cursor_position_callback(GLFWwindow* /*window*/, double pos_x, double pos_y) {
-    Window::instance().update_mouse_position(pos_x, pos_y);
-}
-
-//
-// #############################################################################
-//
-
-void mouse_button_callback(GLFWwindow* /*window*/, int button, int action, int /*mods*/) {
-    if (button != GLFW_MOUSE_BUTTON_RIGHT) return;
-
-    if (action == GLFW_PRESS) {
-        Window::instance().set_clicked(true);
-    } else if (action == GLFW_RELEASE) {
-        Window::instance().set_clicked(false);
-    }
-}
-//
-// #############################################################################
-//
-
-void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
-    if (key == GLFW_KEY_R && action == GLFW_PRESS)
-        Window::instance().reset();
-    else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-}
-
-//
-// #############################################################################
-//
-
-Window* Window::instance_ = nullptr;
-
-//
-// #############################################################################
-//
-
 Window::Window(size_t height, size_t width)
-    : height_(height),
+    : mouse_([this](const MouseEvent& event) { handle_mouse_event(event); }),
+      height_(height),
       width_(width),
       kInitialHalfDim_{0.5 * Eigen::Vector2f{width_, height_}},
       kMinHalfDim_{0.5 * Eigen::Vector2f{0.1 * width_, 0.1 * height_}},
       kMaxHalfDim_{0.5 * Eigen::Vector2f{3.0 * width_, 3.0 * height_}},
       center_{kInitialHalfDim_},
-      half_dim_{kInitialHalfDim_} {
-    if (instance_) {
-        throw std::runtime_error("Window already created!");
-    }
-    instance_ = this;
-}
+      half_dim_{kInitialHalfDim_} {}
 
 //
 // #############################################################################
 //
 
 Window::~Window() {
-    instance_ = nullptr;
     glfwDestroyWindow(window_);
     glfwTerminate();
-}
-
-//
-// #############################################################################
-//
-
-Window* Window::instance_ptr() { return instance_; }
-Window& Window::instance() {
-    if (!instance_) throw std::runtime_error("No window instance set!");
-    return *instance_;
 }
 
 //
@@ -111,10 +50,7 @@ void Window::init() {
     }
     glfwMakeContextCurrent(window_);
 
-    glfwSetCursorPosCallback(window_, cursor_position_callback);
-    glfwSetMouseButtonCallback(window_, mouse_button_callback);
-    glfwSetScrollCallback(window_, scroll_callback);
-    glfwSetKeyCallback(window_, key_callback);
+    setup_glfw_callbacks(window_);
 
     std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
     std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
@@ -144,52 +80,33 @@ bool Window::render_loop() {
 // #############################################################################
 //
 
-void Window::update_mouse_position(double x, double y) {
-    Eigen::Vector2f position(x, y);
-    update_mouse_position_incremental(position - previous_position__);
-    previous_position__ = position;
-
-    update_mouse_position();
-}
-
-//
-// #############################################################################
-//
-
-void Window::update_mouse_position_incremental(Eigen::Vector2f increment) {
-    if (clicked_) {
+void Window::handle_mouse_event(const MouseEvent& event) {
+    if (event.right && event.clicked) {
         double current_scale = scale();
-        center_.x() -= current_scale * increment.x();
-        center_.y() -= current_scale * increment.y();
-    }
-}
-
-//
-// #############################################################################
-//
-
-void Window::update_scroll(double /*x*/, double y) {
-    double zoom_factor = 0.1 * -y;
-    Eigen::Vector2f new_half_dim_ = half_dim_ + zoom_factor * half_dim_;
-
-    if (new_half_dim_.x() < kMinHalfDim_.x() || new_half_dim_.y() < kMinHalfDim_.y()) {
-        new_half_dim_ = kMinHalfDim_;
-    } else if (new_half_dim_.x() > kMaxHalfDim_.x() || new_half_dim_.y() > kMaxHalfDim_.y()) {
-        new_half_dim_ = kMaxHalfDim_;
+        center_ -= current_scale * event.delta_position;
     }
 
-    double translate_factor = new_half_dim_.norm() / half_dim_.norm() - 1;
-    center_ += translate_factor * (center_ - mouse_position);
-    half_dim_ = new_half_dim_;
+    if (event.delta_scroll != 0.0) {
+        double zoom_factor = 0.1 * -event.delta_scroll;
+        Eigen::Vector2f new_half_dim_ = half_dim_ + zoom_factor * half_dim_;
 
-    update_mouse_position();
+        if (new_half_dim_.x() < kMinHalfDim_.x() || new_half_dim_.y() < kMinHalfDim_.y()) {
+            new_half_dim_ = kMinHalfDim_;
+        } else if (new_half_dim_.x() > kMaxHalfDim_.x() || new_half_dim_.y() > kMaxHalfDim_.y()) {
+            new_half_dim_ = kMaxHalfDim_;
+        }
+
+        // Get the mouse position
+        Eigen::Vector2f top_left = center_ - half_dim_;
+        Eigen::Vector2f bottom_right = center_ + half_dim_;
+        Eigen::Vector2f screen_position{event.mouse_position.x() / width_, event.mouse_position.y() / height_};
+        Eigen::Vector2f mouse_position = screen_position.cwiseProduct(bottom_right - top_left) + top_left;
+
+        double translate_factor = new_half_dim_.norm() / half_dim_.norm() - 1;
+        center_ += translate_factor * (center_ - mouse_position);
+        half_dim_ = new_half_dim_;
+    }
 }
-
-//
-// #############################################################################
-//
-
-void Window::set_clicked(bool clicked) { clicked_ = clicked; }
 
 //
 // #############################################################################
@@ -215,7 +132,6 @@ Eigen::Matrix3f Window::get_screen_from_world() const {
 void Window::reset() {
     center_ = kInitialHalfDim_;
     half_dim_ = kInitialHalfDim_;
-    update_mouse_position();
 }
 
 //
@@ -228,10 +144,4 @@ double Window::scale() const { return (half_dim_).norm() / kInitialHalfDim_.norm
 // #############################################################################
 //
 
-void Window::update_mouse_position() {
-    Eigen::Vector2f top_left = center_ - half_dim_;
-    Eigen::Vector2f bottom_right = center_ + half_dim_;
-    Eigen::Vector2f screen_position{previous_position__.x() / width_, previous_position__.y() / height_};
-    mouse_position = screen_position.cwiseProduct(bottom_right - top_left) + top_left;
-}
 }  // namespace engine

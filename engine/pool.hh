@@ -5,6 +5,7 @@
 
 namespace engine {
 struct ObjectId {
+    ObjectId() : key(-1) {}
     explicit ObjectId(size_t key_) : key(key_) {}
     bool operator!=(const ObjectId& rhs) const { return key != rhs.key; }
     size_t key;

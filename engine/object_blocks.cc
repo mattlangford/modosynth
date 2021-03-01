@@ -127,6 +127,19 @@ void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {}
 //
 
 void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {
-     // no-op for blocks
+    if (!event.space) {
+        return;
+    }
+
+    BlockObject object;
+    object.top_left = {100, 200};
+    object.dims = {128, 64};
+    spawn_object(object);
 }
+
+//
+// #############################################################################
+//
+
+BlockObject* BlockObjectManager::select(float x, float y) const {}
 }  // namespace engine

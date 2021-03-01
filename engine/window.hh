@@ -11,29 +11,10 @@
 
 namespace engine {
 
-///
-/// @brief callbacks for the GLFW events that need to be handled. These will use the global Window instance.
-///
-void scroll_callback(GLFWwindow* /*window*/, double scroll_x, double scroll_y);
-void cursor_position_callback(GLFWwindow* /*window*/, double pos_x, double pos_y);
-void mouse_button_callback(GLFWwindow* /*window*/, int button, int action, int /*mods*/);
-void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/);
-
-//
-// #############################################################################
-//
-
 class Window {
-private:
-    static Window* instance_;
-
 public:
     Window(size_t height, size_t width);
     ~Window();
-
-public:
-    static Window* instance_ptr();
-    static Window& instance();
 
 public:
     void init();
@@ -41,17 +22,18 @@ public:
     void reset();
 
 public:
-    void update_mouse_position(double x, double y);
     void update_mouse_position_incremental(Eigen::Vector2f increment);
-    void update_scroll(double x, double y);
-    void set_clicked(bool clicked);
+
+    void handle_mouse_event(const MouseEvent& event);
+    void handle_keyboard_event(const KeyboardEvent& event);
 
 private:
     double scale() const;
-    void update_mouse_position();
     Eigen::Matrix3f get_screen_from_world() const;
 
 private:
+    MouseEventManager mouse_;
+
     GLFWwindow* window_;
     const size_t height_;
     const size_t width_;
@@ -62,10 +44,6 @@ private:
 
     Eigen::Vector2f center_;
     Eigen::Vector2f half_dim_;
-    Eigen::Vector2f previous_position__;
-    Eigen::Vector2f mouse_position;
-
-    bool clicked_ = false;
 
     GlobalObjectManager object_manager_;
 };

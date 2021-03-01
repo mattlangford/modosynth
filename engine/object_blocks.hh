@@ -17,8 +17,8 @@ struct BlockObject {
     ObjectId id;
     size_t texture_id;
 
-    Eigen::Vector2d top_left;
-    Eigen::Vector2d dims;
+    Eigen::Vector2d top_left;  // x, y
+    Eigen::Vector2d dims;      // width, height
 
     inline Eigen::Vector2d get_top_left() const { return top_left; }
     inline Eigen::Vector2d get_bottom_right() const { return top_left + dims; }
@@ -47,6 +47,9 @@ public:
     void handle_mouse_event(const MouseEvent& event) override;
 
     void handle_keyboard_event(const KeyboardEvent& event) override;
+
+private:
+    BlockObject* select(float x, float y) const;
 
 private:
     BlockObject* selected = nullptr;
