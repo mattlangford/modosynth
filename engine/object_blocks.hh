@@ -3,6 +3,7 @@
 
 #include "engine/object_manager.hh"
 #include "engine/pool.hh"
+#include "engine/texture.hh"
 
 namespace engine {
 
@@ -46,6 +47,9 @@ public:
     void handle_keyboard_event(const KeyboardEvent& event) override;
 
 private:
+    BlockObject* selected = nullptr;
+
+    TextureManager texture_manager_;
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
 };
 }  // namespace engine

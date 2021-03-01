@@ -25,45 +25,6 @@ int main() {
 
 /*
 int main() {
-    engine::Bitmap bitmap{"/Users/mlangford/Downloads/test.bmp"};
-    std::vector<Vertex> vertices;
-    float x = 100;
-    float y = 300;
-    vertices.emplace_back(Vertex{{x + bitmap.get_width(), y}, {1.0, 1.0}});                        // top right
-    vertices.emplace_back(Vertex{{x + bitmap.get_width(), y + bitmap.get_height()}, {1.0, 0.0}});  // bottom right
-    vertices.emplace_back(Vertex{{x, y}, {0.0, 1.0}});                                             // top left
-    vertices.emplace_back(Vertex{{x, y + bitmap.get_height()}, {0.0, 0.0}});                       // bottom left
-
-    glfwSetErrorCallback(
-        [](int code, const char* desc) { std::cerr << "GLFW Error (" << code << "):" << desc << "\n"; });
-
-    if (!glfwInit()) exit(EXIT_FAILURE);
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    GLFWwindow* window = glfwCreateWindow(kWidth, kHeight, "Window", NULL, NULL);
-    if (!window) {
-        std::cerr << "Unable to create window!\n";
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-    glfwMakeContextCurrent(window);
-
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetKeyCallback(window, key_callback);
-
-    std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
-    std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
-
-    gl_safe(glEnable, GL_BLEND);
-    gl_safe(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     int program = link_shaders();
 
     const int screen_from_world_loc = glGetUniformLocation(program, "screen_from_world");
