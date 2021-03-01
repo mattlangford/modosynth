@@ -3,6 +3,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+namespace engine {
 
 //
 // #############################################################################
@@ -91,13 +92,13 @@ auto Bitmap::parse_info_header(std::istream& stream) const -> InfoHeader {
         throw std::runtime_error("Only supporting 1 plane.");
     }
 
-    if (header.bits_per_pixel != 24) {
-        throw std::runtime_error("Only supporting 24 bits per pixel.");
+    if (header.bits_per_pixel != 24 && header.bits_per_pixel != 32) {
+        throw std::runtime_error("Only supporting 24 or 32 bits per pixel.");
     }
 
-    if (header.compression != 0) {
-        throw std::runtime_error("Unable to handle compression.");
-    }
+    // if (header.compression != 0) {
+    //     throw std::runtime_error("Unable to handle compression.");
+    // }
 
     // We've read to the end of the InfoHeader, but the actual info header will be longer (since we didn't read some
     // of the data). Seek to the end for color and pixel parsing.
@@ -132,8 +133,10 @@ auto Bitmap::parse_pixels(std::istream& stream, const InfoHeader& header) const 
             pixel.blue = pixel_bytes[index++];
             pixel.green = pixel_bytes[index++];
             pixel.red = pixel_bytes[index++];
+            pixel.alpha = header.bits_per_pixel == 32 ? pixel_bytes[index++] : 0xFF;
         }
     }
 
     return pixels;
 }
+}  // namespace engine

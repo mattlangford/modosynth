@@ -6,8 +6,10 @@
 #include <Eigen/Geometry>
 #include <cmath>
 #include <iostream>
+#include <list>
 
-#include "bitmap.hh"
+#include "engine/bitmap.hh"
+#include "engine/shader.hh"
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
@@ -42,12 +44,120 @@ void check_gl_error(std::string action = "") {
     check_gl_error(std::string("\nline ") + std::to_string(__LINE__) + ": " + std::string(#func) + "(" + \
                    std::string(#__VA_ARGS__) + ")")
 
+//
+// #############################################################################
+//
+
+struct ObjectId {
+    explicit ObjectId(size_t key_) : key(key_) {}
+    bool operator!=(const ObjectId& rhs) const { return key != rhs.key; }
+    size_t key;
+};
+
+template <typename Object_>
+class AbstractObjectPool {
+public:
+    using Object = Object_;
+
+    virtual ~AbstractObjectPool() = default;
+
+    virtual std::pair<ObjectId, Object&> add(Object object) = 0;
+    virtual void remove(const ObjectId& id) = 0;
+
+    virtual Object& get(const ObjectId& id) = 0;
+    virtual const Object& get(const ObjectId& id) const = 0;
+
+    virtual ObjectId first() const = 0;
+    virtual ObjectId last() const = 0;
+    virtual ObjectId next(const ObjectId& id) const = 0;
+};
+
+template <typename Object_>
+class ListObjectPool : public AbstractObjectPool<Object_> {
+private:
+    using iterator = typename std::list<Object_>::iterator;
+
+    ObjectId id_from_it(const iterator& it) const { return ObjectId{*reinterpret_cast<size_t*>(&*it)}; }
+
+    iterator it_from_id(const ObjectId& id) const { return reinterpret_cast<const iterator&>(id.key); }
+
+public:
+    using Object = Object_;
+
+    ~ListObjectPool() override = default;
+
+    std::pair<ObjectId, Object&> add(Object object) override {
+        Object& emplaced = pool_.emplace_back(std::move(object));
+        return {last(), emplaced};
+    }
+
+    void remove(const ObjectId& id) override { pool_.erase(it_from_id(id)); }
+    Object& get(const ObjectId& id) override { return *it_from_id(id); }
+    const Object& get(const ObjectId& id) const override { return *it_from_id(id); }
+    ObjectId first() const override { return it_to_id(pool_.begin()); }
+    ObjectId last() const override { return it_to_id(pool_.end()); }
+    ObjectId next(const ObjectId& id) const override { return it_from_id(it_from_id(id)++); }
+
+private:
+    std::list<Object_> pool_;
+};
+
+//
+// #############################################################################
+//
+
+struct BlockObject {
+    ObjectId id;
+    engine::Bitmap texture;
+
+    float top_left_x;
+    float top_left_y;
+
+    float get_top_left_x() const { return top_left_x; }
+    float get_top_left_y() const { return top_left_x + texture.get_width(); }
+    float get_bottom_right_x() const { return top_left_y; }
+    float get_bottom_right_y() const { return top_left_y + texture.get_height(); }
+};
+
+class BlockObjectManager {
+public:
+    BlockObjectManager() {}
+
+    BlockObject* get_selected_object(float x, float y) const;
+
+    void render(const Eigen::Matrix3f& screen_from_world) const {
+        const auto& pool = *pool_;
+
+        // 1. load up shaders
+        // 2. allocate point data
+        // 3. populate point data
+        for (auto it = pool.first(); it != pool.last(); it = pool.next(it)) {
+        }
+    }
+
+    void add_object(BlockObject object_) {
+        auto [id, object] = pool_->add(std::move(object_));
+        object.id = id;
+    }
+
+    void remove_object(const ObjectId& id) { pool_->remove(id); }
+
+private:
+    void init();
+    void activate_shaders();
+    void draw_points(const Eigen::Matrix3f& screen_from_world, const std::vector<float>& world_points);
+
+private:
+    std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
+};
+
 struct Window {
     void update_mouse_position(double x, double y) {
         Eigen::Vector2f position(x, y);
         update_mouse_position_incremental(position - previous_position);
         previous_position = position;
 
+        BlockObjectManager m{};
         update_mouse_position();
     }
 
@@ -147,114 +257,13 @@ void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action,
     if (key == GLFW_KEY_R && action == GLFW_PRESS) window_control.reset();
 }
 
-int compile_shader(int type, const std::string& source) {
-    // Create an empty shader handle
-    int shader = glCreateShader(type);
-
-    // Send the vertex shader source code to GL
-    const char* data = source.c_str();
-    glShaderSource(shader, 1, &data, 0);
-
-    // Compile the vertex shader
-    glCompileShader(shader);
-
-    int compiled = 0;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-    if (compiled == GL_FALSE) {
-        int length = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-
-        // The maxLength includes the NULL character
-        std::string log;
-        log.resize(length);
-        glGetShaderInfoLog(shader, length, &length, &log[0]);
-
-        // We don't need the shader anymore.
-        glDeleteShader(shader);
-
-        throw std::runtime_error("Failed to compile shader: " + log);
-    }
-    return shader;
-}
-
-std::string vertex_shader_text = R"(
-#version 330
-uniform mat3 screen_from_world;
-in vec2 world_position;
-in vec2 vertex_uv;
-
-out vec2 uv;
-
-void main()
-{
-    vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
-    gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
-    uv = vertex_uv;
-}
-)";
-
-std::string fragment_shader_text = R"(
-#version 330
-in vec2 uv;
-out vec4 fragment;
-uniform sampler2D sampler;
-void main()
-{
-    fragment = texture(sampler, uv);
-}
-)";
-
-int link_shaders() {
-    auto vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex_shader_text);
-    auto fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment_shader_text);
-    if (vertex_shader < 0 || fragment_shader < 0) {
-        throw std::runtime_error("Failed to build at least one of the shaders.");
-    }
-
-    // Vertex and fragment shaders are successfully compiled.
-    // Now time to link them together into a program.
-    // Get a program object.
-    int program = glCreateProgram();
-
-    // Attach our shaders to our program
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-
-    // Link our program
-    glLinkProgram(program);
-
-    // Note the different functions here: glGetProgram* instead of glGetShader*.
-    int linked = 0;
-    glGetProgramiv(program, GL_LINK_STATUS, &linked);
-    if (linked == GL_FALSE) {
-        int length = 0;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-
-        std::string log;
-        log.resize(length);
-        glGetProgramInfoLog(program, length, &length, &log[0]);
-
-        // We don't need the program anymore.
-        glDeleteProgram(program);
-        // Don't leak shaders either.
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-
-        throw std::runtime_error("Failed to link shaders: " + log);
-    }
-
-    // Always detach shaders after a successful link.
-    glDetachShader(program, vertex_shader);
-    glDetachShader(program, fragment_shader);
-    return program;
-}
 typedef struct Vertex {
     float pos[2];
     float uv[2];
 } Vertex;
 
 int main() {
-    Bitmap bitmap{"/Users/mlangford/Downloads/test.bmp"};
+    engine::Bitmap bitmap{"/Users/mlangford/Downloads/test.bmp"};
     std::vector<Vertex> vertices;
     float x = 100;
     float y = 300;
@@ -290,6 +299,9 @@ int main() {
     std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
     std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
 
+    with_error_check(glEnable, GL_BLEND);
+    with_error_check(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     int program = link_shaders();
 
     const int screen_from_world_loc = glGetUniformLocation(program, "screen_from_world");
@@ -320,11 +332,12 @@ int main() {
     with_error_check(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     with_error_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
-    with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGB, bitmap.get_width(), bitmap.get_height(), 0, GL_BGR,
+    with_error_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, bitmap.get_width(), bitmap.get_height(), 0, GL_BGRA,
                      GL_UNSIGNED_BYTE, bitmap.get_pixels().data());
 
     while (!glfwWindowShouldClose(window)) {
         with_error_check(glClear, GL_COLOR_BUFFER_BIT);
+        with_error_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
         Eigen::Matrix3f screen_from_world = window_control.get_screen_from_world();
 

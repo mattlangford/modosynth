@@ -4,7 +4,7 @@ cc_binary(
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
-        ":bitmap",
+        ":engine",
     ]
 )
 
@@ -18,8 +18,11 @@ cc_binary(
 )
 
 cc_library(
-    name = "bitmap",
-    srcs = ["bitmap.cc"],
-    hdrs = ["bitmap.hh"],
-    deps = []
+    name = "engine",
+    srcs = glob(["engine/*.cc"]),
+    hdrs = glob(["engine/*.hh"]),
+    deps = [
+        "@glfw//:glfw",
+        "@eigen//:eigen",
+    ]
 )

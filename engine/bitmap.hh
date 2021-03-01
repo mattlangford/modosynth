@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <vector>
 
+namespace engine {
 class Bitmap {
 private:
     struct FileHeader {
@@ -43,8 +44,9 @@ public:
         uint8_t blue;
         uint8_t green;
         uint8_t red;
+        uint8_t alpha;
     };
-    static_assert(sizeof(Color) == 3);
+    static_assert(sizeof(Color) == 4);
 
 public:
     Bitmap(const std::filesystem::path& path);
@@ -65,3 +67,4 @@ private:
     // Row major starting from the bottom left of the image
     std::vector<Color> pixels_;
 };
+}  // namespace engine
