@@ -57,6 +57,7 @@ private:
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
 
     unsigned int vertex_array_index_;
+    int screen_from_world_loc_;
 
     struct Vertex {
         float pos[2];

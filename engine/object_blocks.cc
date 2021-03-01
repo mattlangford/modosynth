@@ -78,6 +78,7 @@ void BlockObjectManager::init() {
 
     int world_position_loc = glGetAttribLocation(shader_.get_program_id(), "world_position");
     int vertex_uv_loc = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
+    int screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
 
     unsigned int vertex_buffer;
     gl_safe(glGenBuffers, 1, &vertex_buffer);
@@ -102,7 +103,6 @@ void BlockObjectManager::init() {
 void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     shader_.activate();
 
-    int screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
     gl_safe(glBindVertexArray, vertex_array_index_);
     gl_safe(glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
@@ -126,5 +126,7 @@ void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {}
 // #############################################################################
 //
 
-void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {}
+void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {
+     // no-op for blocks
+}
 }  // namespace engine
