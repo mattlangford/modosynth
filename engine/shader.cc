@@ -3,6 +3,7 @@
 #include <OpenGL/gl3.h>
 
 #include <fstream>
+#include <iostream>
 
 #include "engine/gl.hh"
 
@@ -58,9 +59,16 @@ Shader Shader::from_files(const std::filesystem::path& vertex, const std::filesy
 // #############################################################################
 //
 
-Shader::Shader(std::string vertex, std::string fragment, std::optional<std::string> geometry) {
-    int vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex);
-    int fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment);
+Shader::Shader(std::string vertex, std::string fragment, std::optional<std::string> geometry)
+    : vertex_(std::move(vertex)), fragment_(std::move(fragment)), geometry_(std::move(geometry)) {}
+
+//
+// #############################################################################
+//
+
+void Shader::init() {
+    int vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex_);
+    int fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment_);
     if (vertex_shader < 0 || fragment_shader < 0) {
         throw std::runtime_error("Failed to build at least one of the shaders.");
     }
@@ -75,8 +83,8 @@ Shader::Shader(std::string vertex, std::string fragment, std::optional<std::stri
     gl_safe(glAttachShader, program_, fragment_shader);
 
     int geometry_shader = 0;
-    if (geometry) {
-        geometry_shader = compile_shader(GL_GEOMETRY_SHADER, *geometry);
+    if (geometry_) {
+        geometry_shader = compile_shader(GL_GEOMETRY_SHADER, *geometry_);
         if (geometry_shader < 0) {
             throw std::runtime_error("Failed to build geometry shader.");
         }
@@ -101,7 +109,7 @@ Shader::Shader(std::string vertex, std::string fragment, std::optional<std::stri
         glDeleteProgram(program_);
         glDeleteShader(vertex_shader);
         glDeleteShader(fragment_shader);
-        if (geometry) glDeleteShader(geometry_shader);
+        if (geometry_) glDeleteShader(geometry_shader);
 
         throw std::runtime_error("Failed to link shaders: " + log);
     }
@@ -109,7 +117,7 @@ Shader::Shader(std::string vertex, std::string fragment, std::optional<std::stri
     // Always detach shaders after a successful link.
     gl_safe(glDetachShader, program_, vertex_shader);
     gl_safe(glDetachShader, program_, fragment_shader);
-    if (geometry) gl_safe(glDetachShader, program_, geometry_shader);
+    if (geometry_) gl_safe(glDetachShader, program_, geometry_shader);
 }
 
 //

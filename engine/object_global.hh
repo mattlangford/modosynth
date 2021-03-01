@@ -5,6 +5,7 @@
 namespace engine {
 class GlobalObjectManager : AbstractObjectManager {
 public:
+    GlobalObjectManager() = default;
     ~GlobalObjectManager() override = default;
 
 public:

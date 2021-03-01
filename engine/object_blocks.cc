@@ -8,7 +8,7 @@
 
 namespace engine {
 namespace {
-std::string vertex_shader_text = R"(
+static std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
 in vec2 world_position;
@@ -24,7 +24,7 @@ void main()
 }
 )";
 
-std::string fragment_shader_text = R"(
+static std::string fragment_shader_text = R"(
 #version 330
 in vec2 uv;
 out vec4 fragment;
@@ -63,6 +63,9 @@ void BlockObjectManager::despawn_object(const ObjectId& id) { pool_->remove(id);
 //
 
 void BlockObjectManager::init() {
+    // important to initialize at the start
+    shader_.init();
+
     float x = 100;
     float y = 300;
     float h = 64;
@@ -97,7 +100,6 @@ void BlockObjectManager::init() {
 //
 
 void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
-    std::cout << "render!\n";
     shader_.activate();
 
     int screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
