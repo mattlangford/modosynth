@@ -17,11 +17,11 @@ struct BlockObject {
     ObjectId id;
     size_t texture_id;
 
-    Eigen::Vector2d top_left;  // x, y
-    Eigen::Vector2d dims;      // width, height
+    Eigen::Vector2f top_left;  // x, y
+    Eigen::Vector2f dims;      // width, height
 
-    inline Eigen::Vector2d get_top_left() const { return top_left; }
-    inline Eigen::Vector2d get_bottom_right() const { return top_left + dims; }
+    inline Eigen::Vector2f get_top_left() const { return top_left; }
+    inline Eigen::Vector2f get_bottom_right() const { return top_left + dims; }
 };
 
 //
@@ -49,16 +49,19 @@ public:
     void handle_keyboard_event(const KeyboardEvent& event) override;
 
 private:
-    BlockObject* select(float x, float y) const;
+    BlockObject* select(const Eigen::Vector2f& position) const;
+
+    void bind_vertex_data();
 
 private:
-    BlockObject* selected = nullptr;
+    BlockObject* selected_ = nullptr;
 
-    TextureManager texture_manager_;
     Shader shader_;
+    // TextureManager texture_manager_;
 
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
 
+    unsigned int vertex_buffer_index_;
     unsigned int vertex_array_index_;
     int screen_from_world_loc_;
 

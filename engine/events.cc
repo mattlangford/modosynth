@@ -4,6 +4,8 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
+#include <iostream>
+
 namespace engine {
 
 //
@@ -135,6 +137,7 @@ void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int key, int /*s
     event.shift = (mods | GLFW_MOD_SHIFT) != 0;
 
     event.enter = false;
+    event.space = false;
     event.backspace = false;
     event.tab = false;
     event.right_arrow = false;
@@ -146,6 +149,9 @@ void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int key, int /*s
     switch (key) {
         case GLFW_KEY_ENTER:
             event.enter = true;
+            break;
+        case GLFW_KEY_SPACE:
+            event.space = true;
             break;
         case GLFW_KEY_TAB:
             event.tab = true;

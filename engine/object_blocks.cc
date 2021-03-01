@@ -48,8 +48,13 @@ BlockObjectManager::BlockObjectManager()
 //
 
 void BlockObjectManager::spawn_object(BlockObject object_) {
+    const size_t vertices_size = vertices_.size();
+
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
+
+    vertices_.resize(vertices_size + 1);
+    bind_vertex_data();
 }
 
 //
@@ -80,10 +85,7 @@ void BlockObjectManager::init() {
     int vertex_uv_loc = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
     screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
 
-    unsigned int vertex_buffer;
-    gl_safe(glGenBuffers, 1, &vertex_buffer);
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer);
-    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STATIC_DRAW);
+    bind_vertex_data();
 
     gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
     gl_safe(glBindVertexArray, vertex_array_index_);
@@ -101,7 +103,24 @@ void BlockObjectManager::init() {
 //
 
 void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
+    if (pool_->empty()) return;
+
     shader_.activate();
+
+    size_t index = 0;
+    for (auto id = pool_->first(); id != pool_->last(); id = pool_->next(id)) {
+        auto& object = pool_->get(id);
+
+        auto& top_left_vertex = vertices_[index++];
+        auto& bottom_right_vertex = vertices_[index++];
+
+        const Eigen::Vector2f top_left = object.get_top_left();
+        const Eigen::Vector2f bottom_right = object.get_bottom_right();
+        top_left_vertex.pos[0] = top_left.x();
+        top_left_vertex.pos[1] = top_left.y();
+        bottom_right_vertex.pos[0] = bottom_right.x();
+        bottom_right_vertex.pos[1] = bottom_right.y();
+    }
 
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
     gl_safe(glBindVertexArray, vertex_array_index_);
@@ -112,7 +131,7 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
 // #############################################################################
 //
 
-void BlockObjectManager::update(float dt) {
+void BlockObjectManager::update(float /* dt */) {
     // no-op for blocks
 }
 
@@ -120,7 +139,15 @@ void BlockObjectManager::update(float dt) {
 // #############################################################################
 //
 
-void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {}
+void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {
+    if (!event.clicked) return;
+
+    if (selected_) {
+        selected_->top_left += event.delta_position;
+    } else {
+        selected_ = select(event.mouse_position);
+    }
+}
 
 //
 // #############################################################################
@@ -130,7 +157,11 @@ void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {
     if (!event.space) {
         return;
     }
+    if (event.pressed()) {
+        return;
+    }
 
+    std::cout << "Spawning new object!\n";
     BlockObject object;
     object.top_left = {100, 200};
     object.dims = {128, 64};
@@ -141,5 +172,34 @@ void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {
 // #############################################################################
 //
 
-BlockObject* BlockObjectManager::select(float x, float y) const {}
+BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
+    if (pool_->empty()) return nullptr;
+
+    auto is_in_object = [&position](const BlockObject& object) {
+        Eigen::Vector2f top_left = object.get_top_left();
+        Eigen::Vector2f bottom_right = object.get_bottom_right();
+
+        return position.x() >= top_left.x() && position.x() < bottom_right.x() && position.y() >= top_left.y() &&
+               position.y() < top_left.y();
+    };
+
+    // Iterating backwards like this will ensure we always select the newest object
+    for (auto id = pool_->last(); id != pool_->first(); id = pool_->previous(id)) {
+        auto& object = pool_->get(id);
+        if (is_in_object(object)) {
+            return &object;
+        }
+    }
+    return nullptr;
+}
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::bind_vertex_data() {
+    gl_safe(glGenBuffers, 1, &vertex_buffer_index_);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_DYNAMIC_DRAW);
+}
 }  // namespace engine

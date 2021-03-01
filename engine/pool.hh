@@ -32,6 +32,7 @@ public:
     virtual ObjectId first() const = 0;
     virtual ObjectId last() const = 0;
     virtual ObjectId next(const ObjectId& id) const = 0;
+    virtual ObjectId previous(const ObjectId& id) const = 0;
 };
 
 //
@@ -65,6 +66,7 @@ public:
     ObjectId first() const override { return id_from_it(pool_.begin()); }
     ObjectId last() const override { return id_from_it(std::prev(pool_.end())); }
     ObjectId next(const ObjectId& id) const override { return id_from_it(it_from_id(id)++); }
+    ObjectId previous(const ObjectId& id) const override { return id_from_it(it_from_id(id)--); }
 
 private:
     std::list<Object_> pool_;

@@ -70,8 +70,8 @@ struct KeyboardEvent {
     // Special modifier keys
     bool control;
     bool shift;
-    bool space;
     bool enter;
+    bool space;
     bool tab;
     bool backspace;
     bool right_arrow;
