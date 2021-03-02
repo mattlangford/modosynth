@@ -80,11 +80,9 @@ size_t Buffer2Df::add(const Primitive& primitive) {
     // Since a  new element was added, we'll need to update the buffers. Assume neither will be updated often at first,
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, 0);
 
     gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
     gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
-    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, 0);
 
     return index;
 }
@@ -114,7 +112,6 @@ void Buffer2Df::update(const Primitive& primitive, size_t& index) {
     // Only need to update the vertex array since the number of elements didn't change
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, 0);
 }
 
 //

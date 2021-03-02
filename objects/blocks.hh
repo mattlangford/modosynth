@@ -55,10 +55,6 @@ public:
     BlockObjectManager(const std::filesystem::path& path_config);
     virtual ~BlockObjectManager() = default;
 
-    void spawn_object(BlockObject object_);
-
-    void despawn_object(const engine::ObjectId& id);
-
 public:
     void init() override;
 
@@ -69,6 +65,11 @@ public:
     void handle_mouse_event(const engine::MouseEvent& event) override;
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override;
+
+public:
+    void spawn_object(BlockObject object_);
+
+    void despawn_object(const engine::ObjectId& id);
 
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;

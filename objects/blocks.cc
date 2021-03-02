@@ -32,6 +32,8 @@ out vec4 fragment;
 uniform sampler2D sampler;
 void main()
 {
+    fragment = vec4(1.0, 0.6, 0.1, 1.0); // orange-y
+    return;
     // UV being negative means it's a port that it needs to color
     if (uv.x < 0) {
         fragment = vec4(1.0, 0.6, 0.1, 1.0); // orange-y
@@ -79,26 +81,6 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
 // #############################################################################
 //
 
-void BlockObjectManager::spawn_object(BlockObject object_) {
-    auto [id, object] = pool_->add(std::move(object_));
-    object.id = id;
-
-    gl_safe(glBindVertexArray, vertex_array_object_);
-    vertex_.add(coords(object));
-    uv_.add(coords(object));
-    gl_safe(glBindVertexArray, 0);
-}
-
-//
-// #############################################################################
-//
-
-void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
-
-//
-// #############################################################################
-//
-
 void BlockObjectManager::init() {
     // important to initialize at the start
     shader_.init();
@@ -121,10 +103,10 @@ void BlockObjectManager::init() {
 void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     if (pool_->empty()) return;
 
-    gl_safe(glBindVertexArray, vertex_array_object_);
-
     shader_.activate();
     texture_.activate();
+
+    gl_safe(glBindVertexArray, vertex_array_object_);
 
     size_t index = 0;
     size_t num_objects = 0;
@@ -136,7 +118,8 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     // set the screen from world transform
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
 
-    gl_safe(glDrawElements, GL_TRIANGLES, 3 * num_objects, GL_UNSIGNED_INT, nullptr);
+    gl_safe(glDrawElements, GL_TRIANGLES, 2 * 3 * num_objects, GL_UNSIGNED_INT, nullptr);
+    gl_safe(glBindVertexArray, 0);
 }
 
 //
@@ -182,6 +165,26 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     object.config_id = id++ % 2;
     spawn_object(object);
 }
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::spawn_object(BlockObject object_) {
+    auto [id, object] = pool_->add(std::move(object_));
+    object.id = id;
+
+    gl_safe(glBindVertexArray, vertex_array_object_);
+    vertex_.add(coords(object));
+    uv_.add(coords(object));
+    gl_safe(glBindVertexArray, 0);
+}
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
 
 //
 // #############################################################################
