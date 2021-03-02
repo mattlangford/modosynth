@@ -13,7 +13,7 @@ namespace engine {
 
 class Window {
 public:
-    Window(size_t height, size_t width);
+    Window(size_t width, size_t height);
     ~Window();
 
 public:
@@ -36,9 +36,8 @@ private:
     KeyboardEventManager keyboard_;
 
     GLFWwindow* window_;
-    const size_t height_;
-    const size_t width_;
 
+    const Eigen::Vector2f kWindowDim;
     const Eigen::Vector2f kInitialHalfDim_;
     const Eigen::Vector2f kMinHalfDim_;
     const Eigen::Vector2f kMaxHalfDim_;

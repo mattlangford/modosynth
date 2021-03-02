@@ -149,7 +149,10 @@ void BlockObjectManager::update(float /* dt */) {
 //
 
 void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {
-    if (!event.clicked) return;
+    if (event.right || !event.clicked) {
+        selected_ = nullptr;
+        return;
+    }
 
     if (selected_) {
         selected_->top_left += event.delta_position;

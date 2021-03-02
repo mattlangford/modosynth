@@ -6,14 +6,13 @@ namespace engine {
 // #############################################################################
 //
 
-Window::Window(size_t height, size_t width)
+Window::Window(size_t width, size_t height)
     : mouse_([this](const MouseEvent& event) { handle_mouse_event(event); }),
       keyboard_([this](const KeyboardEvent& event) { handle_keyboard_event(event); }),
-      height_(height),
-      width_(width),
-      kInitialHalfDim_{0.5 * Eigen::Vector2f{width_, height_}},
-      kMinHalfDim_{0.5 * Eigen::Vector2f{0.1 * width_, 0.1 * height_}},
-      kMaxHalfDim_{0.5 * Eigen::Vector2f{3.0 * width_, 3.0 * height_}},
+      kWindowDim{width, height},
+      kInitialHalfDim_{0.5 * Eigen::Vector2f{width, height}},
+      kMinHalfDim_{0.5 * Eigen::Vector2f{0.1 * width, 0.1 * height}},
+      kMaxHalfDim_{0.5 * Eigen::Vector2f{3.0 * width, 3.0 * height}},
       center_{kInitialHalfDim_},
       half_dim_{kInitialHalfDim_} {}
 
@@ -43,7 +42,7 @@ void Window::init() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    window_ = glfwCreateWindow(width_, height_, "Window", NULL, NULL);
+    window_ = glfwCreateWindow(kWindowDim.x(), kWindowDim.y(), "Window", NULL, NULL);
     if (!window_) {
         std::cerr << "Unable to create window_!\n";
         glfwTerminate();
@@ -86,9 +85,13 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     MouseEvent scaled_event = event;
     scaled_event.delta_position *= scale();
 
+    // Get the mouse position on the pan'd/zoom'd screen
+    const Eigen::Vector2f screen_position = event.mouse_position.cwiseQuotient(kWindowDim);
+    const Eigen::Vector2f top_left = center_ - half_dim_;
+    scaled_event.mouse_position = screen_position.cwiseProduct(2 * half_dim_) + top_left;
+
     if (event.right && event.clicked) {
-        double current_scale = scale();
-        center_ -= current_scale * scaled_event.delta_position;
+        center_ -= scaled_event.delta_position;
     }
 
     if (event.delta_scroll != 0.0) {
@@ -101,14 +104,8 @@ void Window::handle_mouse_event(const MouseEvent& event) {
             new_half_dim_ = kMaxHalfDim_;
         }
 
-        // Get the mouse position
-        Eigen::Vector2f top_left = center_ - half_dim_;
-        Eigen::Vector2f bottom_right = center_ + half_dim_;
-        Eigen::Vector2f screen_position{event.mouse_position.x() / width_, event.mouse_position.y() / height_};
-        Eigen::Vector2f mouse_position = screen_position.cwiseProduct(bottom_right - top_left) + top_left;
-
         double translate_factor = new_half_dim_.norm() / half_dim_.norm() - 1;
-        center_ += translate_factor * (center_ - mouse_position);
+        center_ -= translate_factor * (scaled_event.mouse_position - center_);
         half_dim_ = new_half_dim_;
     }
 
