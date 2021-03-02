@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <vector>
 
-#include "engine/buffer.hh"
 #include "engine/object_manager.hh"
 #include "engine/pool.hh"
 #include "engine/shader.hh"
@@ -55,6 +54,10 @@ public:
     BlockObjectManager(const std::filesystem::path& path_config);
     virtual ~BlockObjectManager() = default;
 
+    void spawn_object(BlockObject object_);
+
+    void despawn_object(const engine::ObjectId& id);
+
 public:
     void init() override;
 
@@ -66,16 +69,13 @@ public:
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override;
 
-public:
-    void spawn_object(BlockObject object_);
-
-    void despawn_object(const engine::ObjectId& id);
-
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
-    engine::Quad coords(const BlockObject& block) const;
-    engine::Quad uv(const BlockObject& block) const;
+    void bind_vertex_data();
+
+    void assign_coords(const BlockObject& block, size_t& index);
+    void assign_uv(const BlockObject& block, size_t& index);
     void add_space_for_new_object();
 
 private:
@@ -88,10 +88,21 @@ private:
 
     std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
 
-    unsigned int vertex_array_object_ = -1;
+    unsigned int vertex_buffer_index_ = -1;
+    unsigned int element_buffer_index_ = -1;
+    unsigned int vertex_buffer_index_uv_ = -1;
+    unsigned int element_buffer_index_uv_ = -1;
+
+    unsigned int vertex_array_index_ = -1;
     int screen_from_world_loc_;
 
-    engine::Buffer2Df vertex_;
-    engine::Buffer2Df uv_;
+    struct Vertex {
+        Eigen::Vector2f point;
+    };
+    std::vector<Vertex> vertices_;
+    std::vector<unsigned int> indices_;
+
+    std::vector<Vertex> vertices_uv_;
+    std::vector<unsigned int> indices_uv_;
 };
 }  // namespace objects
