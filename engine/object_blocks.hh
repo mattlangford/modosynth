@@ -62,13 +62,17 @@ private:
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
 
     unsigned int vertex_buffer_index_ = -1;
+    unsigned int element_buffer_index_ = -1;
     unsigned int vertex_array_index_ = -1;
     int screen_from_world_loc_;
 
     struct Vertex {
-        float pos[2];
-        float uv[2];
+        float x;
+        float y;
+        float u;
+        float v;
     };
     std::vector<Vertex> vertices_;
+    std::vector<unsigned int> indices_;
 };
 }  // namespace engine

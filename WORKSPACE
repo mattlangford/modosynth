@@ -12,7 +12,8 @@ git_repository(
 git_repository(
     name = "iterate",
     remote = "https://github.com/mattlangford/iterate",
-    commit = "e031b17",
+    commit = "e031b17666465d7af4ef083c24d120908013ab48",
+    shallow_since = "1613944759 -0500",
 )
 
 new_git_repository(
