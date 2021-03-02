@@ -1,4 +1,4 @@
-#include "engine/object_blocks.hh"
+#include "engine/objects/blocks.hh"
 
 #include <OpenGL/gl3.h>
 
@@ -60,7 +60,6 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     // Assume ordering will be top_left, top_right, bottom_left, bottom_right
     vertices_.resize(vertices_size + 4);
 
-    std::cout << texture_id << "\n";
     if (texture_id == 0) {
         // top left
         vertices_[vertices_size + 0].u = 0.f;

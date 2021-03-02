@@ -13,7 +13,7 @@ namespace engine {
 
 class Window {
 public:
-    Window(size_t width, size_t height);
+    Window(size_t width, size_t height, GlobalObjectManager object_manager);
     ~Window();
 
 public:

@@ -1,6 +1,6 @@
 #pragma once
-#include "engine/object_blocks.hh"
 #include "engine/object_manager.hh"
+#include "engine/objects/blocks.hh"
 
 namespace engine {
 class GlobalObjectManager : AbstractObjectManager {
@@ -19,12 +19,10 @@ public:
 
     void handle_keyboard_event(const KeyboardEvent& event) override;
 
-    template <typename T>
-    T& get_manager() {
-        return std::get<T>(managers_);
-    }
+    size_t add_manager(std::shared_ptr<AbstractObjectManager> manager);
+    std::shared_ptr<AbstractObjectManager> get_manager(size_t index) const;
 
 private:
-    std::tuple<BlockObjectManager> managers_;
+    std::vector<std::shared_ptr<AbstractObjectManager>> managers_;
 };
 }  // namespace engine

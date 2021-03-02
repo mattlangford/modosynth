@@ -28,7 +28,7 @@ struct BlockObject {
 // #############################################################################
 //
 
-class BlockObjectManager : AbstractObjectManager {
+class BlockObjectManager : public AbstractObjectManager {
 public:
     BlockObjectManager();
     virtual ~BlockObjectManager() = default;

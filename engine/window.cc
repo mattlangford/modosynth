@@ -6,7 +6,7 @@ namespace engine {
 // #############################################################################
 //
 
-Window::Window(size_t width, size_t height)
+Window::Window(size_t width, size_t height, GlobalObjectManager object_manager)
     : mouse_([this](const MouseEvent& event) { handle_mouse_event(event); }),
       keyboard_([this](const KeyboardEvent& event) { handle_keyboard_event(event); }),
       kWindowDim{width, height},
@@ -14,7 +14,8 @@ Window::Window(size_t width, size_t height)
       kMinHalfDim_{0.5 * Eigen::Vector2f{0.1 * width, 0.1 * height}},
       kMaxHalfDim_{0.5 * Eigen::Vector2f{3.0 * width, 3.0 * height}},
       center_{kInitialHalfDim_},
-      half_dim_{kInitialHalfDim_} {}
+      half_dim_{kInitialHalfDim_},
+      object_manager_(std::move(object_manager)) {}
 
 //
 // #############################################################################
