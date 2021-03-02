@@ -9,13 +9,6 @@ git_repository(
     shallow_since = "1570114335 -0400",
 )
 
-git_repository(
-    name = "iterate",
-    remote = "https://github.com/mattlangford/iterate",
-    commit = "e031b17666465d7af4ef083c24d120908013ab48",
-    shallow_since = "1613944759 -0500",
-)
-
 new_git_repository(
     name = "glfw",
     remote = "https://github.com/glfw/glfw.git",
