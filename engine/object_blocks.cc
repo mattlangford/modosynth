@@ -41,7 +41,7 @@ void main()
 //
 
 BlockObjectManager::BlockObjectManager()
-    : shader_(vertex_shader_text, fragment_shader_text), pool_(std::make_unique<ListObjectPool<BlockObject>>()) {}
+    : shader_(vertex_shader_text, fragment_shader_text), texture_manager_("~/Downloads/test_bmp/"), pool_(std::make_unique<ListObjectPool<BlockObject>>()) {}
 
 //
 // #############################################################################

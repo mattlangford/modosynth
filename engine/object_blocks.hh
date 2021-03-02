@@ -57,7 +57,7 @@ private:
     BlockObject* selected_ = nullptr;
 
     Shader shader_;
-    // TextureManager texture_manager_;
+    TextureManager texture_manager_;
 
     std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
 

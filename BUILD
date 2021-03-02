@@ -13,7 +13,6 @@ cc_library(
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
-        "@iterate//:iterate",
     ]
 )
 
