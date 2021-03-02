@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Dense>
+#include <filesystem>
 #include <vector>
 
 #include "engine/object_manager.hh"
@@ -15,10 +16,9 @@ namespace objects {
 
 struct BlockObject {
     engine::ObjectId id;
-    size_t texture_id;
 
-    Eigen::Vector2f top_left;  // x, y
-    Eigen::Vector2f dims;      // width, height
+    Eigen::Vector2f top_left;
+    Eigen::Vector2f dims;
 
     inline Eigen::Vector2f get_top_left() const { return top_left; }
     inline Eigen::Vector2f get_bottom_right() const { return top_left + dims; }
@@ -28,9 +28,31 @@ struct BlockObject {
 // #############################################################################
 //
 
+struct Config {
+    Config(const std::filesystem::path& path);
+
+    std::string texture_path;
+
+    struct BlockConfig {
+        std::string name;
+        std::string description;
+        // Where the texture in the texture path, used for UV mapping
+        Eigen::Vector2i px_start;
+        Eigen::Vector2i px_dim;
+        size_t inputs;
+        size_t outputs;
+    };
+
+    std::vector<BlockConfig> blocks;
+};
+
+//
+// #############################################################################
+//
+
 class BlockObjectManager : public engine::AbstractObjectManager {
 public:
-    BlockObjectManager();
+    BlockObjectManager(const std::filesystem::path& path_config);
     virtual ~BlockObjectManager() = default;
 
     void spawn_object(BlockObject object_);
@@ -54,6 +76,8 @@ private:
     void bind_vertex_data();
 
 private:
+    const Config config_;
+
     BlockObject* selected_ = nullptr;
 
     engine::Shader shader_;

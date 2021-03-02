@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "engine/gl.hh"
+#include "yaml-cpp/yaml.h"
 
 namespace objects {
 namespace {
@@ -40,9 +41,33 @@ void main()
 // #############################################################################
 //
 
-BlockObjectManager::BlockObjectManager()
-    : shader_(vertex_shader_text, fragment_shader_text),
-      texture_("/Users/mlangford/Downloads/test.bmp"),
+Config::Config(const std::filesystem::path& path) {
+    const auto root = YAML::LoadFile(path);
+    texture_path = root["texture_path"].as<std::string>();
+
+    for (const auto& block : root["blocks"]) {
+        BlockConfig block_config;
+        block_config.name = block["name"].as<std::string>();
+        block_config.description = block["description"].as<std::string>();
+        block_config.px_start.x() = block["px_start"][0].as<int>();
+        block_config.px_start.y() = block["px_start"][1].as<int>();
+        block_config.px_dim.x() = block["px_dim"][0].as<size_t>();
+        block_config.px_dim.y() = block["px_dim"][1].as<size_t>();
+        block_config.inputs = block["inputs"].as<size_t>();
+        block_config.outputs = block["outputs"].as<size_t>();
+
+        blocks.emplace_back(block_config);
+    }
+}
+
+//
+// #############################################################################
+//
+
+BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
+    : config_(config_path),
+      shader_(vertex_shader_text, fragment_shader_text),
+      texture_(config_.texture_path),
       pool_(std::make_unique<engine::ListObjectPool<BlockObject>>()) {}
 
 //
@@ -52,7 +77,7 @@ BlockObjectManager::BlockObjectManager()
 void BlockObjectManager::spawn_object(BlockObject object_) {
     const size_t vertices_size = vertices_.size();
 
-    auto texture_id = object_.texture_id;
+    auto texture_id = 0;
 
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
@@ -197,11 +222,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     BlockObject object;
-    static int texture_id = 0;
-    object.texture_id = texture_id++ % 2;
     object.top_left = {100, 200};
-    if (object.texture_id == 0) object.dims = {32, 16};
-    if (object.texture_id == 1) object.dims = {32, 32};
     spawn_object(object);
 }
 

@@ -2,10 +2,12 @@ cc_library(
     name = "objects",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.hh"]),
+    data = glob(["*.yml"]),
     visibility = ["//visibility:public"],
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
+        "@yaml-cpp",
         "//engine"
     ]
 )
