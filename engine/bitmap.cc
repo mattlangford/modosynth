@@ -116,10 +116,8 @@ auto Bitmap::parse_pixels(std::istream& stream, const InfoHeader& header) const 
     pixel_bytes.resize(header.image_size);
     stream.read(reinterpret_cast<char*>(pixel_bytes.data()), pixel_bytes.size());
 
-    const size_t num_pixels = header.width * header.height;
-
-    std::vector<Color> pixels;
-    pixels.reserve(3 * num_pixels);
+    std::vector<std::vector<Color>> rows;
+    rows.reserve(header.height);
 
     size_t index = 0;
     for (size_t row = 0; row < header.height; ++row) {
@@ -128,14 +126,26 @@ auto Bitmap::parse_pixels(std::istream& stream, const InfoHeader& header) const 
             index += std::remainder(index, 4);
         }
 
+        auto& cols = rows.emplace_back();
+        cols.reserve(header.width);
+
         for (size_t col = 0; col < header.width; ++col) {
-            auto& pixel = pixels.emplace_back();
+            auto& pixel = cols.emplace_back();
+
             pixel.blue = pixel_bytes[index++];
             pixel.green = pixel_bytes[index++];
             pixel.red = pixel_bytes[index++];
             pixel.alpha = header.bits_per_pixel == 32 ? pixel_bytes[index++] : 0xFF;
         }
     }
+
+    // Explicitly reverse the rows so that the upper left is (0, 0). This differs from the bottom-up storage
+    std::reverse(rows.begin(), rows.end());
+
+    std::vector<Color> pixels;
+    pixels.reserve(header.height * header.width);
+    for (const auto& row : rows)
+        for (const auto& col : row) pixels.emplace_back(col);
 
     return pixels;
 }

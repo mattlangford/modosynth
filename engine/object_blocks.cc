@@ -31,7 +31,7 @@ out vec4 fragment;
 uniform sampler2D sampler;
 void main()
 {
-    fragment = vec4(1.0, 1.0, 0.0, 1.0); //texture(sampler, uv);
+    fragment = texture(sampler, uv);
 }
 )";
 }  // namespace
@@ -42,7 +42,7 @@ void main()
 
 BlockObjectManager::BlockObjectManager()
     : shader_(vertex_shader_text, fragment_shader_text),
-      texture_manager_("/Users/mlangford/Documents/code/modosynth/engine/texture.yml"),
+      texture_("/Users/mlangford/Downloads/test.bmp"),
       pool_(std::make_unique<ListObjectPool<BlockObject>>()) {}
 
 //
@@ -52,23 +52,48 @@ BlockObjectManager::BlockObjectManager()
 void BlockObjectManager::spawn_object(BlockObject object_) {
     const size_t vertices_size = vertices_.size();
 
+    auto texture_id = object_.texture_id;
+
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
     // Assume ordering will be top_left, top_right, bottom_left, bottom_right
     vertices_.resize(vertices_size + 4);
 
-    vertices_[vertices_size + 0].u = 0.f;
-    vertices_[vertices_size + 0].v = 1.f;
+    std::cout << texture_id << "\n";
+    if (texture_id == 0) {
+        // top left
+        vertices_[vertices_size + 0].u = 0.f;
+        vertices_[vertices_size + 0].v = 0.f;
 
-    vertices_[vertices_size + 1].u = 1.f;
-    vertices_[vertices_size + 1].v = 1.f;
+        // top right
+        vertices_[vertices_size + 1].u = 1.f;
+        vertices_[vertices_size + 1].v = 0.f;
 
-    vertices_[vertices_size + 2].u = 0.f;
-    vertices_[vertices_size + 2].v = 0.f;
+        // bottom left
+        vertices_[vertices_size + 2].u = 0.f;
+        vertices_[vertices_size + 2].v = 1. / 3.;
 
-    vertices_[vertices_size + 3].u = 1.f;
-    vertices_[vertices_size + 3].v = 0.f;
+        // bottom right
+        vertices_[vertices_size + 3].u = 1.f;
+        vertices_[vertices_size + 3].v = 1. / 3.;
+    } else {
+        // top left
+        vertices_[vertices_size + 0].u = 0.f;
+        vertices_[vertices_size + 0].v = 1. / 3.;
+
+        // top right
+        vertices_[vertices_size + 1].u = 1.f;
+        vertices_[vertices_size + 1].v = 1. / 3.;
+
+        // bottom left
+        vertices_[vertices_size + 2].u = 0.f;
+        vertices_[vertices_size + 2].v = 1.f;
+
+        // bottom right
+        vertices_[vertices_size + 3].u = 1.f;
+        vertices_[vertices_size + 3].v = 1.f;
+    }
 
     indices_.emplace_back(vertices_size + 0);  // top left
     indices_.emplace_back(vertices_size + 1);  // top right
@@ -94,11 +119,7 @@ void BlockObjectManager::despawn_object(const ObjectId& id) { pool_->remove(id);
 void BlockObjectManager::init() {
     // important to initialize at the start
     shader_.init();
-
-    BlockObject object;
-    object.top_left = {100, 200};
-    object.dims = {128, 64};
-    spawn_object(object);
+    texture_.init();
 
     bind_vertex_data();
 }
@@ -111,6 +132,7 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     if (pool_->empty()) return;
 
     shader_.activate();
+    texture_.activate();
 
     size_t index = 0;
     for (auto object : pool_->iterate()) {
@@ -176,8 +198,11 @@ void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {
     }
 
     BlockObject object;
+    static int texture_id = 0;
+    object.texture_id = texture_id++ % 2;
     object.top_left = {100, 200};
-    object.dims = {128, 64};
+    if (object.texture_id == 0) object.dims = {32, 16};
+    if (object.texture_id == 1) object.dims = {32, 32};
     spawn_object(object);
 }
 

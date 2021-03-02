@@ -64,7 +64,7 @@ private:
     FileHeader file_header_;
     InfoHeader info_header_;
 
-    // Row major starting from the bottom left of the image
+    // Row major starting from the TOP left of the image (this is flipped from how its stored on disk)
     std::vector<Color> pixels_;
 };
 }  // namespace engine

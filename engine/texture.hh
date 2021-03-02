@@ -6,25 +6,21 @@
 
 namespace engine {
 
-struct Texture {
-    unsigned int id;
-    Bitmap bitmap;
-};
-
 //
 // #############################################################################
 //
 
-class TextureManager {
+class Texture {
 public:
-    TextureManager(const std::filesystem::path& yml_path);
+    Texture(const std::filesystem::path& texture);
 
     void init();
     void activate();
 
-    const std::vector<Texture>& get_textures();
+    const Bitmap& bitmap() const;
 
 private:
-    std::vector<Texture> textures_;
+    unsigned int id_;
+    const Bitmap bitmap_;
 };
 }  // namespace engine

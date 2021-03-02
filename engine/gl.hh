@@ -1,5 +1,7 @@
 #pragma once
 
+#include <OpenGL/gl3.h>
+
 #include <sstream>
 #include <string>
 

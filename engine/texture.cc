@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "yaml-cpp/yaml.h"
+#include "engine/gl.hh"
 
 namespace engine {
 
@@ -10,38 +10,40 @@ namespace engine {
 // #############################################################################
 //
 
-TextureManager::TextureManager(const std::filesystem::path& yml_path) {
-    auto yml = YAML::LoadFile(yml_path);
+Texture::Texture(const std::filesystem::path& texture) : id_(-1), bitmap_(texture) {}
 
-    Bitmap data(yml["path"].as<std::string>());
+//
+// #############################################################################
+//
 
-    for (const auto& block : yml["blocks"]) {
-        std::string name = block["name"].as<std::string>();
-        size_t x = block["coord"][0].as<size_t>();
-        size_t y = block["coord"][1].as<size_t>();
-        size_t dim_x = block["dim"][0].as<size_t>();
-        size_t dim_y = block["dim"][1].as<size_t>();
+void Texture::init() {
+    gl_safe(glGenTextures, 1, &id_);
+    gl_safe(glBindTexture, GL_TEXTURE_2D, id_);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl_safe(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-        size_t in = block["in"].as<size_t>();
-        size_t out = block["out"].as<size_t>();
-    }
+    gl_safe(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
+    gl_safe(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, bitmap_.get_width(), bitmap_.get_height(), 0, GL_BGRA,
+            GL_UNSIGNED_BYTE, bitmap_.get_pixels().data());
 }
 
 //
 // #############################################################################
 //
 
-void TextureManager::init() {}
+void Texture::activate() {
+    if (id_ < 0) {
+        throw std::runtime_error("Texture not initialized, did you call Texture::init()?");
+    }
+
+    gl_safe(glBindTexture, GL_TEXTURE_2D, id_);
+}
 
 //
 // #############################################################################
 //
 
-void TextureManager::activate() {}
-
-//
-// #############################################################################
-//
-
-const std::vector<Texture>& TextureManager::get_textures() { return textures_; }
+const Bitmap& Texture::bitmap() const { return bitmap_; }
 }  // namespace engine
