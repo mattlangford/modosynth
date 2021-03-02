@@ -86,11 +86,40 @@ void BlockObjectManager::init() {
     shader_.init();
     texture_.init();
 
-    gl_safe(glGenVertexArrays, 1, &vertex_array_object_);
+    auto& vertex_buffer_index_ = vertex_.vertex_buffer_;
+    auto& vertices_ = vertex_.vertices_;
+    auto& element_buffer_index_ = vertex_.element_buffer_;
+    auto& indices_ = vertex_.indices_;
 
+    auto& vertex_buffer_index_uv_ = uv_.vertex_buffer_;
+    auto& vertices_uv_ = uv_.vertices_;
+    auto& element_buffer_index_uv_ = uv_.element_buffer_;
+    auto& indices_uv_ = uv_.indices_;
+
+    // vertex array
+    gl_safe(glGenVertexArrays, 1, &vertex_array_object_);
     gl_safe(glBindVertexArray, vertex_array_object_);
-    vertex_.init(glGetAttribLocation(shader_.get_program_id(), "world_position"));
-    uv_.init(glGetAttribLocation(shader_.get_program_id(), "vertex_uv"));
+
+    // vertex buffer 1
+    gl_safe(glGenBuffers, 1, &vertex_buffer_index_);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_);
+    gl_safe(glGenBuffers, 1, &element_buffer_index_);
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_index_);
+
+    int world_position = glGetAttribLocation(shader_.get_program_id(), "world_position");
+    gl_safe(glEnableVertexAttribArray, world_position);
+    gl_safe(glVertexAttribPointer, world_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    // vertex buffer 2
+    gl_safe(glGenBuffers, 1, &vertex_buffer_index_uv_);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_uv_);
+    gl_safe(glGenBuffers, 1, &element_buffer_index_uv_);
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_index_uv_);
+
+    int uv_position = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
+    gl_safe(glEnableVertexAttribArray, uv_position);
+    gl_safe(glVertexAttribPointer, uv_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
     gl_safe(glBindVertexArray, 0);
 
     screen_from_world_loc_ = glGetAttribLocation(shader_.get_program_id(), "screen_from_world");
@@ -108,18 +137,20 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
 
     gl_safe(glBindVertexArray, vertex_array_object_);
 
+    // set the screen from world transform
+    gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
+
     size_t index = 0;
     size_t num_objects = 0;
     for (auto object : pool_->iterate()) {
         //vertex_.update(coords(*object), index);
         num_objects++;
     }
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_.vertex_buffer_);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, 8 * vertex_.vertices_.size(), vertex_.vertices_.data(), GL_STREAM_DRAW);
 
-    // set the screen from world transform
-    gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
 
     gl_safe(glDrawElements, GL_TRIANGLES, 2 * 3 * num_objects, GL_UNSIGNED_INT, nullptr);
-    gl_safe(glBindVertexArray, 0);
 }
 
 //
@@ -170,14 +201,41 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
 // #############################################################################
 //
 
+struct Vertex
+{
+    Eigen::Vector2d d;
+};
 void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
-    gl_safe(glBindVertexArray, vertex_array_object_);
     vertex_.add(coords(object));
-    uv_.add(coords(object));
+    uv_.add(uv(object));
+
+    gl_safe(glBindVertexArray, vertex_array_object_);
+
+    auto& vertex_buffer_index_ = vertex_.vertex_buffer_;
+    auto& vertices_ = vertex_.vertices_;
+    auto& element_buffer_index_ = vertex_.element_buffer_;
+    auto& indices_ = vertex_.indices_;
+
+    auto& vertex_buffer_index_uv_ = uv_.vertex_buffer_;
+    auto& vertices_uv_ = uv_.vertices_;
+    auto& element_buffer_index_uv_ = uv_.element_buffer_;
+    auto& indices_uv_ = uv_.indices_;
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_index_);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, element_buffer_index_);
+    gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices_.size(), indices_.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_index_uv_);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_uv_.size(), vertices_uv_.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, element_buffer_index_uv_);
+    gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices_uv_.size(), indices_uv_.data(), GL_STATIC_DRAW);
+
     gl_safe(glBindVertexArray, 0);
+
 }
 
 //
