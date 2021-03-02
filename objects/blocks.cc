@@ -90,14 +90,10 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     auto& bottom_right = vertices_[vertices_size + Ordering::kBottomRight];
 
     const Eigen::Matrix<float, 4, 2> corners = uv(object);
-    top_left.u = corners.row(Ordering::kTopLeft).x();
-    top_left.v = corners.row(Ordering::kTopLeft).y();
-    top_right.u = corners.row(Ordering::kTopRight).x();
-    top_right.v = corners.row(Ordering::kTopRight).y();
-    bottom_left.u = corners.row(Ordering::kBottomLeft).x();
-    bottom_left.v = corners.row(Ordering::kBottomLeft).y();
-    bottom_right.u = corners.row(Ordering::kBottomRight).x();
-    bottom_right.v = corners.row(Ordering::kBottomRight).y();
+    top_left.uv = corners.row(Ordering::kTopLeft);
+    top_right.uv = corners.row(Ordering::kTopRight);
+    bottom_left.uv = corners.row(Ordering::kBottomLeft);
+    bottom_right.uv = corners.row(Ordering::kBottomRight);
 
     indices_.emplace_back(vertices_size + Ordering::kTopLeft);
     indices_.emplace_back(vertices_size + Ordering::kTopRight);
@@ -147,14 +143,10 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
 
         Eigen::Matrix<float, 4, 2> corners = coords(*object);
 
-        top_left_vertex.x = corners.row(Ordering::kTopLeft).x();
-        top_left_vertex.y = corners.row(Ordering::kTopLeft).y();
-        top_right_vertex.x = corners.row(Ordering::kTopRight).x();
-        top_right_vertex.y = corners.row(Ordering::kTopRight).y();
-        bottom_left_vertex.x = corners.row(Ordering::kBottomLeft).x();
-        bottom_left_vertex.y = corners.row(Ordering::kBottomLeft).y();
-        bottom_right_vertex.x = corners.row(Ordering::kBottomRight).x();
-        bottom_right_vertex.y = corners.row(Ordering::kBottomRight).y();
+        top_left_vertex.coords = corners.row(Ordering::kTopLeft);
+        top_right_vertex.coords = corners.row(Ordering::kTopRight);
+        bottom_left_vertex.coords = corners.row(Ordering::kBottomLeft);
+        bottom_right_vertex.coords = corners.row(Ordering::kBottomRight);
     }
 
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
@@ -265,9 +257,9 @@ void BlockObjectManager::bind_vertex_data() {
 
     gl_safe(glEnableVertexAttribArray, world_position_loc);
     gl_safe(glVertexAttribPointer, world_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-            (void*)offsetof(Vertex, x));
+            (void*)offsetof(Vertex, coords));
     gl_safe(glEnableVertexAttribArray, vertex_uv_loc);
-    gl_safe(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, u));
+    gl_safe(glVertexAttribPointer, vertex_uv_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
 
     // Unbind the attribute array
     gl_safe(glBindVertexArray, 0);

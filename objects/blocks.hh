@@ -91,10 +91,8 @@ private:
     int screen_from_world_loc_;
 
     struct Vertex {
-        float x;
-        float y;
-        float u;
-        float v;
+        Eigen::Vector2f coords;
+        Eigen::Vector2f uv;
     };
     std::vector<Vertex> vertices_;
     std::vector<unsigned int> indices_;
