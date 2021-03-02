@@ -16,12 +16,8 @@ namespace objects {
 
 struct BlockObject {
     engine::ObjectId id;
-
+    size_t block_id;
     Eigen::Vector2f top_left;
-    Eigen::Vector2f dims;
-
-    inline Eigen::Vector2f get_top_left() const { return top_left; }
-    inline Eigen::Vector2f get_bottom_right() const { return top_left + dims; }
 };
 
 //
@@ -74,6 +70,10 @@ private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
     void bind_vertex_data();
+
+    enum Ordering : int8_t { kTopLeft = 0, kTopRight = 1, kBottomLeft = 2, kBottomRight = 3 };
+    Eigen::Matrix<float, 4, 2> coords(const BlockObject& block) const;
+    Eigen::Matrix<float, 4, 2> uv(const BlockObject& block) const;
 
 private:
     const Config config_;

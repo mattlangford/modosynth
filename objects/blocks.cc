@@ -77,55 +77,35 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
 void BlockObjectManager::spawn_object(BlockObject object_) {
     const size_t vertices_size = vertices_.size();
 
-    auto texture_id = 0;
-
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
-    // Assume ordering will be top_left, top_right, bottom_left, bottom_right
+    // 4 coordinates per object
     vertices_.resize(vertices_size + 4);
 
-    if (texture_id == 0) {
-        // top left
-        vertices_[vertices_size + 0].u = 0.f;
-        vertices_[vertices_size + 0].v = 0.f;
+    // Populate UV coordinates once, they don't change
+    auto& top_left = vertices_[vertices_size + Ordering::kTopLeft];
+    auto& top_right = vertices_[vertices_size + Ordering::kTopRight];
+    auto& bottom_left = vertices_[vertices_size + Ordering::kBottomLeft];
+    auto& bottom_right = vertices_[vertices_size + Ordering::kBottomRight];
 
-        // top right
-        vertices_[vertices_size + 1].u = 1.f;
-        vertices_[vertices_size + 1].v = 0.f;
+    const Eigen::Matrix<float, 4, 2> corners = uv(object);
+    top_left.u = corners.row(Ordering::kTopLeft).x();
+    top_left.v = corners.row(Ordering::kTopLeft).y();
+    top_right.u = corners.row(Ordering::kTopRight).x();
+    top_right.v = corners.row(Ordering::kTopRight).y();
+    bottom_left.u = corners.row(Ordering::kBottomLeft).x();
+    bottom_left.v = corners.row(Ordering::kBottomLeft).y();
+    bottom_right.u = corners.row(Ordering::kBottomRight).x();
+    bottom_right.v = corners.row(Ordering::kBottomRight).y();
 
-        // bottom left
-        vertices_[vertices_size + 2].u = 0.f;
-        vertices_[vertices_size + 2].v = 1. / 3.;
+    indices_.emplace_back(vertices_size + Ordering::kTopLeft);
+    indices_.emplace_back(vertices_size + Ordering::kTopRight);
+    indices_.emplace_back(vertices_size + Ordering::kBottomLeft);
 
-        // bottom right
-        vertices_[vertices_size + 3].u = 1.f;
-        vertices_[vertices_size + 3].v = 1. / 3.;
-    } else {
-        // top left
-        vertices_[vertices_size + 0].u = 0.f;
-        vertices_[vertices_size + 0].v = 1. / 3.;
-
-        // top right
-        vertices_[vertices_size + 1].u = 1.f;
-        vertices_[vertices_size + 1].v = 1. / 3.;
-
-        // bottom left
-        vertices_[vertices_size + 2].u = 0.f;
-        vertices_[vertices_size + 2].v = 1.f;
-
-        // bottom right
-        vertices_[vertices_size + 3].u = 1.f;
-        vertices_[vertices_size + 3].v = 1.f;
-    }
-
-    indices_.emplace_back(vertices_size + 0);  // top left
-    indices_.emplace_back(vertices_size + 1);  // top right
-    indices_.emplace_back(vertices_size + 2);  // bottom left
-
-    indices_.emplace_back(vertices_size + 3);  // bottom right
-    indices_.emplace_back(vertices_size + 2);  // bottom left
-    indices_.emplace_back(vertices_size + 1);  // top right
+    indices_.emplace_back(vertices_size + Ordering::kBottomRight);
+    indices_.emplace_back(vertices_size + Ordering::kBottomLeft);
+    indices_.emplace_back(vertices_size + Ordering::kTopRight);
 
     bind_vertex_data();
 }
@@ -160,22 +140,21 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
 
     size_t index = 0;
     for (auto object : pool_->iterate()) {
-        const Eigen::Vector2f top_left = object->get_top_left();
-        const Eigen::Vector2f bottom_right = object->get_bottom_right();
-
         auto& top_left_vertex = vertices_.at(index++);
         auto& top_right_vertex = vertices_.at(index++);
         auto& bottom_left_vertex = vertices_.at(index++);
         auto& bottom_right_vertex = vertices_.at(index++);
 
-        top_left_vertex.x = top_left.x();
-        top_left_vertex.y = top_left.y();
-        top_right_vertex.x = bottom_right.x();
-        top_right_vertex.y = top_left.y();
-        bottom_left_vertex.x = top_left.x();
-        bottom_left_vertex.y = bottom_right.y();
-        bottom_right_vertex.x = bottom_right.x();
-        bottom_right_vertex.y = bottom_right.y();
+        Eigen::Matrix<float, 4, 2> corners = coords(*object);
+
+        top_left_vertex.x = corners.row(Ordering::kTopLeft).x();
+        top_left_vertex.y = corners.row(Ordering::kTopLeft).y();
+        top_right_vertex.x = corners.row(Ordering::kTopRight).x();
+        top_right_vertex.y = corners.row(Ordering::kTopRight).y();
+        bottom_left_vertex.x = corners.row(Ordering::kBottomLeft).x();
+        bottom_left_vertex.y = corners.row(Ordering::kBottomLeft).y();
+        bottom_right_vertex.x = corners.row(Ordering::kBottomRight).x();
+        bottom_right_vertex.y = corners.row(Ordering::kBottomRight).y();
     }
 
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
@@ -222,7 +201,9 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     BlockObject object;
+    static size_t id = 0;
     object.top_left = {100, 200};
+    object.block_id = id++ % 2;
     spawn_object(object);
 }
 
@@ -233,21 +214,22 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
 BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     if (pool_->empty()) return nullptr;
 
-    auto is_in_object = [&position](const BlockObject& object) {
-        Eigen::Vector2f top_left = object.get_top_left();
-        Eigen::Vector2f bottom_right = object.get_bottom_right();
+    auto is_in_object = [&position, this](const BlockObject& object) {
+        Eigen::Vector2f top_left = object.top_left;
+        Eigen::Vector2f bottom_right = object.top_left + config_.blocks[object.block_id].px_dim.cast<float>();
 
         return position.x() >= top_left.x() && position.x() < bottom_right.x() && position.y() >= top_left.y() &&
                position.y() < bottom_right.y();
     };
 
-    // Iterating backwards like this will ensure we always select the newest object
+    // TODO Iterating backwards so we select the most recently added object easier
+    BlockObject* select_object;
     for (auto object : pool_->iterate()) {
         if (is_in_object(*object)) {
-            return object;
+            select_object = object;
         }
     }
-    return nullptr;
+    return select_object;
 }
 
 //
@@ -289,5 +271,43 @@ void BlockObjectManager::bind_vertex_data() {
 
     // Unbind the attribute array
     gl_safe(glBindVertexArray, 0);
+}
+
+//
+// #############################################################################
+//
+
+Eigen::Matrix<float, 4, 2> BlockObjectManager::coords(const BlockObject& block) const {
+    const auto& config = config_.blocks[block.block_id];
+
+    const Eigen::Vector2f top_left = block.top_left;
+    const Eigen::Vector2f bottom_right = block.top_left + config.px_dim.cast<float>();
+
+    Eigen::Matrix<float, 4, 2> result;
+    result.row(Ordering::kTopLeft) = top_left;
+    result.row(Ordering::kTopRight) = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    result.row(Ordering::kBottomLeft) = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    result.row(Ordering::kBottomRight) = bottom_right;
+    return result;
+}
+
+//
+// #############################################################################
+//
+
+Eigen::Matrix<float, 4, 2> BlockObjectManager::uv(const BlockObject& block) const {
+    const auto& config = config_.blocks[block.block_id];
+
+    const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
+
+    const Eigen::Vector2f top_left = config.px_start.cast<float>().cwiseQuotient(texture_dim);
+    const Eigen::Vector2f bottom_right = (config.px_start + config.px_dim).cast<float>().cwiseQuotient(texture_dim);
+
+    Eigen::Matrix<float, 4, 2> result;
+    result.row(Ordering::kTopLeft) = top_left;
+    result.row(Ordering::kTopRight) = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    result.row(Ordering::kBottomLeft) = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    result.row(Ordering::kBottomRight) = bottom_right;
+    return result;
 }
 }  // namespace objects
