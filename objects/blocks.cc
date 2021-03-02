@@ -147,7 +147,7 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     }
 
     if (selected_) {
-        selected_->top_left += event.delta_position;
+        selected_->offset += event.delta_position;
     } else {
         selected_ = select(event.mouse_position);
     }
@@ -167,8 +167,8 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
 
     BlockObject object;
     static size_t id = 0;
-    object.top_left = {100, 200};
-    object.block_id = id++ % 2;
+    object.offset = {100, 200};
+    object.config_id = id++ % 2;
     spawn_object(object);
 }
 
@@ -180,8 +180,8 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     if (pool_->empty()) return nullptr;
 
     auto is_in_object = [&position, this](const BlockObject& object) {
-        Eigen::Vector2f top_left = object.top_left;
-        Eigen::Vector2f bottom_right = object.top_left + config_.blocks[object.block_id].px_dim.cast<float>();
+        Eigen::Vector2f top_left = object.offset;
+        Eigen::Vector2f bottom_right = top_left + config_.blocks[object.config_id].px_dim.cast<float>();
 
         return position.x() >= top_left.x() && position.x() < bottom_right.x() && position.y() >= top_left.y() &&
                position.y() < bottom_right.y();
@@ -248,10 +248,10 @@ void BlockObjectManager::assign_coords(const BlockObject& block, size_t& index) 
     auto& bottom_left_vertex = vertices_.at(index++);
     auto& bottom_right_vertex = vertices_.at(index++);
 
-    const auto& config = config_.blocks[block.block_id];
+    const auto& config = config_.blocks[block.config_id];
 
-    const Eigen::Vector2f top_left = block.top_left;
-    const Eigen::Vector2f bottom_right = block.top_left + config.px_dim.cast<float>();
+    const Eigen::Vector2f top_left = block.offset;
+    const Eigen::Vector2f bottom_right = top_left + config.px_dim.cast<float>();
 
     top_left_vertex.coords = top_left;
     top_right_vertex.coords = Eigen::Vector2f{bottom_right.x(), top_left.y()};
@@ -269,7 +269,7 @@ void BlockObjectManager::assign_uv(const BlockObject& block, size_t& index) {
     auto& bottom_left_vertex = vertices_.at(index++);
     auto& bottom_right_vertex = vertices_.at(index++);
 
-    const auto& config = config_.blocks[block.block_id];
+    const auto& config = config_.blocks[block.config_id];
 
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
     const Eigen::Vector2f top_left = config.px_start.cast<float>().cwiseQuotient(texture_dim);

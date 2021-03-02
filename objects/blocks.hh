@@ -16,8 +16,11 @@ namespace objects {
 
 struct BlockObject {
     engine::ObjectId id;
-    size_t block_id;
-    Eigen::Vector2f top_left;
+
+    // Used to associate this block with it's configuration
+    size_t config_id;
+
+    Eigen::Vector2f offset;
 };
 
 //
