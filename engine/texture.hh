@@ -17,7 +17,7 @@ struct Texture
 
 class TextureManager {
 public:
-    TextureManager(const std::filesystem::path& textures_folder);
+    TextureManager(const std::filesystem::path& yml_path);
 
     void init();
     void activate();

@@ -1,4 +1,5 @@
 #include "engine/texture.hh"
+#include "yaml-cpp/yaml.h"
 #include <iostream>
 
 namespace engine {
@@ -7,18 +8,23 @@ namespace engine {
 // #############################################################################
 //
 
-TextureManager::TextureManager(const std::filesystem::path& textures_folder)
+TextureManager::TextureManager(const std::filesystem::path& yml_path)
 {
-    for (const auto & entry : std::filesystem::directory_iterator(textures_folder))
-    {
-        if (entry.path().extension() == "bmp")
-        {
-            unsigned int invalid_index = -1;
-            textures_.emplace_back(Texture{invalid_index, Bitmap{entry}});
-        }
-    }
+    auto yml = YAML::LoadFile(yml_path);
 
-    std::cout << textures_.size() << " entries loaded\n";
+    Bitmap data(yml["path"].as<std::string>());
+
+    for (const auto& block : yml["blocks"])
+    {
+        std::string name = block["name"].as<std::string>();
+        size_t x = block["coord"][0].as<size_t>();
+        size_t y = block["coord"][1].as<size_t>();
+        size_t dim_x = block["dim"][0].as<size_t>();
+        size_t dim_y = block["dim"][1].as<size_t>();
+
+        size_t in = block["in"].as<size_t>();
+        size_t out = block["out"].as<size_t>();
+    }
 }
 
 //

@@ -13,15 +13,17 @@ cc_library(
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
+        "@yaml-cpp",
     ]
 )
 
 cc_test(
     name = "engine_test",
     srcs = glob(["engine/test/*.cc"]),
+    size = "small",
     deps = [
         ":engine",
-        "@gtest//:gtest",
+        "@gtest",
         "@gtest//:gtest_main",
     ]
 )

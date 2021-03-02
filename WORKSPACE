@@ -9,6 +9,13 @@ git_repository(
     shallow_since = "1570114335 -0400",
 )
 
+git_repository(
+    name = "yaml-cpp",
+    remote = "https://github.com/jbeder/yaml-cpp",
+    commit = "a6bbe0e50ac4074f0b9b44188c28cf00caf1a723",
+    shallow_since = "1609854028 -0600",
+)
+
 new_git_repository(
     name = "glfw",
     remote = "https://github.com/glfw/glfw.git",
@@ -25,3 +32,4 @@ http_archive(
     build_file = "//third_party:eigen.BUILD",
     strip_prefix="eigen-3.3.9"
 )
+
