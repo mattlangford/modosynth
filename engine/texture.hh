@@ -1,12 +1,12 @@
 #pragma once
 #include <filesystem>
 #include <vector>
+
 #include "engine/bitmap.hh"
 
 namespace engine {
 
-struct Texture
-{
+struct Texture {
     unsigned int id;
     Bitmap bitmap;
 };
@@ -26,6 +26,5 @@ public:
 
 private:
     std::vector<Texture> textures_;
-
 };
 }  // namespace engine

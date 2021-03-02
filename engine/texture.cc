@@ -1,6 +1,8 @@
 #include "engine/texture.hh"
-#include "yaml-cpp/yaml.h"
+
 #include <iostream>
+
+#include "yaml-cpp/yaml.h"
 
 namespace engine {
 
@@ -8,14 +10,12 @@ namespace engine {
 // #############################################################################
 //
 
-TextureManager::TextureManager(const std::filesystem::path& yml_path)
-{
+TextureManager::TextureManager(const std::filesystem::path& yml_path) {
     auto yml = YAML::LoadFile(yml_path);
 
     Bitmap data(yml["path"].as<std::string>());
 
-    for (const auto& block : yml["blocks"])
-    {
+    for (const auto& block : yml["blocks"]) {
         std::string name = block["name"].as<std::string>();
         size_t x = block["coord"][0].as<size_t>();
         size_t y = block["coord"][1].as<size_t>();
@@ -31,24 +31,17 @@ TextureManager::TextureManager(const std::filesystem::path& yml_path)
 // #############################################################################
 //
 
-void TextureManager::init()
-{
-}
+void TextureManager::init() {}
 
 //
 // #############################################################################
 //
 
-void TextureManager::activate()
-{
-}
+void TextureManager::activate() {}
 
 //
 // #############################################################################
 //
 
-const std::vector<Texture>& TextureManager::get_textures()
-{
-    return textures_;
-}
+const std::vector<Texture>& TextureManager::get_textures() { return textures_; }
 }  // namespace engine
