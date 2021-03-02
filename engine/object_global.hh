@@ -1,7 +1,8 @@
 #pragma once
-#include "engine/object_manager.hh"
 #include <memory>
 #include <vector>
+
+#include "engine/object_manager.hh"
 
 namespace engine {
 class GlobalObjectManager : AbstractObjectManager {

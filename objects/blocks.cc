@@ -6,7 +6,7 @@
 
 #include "engine/gl.hh"
 
-namespace engine {
+namespace objects {
 namespace {
 static std::string vertex_shader_text = R"(
 #version 330
@@ -43,7 +43,7 @@ void main()
 BlockObjectManager::BlockObjectManager()
     : shader_(vertex_shader_text, fragment_shader_text),
       texture_("/Users/mlangford/Downloads/test.bmp"),
-      pool_(std::make_unique<ListObjectPool<BlockObject>>()) {}
+      pool_(std::make_unique<engine::ListObjectPool<BlockObject>>()) {}
 
 //
 // #############################################################################
@@ -109,7 +109,7 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
 // #############################################################################
 //
 
-void BlockObjectManager::despawn_object(const ObjectId& id) { pool_->remove(id); }
+void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
 
 //
 // #############################################################################
@@ -171,7 +171,7 @@ void BlockObjectManager::update(float /* dt */) {
 // #############################################################################
 //
 
-void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {
+void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.right || !event.clicked) {
         selected_ = nullptr;
         return;
@@ -188,7 +188,7 @@ void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {
 // #############################################################################
 //
 
-void BlockObjectManager::handle_keyboard_event(const KeyboardEvent& event) {
+void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& event) {
     if (!event.space) {
         return;
     }
@@ -269,4 +269,4 @@ void BlockObjectManager::bind_vertex_data() {
     // Unbind the attribute array
     gl_safe(glBindVertexArray, 0);
 }
-}  // namespace engine
+}  // namespace objects

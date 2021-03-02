@@ -7,14 +7,14 @@
 #include "engine/shader.hh"
 #include "engine/texture.hh"
 
-namespace engine {
+namespace objects {
 
 //
 // #############################################################################
 //
 
 struct BlockObject {
-    ObjectId id;
+    engine::ObjectId id;
     size_t texture_id;
 
     Eigen::Vector2f top_left;  // x, y
@@ -28,14 +28,14 @@ struct BlockObject {
 // #############################################################################
 //
 
-class BlockObjectManager : public AbstractObjectManager {
+class BlockObjectManager : public engine::AbstractObjectManager {
 public:
     BlockObjectManager();
     virtual ~BlockObjectManager() = default;
 
     void spawn_object(BlockObject object_);
 
-    void despawn_object(const ObjectId& id);
+    void despawn_object(const engine::ObjectId& id);
 
 public:
     void init() override;
@@ -44,9 +44,9 @@ public:
 
     void update(float dt) override;
 
-    void handle_mouse_event(const MouseEvent& event) override;
+    void handle_mouse_event(const engine::MouseEvent& event) override;
 
-    void handle_keyboard_event(const KeyboardEvent& event) override;
+    void handle_keyboard_event(const engine::KeyboardEvent& event) override;
 
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
@@ -56,10 +56,10 @@ private:
 private:
     BlockObject* selected_ = nullptr;
 
-    Shader shader_;
-    Texture texture_;
+    engine::Shader shader_;
+    engine::Texture texture_;
 
-    std::unique_ptr<AbstractObjectPool<BlockObject>> pool_;
+    std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
 
     unsigned int vertex_buffer_index_ = -1;
     unsigned int element_buffer_index_ = -1;
@@ -75,4 +75,4 @@ private:
     std::vector<Vertex> vertices_;
     std::vector<unsigned int> indices_;
 };
-}  // namespace engine
+}  // namespace objects
