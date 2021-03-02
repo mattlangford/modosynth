@@ -27,11 +27,14 @@ Buffer2Df::~Buffer2Df() { reset_buffers(); }
 //
 
 void Buffer2Df::init(unsigned int location) {
-    gl_safe(glGenBuffers, 1, &vertex_buffer_index_);
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_);
+    gl_safe(glGenBuffers, 1, &vertex_buffer_);
+    gl_safe(glGenBuffers, 1, &element_buffer_);
 
-    gl_safe(glGenBuffers, 1, &element_buffer_index_);
-    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_index_);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
+    gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
 
     gl_safe(glEnableVertexAttribArray, location);
     gl_safe(glVertexAttribPointer, location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
@@ -75,8 +78,13 @@ size_t Buffer2Df::add(const Primitive& primitive) {
     std::visit(AddImpl{vertices_, indices_}, primitive);
 
     // Since a  new element was added, we'll need to update the buffers. Assume neither will be updated often at first,
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, 0);
+
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
     gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, 0);
 
     return index;
 }
@@ -104,7 +112,9 @@ void Buffer2Df::update(const Primitive& primitive, size_t& index) {
     std::visit(UpdateImpl{index, vertices_}, primitive);
 
     // Only need to update the vertex array since the number of elements didn't change
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, 0);
 }
 
 //
@@ -112,11 +122,11 @@ void Buffer2Df::update(const Primitive& primitive, size_t& index) {
 //
 
 void Buffer2Df::reset_buffers() {
-    if (vertex_buffer_index_ > 0) {
-        glDeleteBuffers(1, &vertex_buffer_index_);
+    if (vertex_buffer_ > 0) {
+        glDeleteBuffers(1, &vertex_buffer_);
     }
-    if (element_buffer_index_ > 0) {
-        glDeleteBuffers(1, &element_buffer_index_);
+    if (element_buffer_ > 0) {
+        glDeleteBuffers(1, &element_buffer_);
     }
 }
 }  // namespace engine

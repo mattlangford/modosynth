@@ -53,8 +53,8 @@ private:
     void reset_buffers();
 
 private:
-    unsigned int vertex_buffer_index_ = -1;
-    unsigned int element_buffer_index_ = -1;
+    unsigned int vertex_buffer_ = -1;
+    unsigned int element_buffer_ = -1;
 
     std::vector<Eigen::Vector2f> vertices_;
     std::vector<unsigned int> indices_;

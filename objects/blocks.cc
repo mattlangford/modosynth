@@ -105,6 +105,7 @@ void BlockObjectManager::init() {
     texture_.init();
 
     gl_safe(glGenVertexArrays, 1, &vertex_array_object_);
+
     gl_safe(glBindVertexArray, vertex_array_object_);
     vertex_.init(glGetAttribLocation(shader_.get_program_id(), "world_position"));
     uv_.init(glGetAttribLocation(shader_.get_program_id(), "vertex_uv"));
@@ -120,22 +121,22 @@ void BlockObjectManager::init() {
 void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     if (pool_->empty()) return;
 
+    gl_safe(glBindVertexArray, vertex_array_object_);
+
     shader_.activate();
     texture_.activate();
 
     size_t index = 0;
     size_t num_objects = 0;
     for (auto object : pool_->iterate()) {
-        vertex_.update(coords(*object), index);
+        //vertex_.update(coords(*object), index);
         num_objects++;
     }
 
     // set the screen from world transform
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
 
-    gl_safe(glBindVertexArray, vertex_array_object_);
-
-    gl_safe(glDrawElements, GL_TRIANGLES, num_objects, GL_UNSIGNED_INT, nullptr);
+    gl_safe(glDrawElements, GL_TRIANGLES, 3 * num_objects, GL_UNSIGNED_INT, nullptr);
 }
 
 //
