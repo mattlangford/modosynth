@@ -98,6 +98,18 @@ void BlockObjectManager::init() {
     object.dims = {128, 64};
     spawn_object(object);
 
+    bind_vertex_data();
+}
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
+    if (pool_->empty()) return;
+
+    shader_.activate();
+
     size_t index = 0;
     for (auto object : pool_->iterate()) {
         const Eigen::Vector2f top_left = object->get_top_left();
@@ -118,32 +130,9 @@ void BlockObjectManager::init() {
         bottom_right_vertex.y = bottom_right.y();
     }
 
-    std::cout << "Indices: ";
-    for (auto& index : indices_) {
-        std::cout << index << ", ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "Vertices: ";
-    for (auto& v : vertices_) {
-        std::cout << "x: " << v.x << ", " << v.y << " | ";
-    }
-    std::cout << std::endl;
-
-    bind_vertex_data();
-}
-
-//
-// #############################################################################
-//
-
-void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
-    if (pool_->empty()) return;
-
-    shader_.activate();
-
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
     gl_safe(glBindVertexArray, vertex_array_index_);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STREAM_DRAW);
     gl_safe(glDrawElements, GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, (void*)0);
 }
 
@@ -167,8 +156,6 @@ void BlockObjectManager::handle_mouse_event(const MouseEvent& event) {
     } else {
         selected_ = select(event.mouse_position);
     }
-
-    std::cout << "selected: " << (long)selected_ << "\n";
 }
 
 //
@@ -201,7 +188,7 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
         Eigen::Vector2f bottom_right = object.get_bottom_right();
 
         return position.x() >= top_left.x() && position.x() < bottom_right.x() && position.y() >= top_left.y() &&
-               position.y() < top_left.y();
+               position.y() < bottom_right.y();
     };
 
     // Iterating backwards like this will ensure we always select the newest object
@@ -234,7 +221,7 @@ void BlockObjectManager::bind_vertex_data() {
 
     gl_safe(glGenBuffers, 1, &vertex_buffer_index_);
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_);
-    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STATIC_DRAW);
+    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STREAM_DRAW);
 
     gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
     gl_safe(glBindVertexArray, vertex_array_index_);

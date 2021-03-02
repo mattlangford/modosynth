@@ -136,6 +136,7 @@ void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int key, int /*s
     event.control = (mods | GLFW_MOD_CONTROL) != 0;
     event.shift = (mods | GLFW_MOD_SHIFT) != 0;
 
+    event.key = '\0';
     event.enter = false;
     event.space = false;
     event.backspace = false;

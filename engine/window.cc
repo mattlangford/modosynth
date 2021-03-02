@@ -82,9 +82,13 @@ bool Window::render_loop() {
 //
 
 void Window::handle_mouse_event(const MouseEvent& event) {
+    // Since the scale changes, changing the relative movement of the cursor makes things seem more natural
+    MouseEvent scaled_event = event;
+    scaled_event.delta_position *= scale();
+
     if (event.right && event.clicked) {
         double current_scale = scale();
-        center_ -= current_scale * event.delta_position;
+        center_ -= current_scale * scaled_event.delta_position;
     }
 
     if (event.delta_scroll != 0.0) {
@@ -108,7 +112,7 @@ void Window::handle_mouse_event(const MouseEvent& event) {
         half_dim_ = new_half_dim_;
     }
 
-    object_manager_.handle_mouse_event(event);
+    object_manager_.handle_mouse_event(scaled_event);
 }
 
 //
@@ -118,6 +122,8 @@ void Window::handle_mouse_event(const MouseEvent& event) {
 void Window::handle_keyboard_event(const KeyboardEvent& event) {
     if (event.escape) {
         glfwSetWindowShouldClose(window_, true);
+    } else if (event.key == 'r') {
+        reset();
     }
 
     object_manager_.handle_keyboard_event(event);
