@@ -1,4 +1,4 @@
-#include "engine/objects/blocks.hh"
+#include "objects/blocks.hh"
 
 #include <OpenGL/gl3.h>
 

@@ -3,5 +3,6 @@ cc_binary(
     srcs = ["main.cc"],
     deps = [
         "//engine",
+        "//objects",
     ]
 )

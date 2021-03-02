@@ -1,20 +1,21 @@
 cc_library(
-    name = "engine",
+    name = "objects",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.hh"]),
     visibility = ["//visibility:public"],
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
+        "//engine"
     ]
 )
 
 cc_test(
-    name = "engine_test",
+    name = "objects_test",
     srcs = glob(["test/*.cc"]),
     size = "small",
     deps = [
-        ":engine",
+        ":objects",
         "@gtest",
         "@gtest//:gtest_main",
     ]

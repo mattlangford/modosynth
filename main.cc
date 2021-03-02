@@ -1,6 +1,7 @@
 #include "engine/object_global.hh"
-#include "engine/objects/blocks.hh"
 #include "engine/window.hh"
+
+#include "objects/blocks.hh"
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
