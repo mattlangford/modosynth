@@ -80,28 +80,11 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
-    // 4 coordinates per object
-    vertices_.resize(vertices_size + 4);
+    add_space_for_new_object();
 
     // Populate UV coordinates once, they don't change
-    auto& top_left = vertices_[vertices_size + Ordering::kTopLeft];
-    auto& top_right = vertices_[vertices_size + Ordering::kTopRight];
-    auto& bottom_left = vertices_[vertices_size + Ordering::kBottomLeft];
-    auto& bottom_right = vertices_[vertices_size + Ordering::kBottomRight];
-
-    const Eigen::Matrix<float, 4, 2> corners = uv(object);
-    top_left.uv = corners.row(Ordering::kTopLeft);
-    top_right.uv = corners.row(Ordering::kTopRight);
-    bottom_left.uv = corners.row(Ordering::kBottomLeft);
-    bottom_right.uv = corners.row(Ordering::kBottomRight);
-
-    indices_.emplace_back(vertices_size + Ordering::kTopLeft);
-    indices_.emplace_back(vertices_size + Ordering::kTopRight);
-    indices_.emplace_back(vertices_size + Ordering::kBottomLeft);
-
-    indices_.emplace_back(vertices_size + Ordering::kBottomRight);
-    indices_.emplace_back(vertices_size + Ordering::kBottomLeft);
-    indices_.emplace_back(vertices_size + Ordering::kTopRight);
+    size_t index = vertices_size;
+    assign_uv(object, index);
 
     bind_vertex_data();
 }
@@ -136,17 +119,7 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
 
     size_t index = 0;
     for (auto object : pool_->iterate()) {
-        auto& top_left_vertex = vertices_.at(index++);
-        auto& top_right_vertex = vertices_.at(index++);
-        auto& bottom_left_vertex = vertices_.at(index++);
-        auto& bottom_right_vertex = vertices_.at(index++);
-
-        Eigen::Matrix<float, 4, 2> corners = coords(*object);
-
-        top_left_vertex.coords = corners.row(Ordering::kTopLeft);
-        top_right_vertex.coords = corners.row(Ordering::kTopRight);
-        bottom_left_vertex.coords = corners.row(Ordering::kBottomLeft);
-        bottom_right_vertex.coords = corners.row(Ordering::kBottomRight);
+        assign_coords(*object, index);
     }
 
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
@@ -269,37 +242,67 @@ void BlockObjectManager::bind_vertex_data() {
 // #############################################################################
 //
 
-Eigen::Matrix<float, 4, 2> BlockObjectManager::coords(const BlockObject& block) const {
+void BlockObjectManager::assign_coords(const BlockObject& block, size_t& index) {
+    auto& top_left_vertex = vertices_.at(index++);
+    auto& top_right_vertex = vertices_.at(index++);
+    auto& bottom_left_vertex = vertices_.at(index++);
+    auto& bottom_right_vertex = vertices_.at(index++);
+
     const auto& config = config_.blocks[block.block_id];
 
     const Eigen::Vector2f top_left = block.top_left;
     const Eigen::Vector2f bottom_right = block.top_left + config.px_dim.cast<float>();
 
-    Eigen::Matrix<float, 4, 2> result;
-    result.row(Ordering::kTopLeft) = top_left;
-    result.row(Ordering::kTopRight) = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    result.row(Ordering::kBottomLeft) = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    result.row(Ordering::kBottomRight) = bottom_right;
-    return result;
+    top_left_vertex.coords = top_left;
+    top_right_vertex.coords = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    bottom_left_vertex.coords = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    bottom_right_vertex.coords = bottom_right;
 }
 
 //
 // #############################################################################
 //
 
-Eigen::Matrix<float, 4, 2> BlockObjectManager::uv(const BlockObject& block) const {
+void BlockObjectManager::assign_uv(const BlockObject& block, size_t& index) {
+    auto& top_left_vertex = vertices_.at(index++);
+    auto& top_right_vertex = vertices_.at(index++);
+    auto& bottom_left_vertex = vertices_.at(index++);
+    auto& bottom_right_vertex = vertices_.at(index++);
+
     const auto& config = config_.blocks[block.block_id];
 
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
-
     const Eigen::Vector2f top_left = config.px_start.cast<float>().cwiseQuotient(texture_dim);
     const Eigen::Vector2f bottom_right = (config.px_start + config.px_dim).cast<float>().cwiseQuotient(texture_dim);
 
-    Eigen::Matrix<float, 4, 2> result;
-    result.row(Ordering::kTopLeft) = top_left;
-    result.row(Ordering::kTopRight) = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    result.row(Ordering::kBottomLeft) = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    result.row(Ordering::kBottomRight) = bottom_right;
-    return result;
+    top_left_vertex.uv = top_left;
+    top_right_vertex.uv = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    bottom_left_vertex.uv = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    bottom_right_vertex.uv = bottom_right;
+}
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::add_space_for_new_object() {
+    enum Ordering : int8_t { kTopLeft = 0, kTopRight = 1, kBottomLeft = 2, kBottomRight = 3, kSize = 4 };
+    size_t start = vertices_.size();
+
+    // 4 coordinates per object
+    vertices_.emplace_back(Vertex{});
+    vertices_.emplace_back(Vertex{});
+    vertices_.emplace_back(Vertex{});
+    vertices_.emplace_back(Vertex{});
+
+    // Upper triangle
+    indices_.emplace_back(start + Ordering::kTopLeft);
+    indices_.emplace_back(start + Ordering::kTopRight);
+    indices_.emplace_back(start + Ordering::kBottomLeft);
+
+    // Lower triangle
+    indices_.emplace_back(start + Ordering::kBottomRight);
+    indices_.emplace_back(start + Ordering::kBottomLeft);
+    indices_.emplace_back(start + Ordering::kTopRight);
 }
 }  // namespace objects

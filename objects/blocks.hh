@@ -71,9 +71,9 @@ private:
 
     void bind_vertex_data();
 
-    enum Ordering : int8_t { kTopLeft = 0, kTopRight = 1, kBottomLeft = 2, kBottomRight = 3 };
-    Eigen::Matrix<float, 4, 2> coords(const BlockObject& block) const;
-    Eigen::Matrix<float, 4, 2> uv(const BlockObject& block) const;
+    void assign_coords(const BlockObject& block, size_t& index);
+    void assign_uv(const BlockObject& block, size_t& index);
+    void add_space_for_new_object();
 
 private:
     const Config config_;
