@@ -35,21 +35,29 @@ void main()
 )";
 }  // namespace
 
-// struct Ports {
-//     ObjectId pool_id;
-//
-//     size_t buffer_id;
-//
-//     // The offsets from the parent object to each port represented by this object
-//     std::vector<Eigen::Vector2f> input_offsets;
-//     std::vector<Eigen::Vector2f> output_offsets;
-//
-//     // The parent object this belongs to
-//     const BlockObject& parent_object;
-//
-// };
+PortsObject PortsObject::from_block(const BlockObject& parent) {
+    const float width = parent.config.px_dim.x();
+    const float height = parent.config.px_dim.y();
 
-PortsObject PortsObject::from_block(const BlockObject& parent) { throw; }
+    // We'll only use this much of the height for putting ports
+    const float effective_height = 0.9 * height;
+
+    const size_t inputs = parent.config.inputs;
+    const size_t outputs = parent.config.outputs;
+
+    if (inputs > effective_height || outputs > effective_height) {
+        throw std::runtime_error("Too many ports for the given object!");
+    }
+
+    const float input_spacing = effective_height / inputs;
+    const float output_spacing = effective_height / outputs;
+
+    std::vector<Eigen::Vector2f> offsets;
+    for (size_t i = 0; i < inputs; ++i) offsets.push_back(Eigen::Vector2f{0, i * input_spacing});
+    for (size_t i = 0; i < outputs; ++i) offsets.push_back(Eigen::Vector2f{width, i * output_spacing});
+
+    return PortsObject{{}, {}, std::move(offsets), parent};
+}
 
 //
 // #############################################################################
@@ -87,13 +95,21 @@ void PortsObjectManager::render_with_vao() {
 //
 
 void PortsObjectManager::spawn_object(PortsObject object_) {
+    if (object_.offsets.empty()) throw std::runtime_error("Trying to spawn PortsObject with no ports!");
+
     auto [id, object] = pool_->add(std::move(object_));
-    object.pool_id = id;
+    tobject.pool_id = id;
+
+    std::optional<size_t> starting_index;
 
     bind_vao();
     for (const Eigen::Vector2f& offset : object.offsets) {
-        buffer_.add(engine::Point{offset});
+        size_t index = buffer_.add(engine::Point{offset});
+        if (!starting_index) starting_index = index;
     }
+
+    // Since we checked for ports before, this is okay to do
+    object.buffer_id = *starting_index;
 }
 
 //
@@ -101,6 +117,10 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
 //
 
 void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
+
+//
+// #############################################################################
+//
 
 // no-ops
 void PortsObjectManager::update(float) {}
