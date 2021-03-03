@@ -39,7 +39,7 @@ public:
 ///
 /// @brief Provides basic Vertex Array Object support as well as automatically setting the screen_from_world matrix
 ///
-class AbstractSingleShaderObjectManager : AbstractObjectManager {
+class AbstractSingleShaderObjectManager : public AbstractObjectManager {
 public:
     AbstractSingleShaderObjectManager(std::string vertex, std::string fragment,
                                       std::optional<std::string> geometry = std::nullopt);
@@ -52,6 +52,9 @@ public:
 protected:
     virtual void init_with_vao() = 0;
     virtual void render_with_vao() = 0;
+
+    void bind_vao();
+    const Shader& get_shader() const;
 
 private:
     unsigned int vertex_array_object_;

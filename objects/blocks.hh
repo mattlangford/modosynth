@@ -51,7 +51,7 @@ struct Config {
 // #############################################################################
 //
 
-class BlockObjectManager : public engine::AbstractObjectManager {
+class BlockObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
     BlockObjectManager(const std::filesystem::path& path_config);
     virtual ~BlockObjectManager() = default;
@@ -60,11 +60,12 @@ public:
 
     void despawn_object(const engine::ObjectId& id);
 
+protected:
+    void init_with_vao() override;
+
+    void render_with_vao() override;
+
 public:
-    void init() override;
-
-    void render(const Eigen::Matrix3f& screen_from_world) override;
-
     void update(float dt) override;
 
     void handle_mouse_event(const engine::MouseEvent& event) override;
@@ -82,13 +83,9 @@ private:
 
     BlockObject* selected_ = nullptr;
 
-    engine::Shader shader_;
     engine::Texture texture_;
 
     std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
-
-    unsigned int vertex_array_index_ = -1;
-    int screen_from_world_loc_;
 
     engine::Buffer2Df vertex_;
     engine::Buffer2Df uv_;

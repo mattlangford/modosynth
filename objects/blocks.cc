@@ -65,8 +65,8 @@ Config::Config(const std::filesystem::path& path) {
 //
 
 BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
-    : config_(config_path),
-      shader_(vertex_shader_text, fragment_shader_text),
+    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
+      config_(config_path),
       texture_(config_.texture_path),
       pool_(std::make_unique<engine::ListObjectPool<BlockObject>>()) {}
 
@@ -78,10 +78,9 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
-    gl_safe(glBindVertexArray, vertex_array_index_);
+    bind_vao();
     vertex_.add(coords(object));
     uv_.add(uv(object));
-    gl_safe(glBindVertexArray, 0);
 }
 
 //
@@ -94,33 +93,20 @@ void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->rem
 // #############################################################################
 //
 
-void BlockObjectManager::init() {
-    // important to initialize at the start
-    shader_.init();
+void BlockObjectManager::init_with_vao() {
     texture_.init();
 
-    gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
-    gl_safe(glBindVertexArray, vertex_array_index_);
-
-    vertex_.init(glGetAttribLocation(shader_.get_program_id(), "world_position"));
-    uv_.init(glGetAttribLocation(shader_.get_program_id(), "vertex_uv"));
-
-    gl_safe(glBindVertexArray, 0);
-
-    screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
+    vertex_.init(glGetAttribLocation(get_shader().get_program_id(), "world_position"));
+    uv_.init(glGetAttribLocation(get_shader().get_program_id(), "vertex_uv"));
 }
 
 //
 // #############################################################################
 //
 
-void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
+void BlockObjectManager::render_with_vao() {
     if (pool_->empty()) return;
 
-    gl_safe(glBindVertexArray, vertex_array_index_);
-    gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
-
-    shader_.activate();
     texture_.activate();
 
     size_t index = 0;

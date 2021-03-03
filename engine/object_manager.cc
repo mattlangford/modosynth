@@ -51,4 +51,22 @@ void AbstractSingleShaderObjectManager::render(const Eigen::Matrix3f& screen_fro
 
     gl_safe(glBindVertexArray, 0);
 }
+
+//
+// #############################################################################
+//
+
+void AbstractSingleShaderObjectManager::bind_vao()
+{
+    gl_safe(glBindVertexArray, vertex_array_object_);
+}
+
+//
+// #############################################################################
+//
+
+const Shader& AbstractSingleShaderObjectManager::get_shader() const
+{
+    return shader_;
+}
 }  // namespace engine
