@@ -13,16 +13,17 @@ namespace objects {
 // #############################################################################
 //
 
-class GridObjectManager : public engine::AbstractObjectManager {
+class GridObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
     GridObjectManager(const size_t grid_width, const size_t grid_height);
     virtual ~GridObjectManager() = default;
 
+protected:
+    void init_with_vao() override;
+
+    void render_with_vao() override;
+
 public:
-    void init() override;
-
-    void render(const Eigen::Matrix3f& screen_from_world) override;
-
     void update(float dt) override;
 
     void handle_mouse_event(const engine::MouseEvent& event) override;
@@ -33,10 +34,6 @@ private:
     const size_t width_;
     const size_t height_;
 
-    unsigned int vertex_array_object_;
-    int screen_from_world_loc_;
-
-    engine::Shader shader_;
     engine::Buffer2Df buffer_;
 };
 }  // namespace objects

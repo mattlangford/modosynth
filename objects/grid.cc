@@ -107,40 +107,24 @@ void main() {
 //
 
 GridObjectManager::GridObjectManager(const size_t grid_width, const size_t grid_height)
-    : width_(grid_width),
-      height_(grid_height),
-      shader_(vertex_shader_text, fragment_shader_text, geometry_shader_text) {}
+    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text, geometry_shader_text),
+      width_(grid_width),
+      height_(grid_height) {}
 
 //
 // #############################################################################
 //
 
-void GridObjectManager::init() {
-    shader_.init();
-
-    gl_safe(glGenVertexArrays, 1, &vertex_array_object_);
-    gl_safe(glBindVertexArray, vertex_array_object_);
-
-    buffer_.init(glGetAttribLocation(shader_.get_program_id(), "world_position"));
+void GridObjectManager::init_with_vao() {
+    buffer_.init(glGetAttribLocation(get_shader().get_program_id(), "world_position"));
     buffer_.add(engine::Line{Eigen::Vector2f::Zero(), Eigen::Vector2f{width_, height_}});
-
-    gl_safe(glBindVertexArray, 0);
-
-    screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
 }
 
 //
 // #############################################################################
 //
 
-void GridObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
-    shader_.activate();
-
-    gl_safe(glBindVertexArray, vertex_array_object_);
-    gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
-    gl_safe(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, nullptr);
-    gl_safe(glBindVertexArray, 0);
-}
+void GridObjectManager::render_with_vao() { gl_safe(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, nullptr); }
 
 //
 // #############################################################################
