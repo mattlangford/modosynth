@@ -66,6 +66,7 @@ void main() {
     vertical_line(start_x);
     horizontal_line(start_y);
 
+    // TODO: I tried to get it working with mod() but it seems like it has trouble scaling. Oh well for now
     float x = start_x + grid_width;
     while (x <= 1.0)
     {
