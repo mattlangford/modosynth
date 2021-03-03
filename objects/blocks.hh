@@ -21,7 +21,8 @@ struct BlockObject {
     // Used to associate this block with it's configuration
     size_t config_id;
 
-    Eigen::Vector2f offset;
+    Eigen::Vector2f real_offset;
+    Eigen::Vector2f offset;  // floor'd version of the real offset
 };
 
 //

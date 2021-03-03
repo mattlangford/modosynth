@@ -52,7 +52,7 @@ public:
 private:
     void reset_buffers();
 
-public:
+private:
     unsigned int vertex_buffer_ = -1;
     unsigned int element_buffer_ = -1;
 

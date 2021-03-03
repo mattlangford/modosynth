@@ -152,7 +152,8 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     }
 
     if (selected_) {
-        selected_->offset += event.delta_position;
+        selected_->real_offset += event.delta_position;
+        selected_->offset = selected_->real_offset.cast<int>().cast<float>();
     } else {
         selected_ = select(event.mouse_position);
     }
@@ -172,6 +173,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
 
     BlockObject object;
     static size_t id = 0;
+    object.real_offset = {100, 200};
     object.offset = {100, 200};
     object.config_id = id++ % 2;
     spawn_object(object);
