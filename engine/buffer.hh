@@ -1,4 +1,4 @@
-
+#pragma once
 #include <Eigen/Dense>
 #include <variant>
 #include <vector>
@@ -14,8 +14,8 @@ struct Point {
 };
 
 struct Line {
-    Eigen::Vector2f start_point;
-    Eigen::Vector2f end_point;
+    Eigen::Vector2f start;
+    Eigen::Vector2f end;
 };
 
 struct Triangle {

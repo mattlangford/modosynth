@@ -33,10 +33,7 @@ void Buffer2Df::init(int location) {
     gl_safe(glGenBuffers, 1, &element_buffer_);
 
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
-    // gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-
     gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
-    // gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
 
     gl_safe(glEnableVertexAttribArray, location);
     gl_safe(glVertexAttribPointer, location, 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -55,7 +52,14 @@ size_t Buffer2Df::add(const Primitive& primitive) {
             indices.emplace_back(vertices.size());
             vertices.emplace_back(p.point);
         }
-        void operator()(const Line&) { throw std::runtime_error("Unsupported primitive!"); }
+        void operator()(const Line& l) {
+            const size_t start = vertices.size();
+            vertices.emplace_back(l.start);
+            vertices.emplace_back(l.end);
+
+            indices.emplace_back(start);
+            indices.emplace_back(start + 1);
+        }
         void operator()(const Triangle&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
         void operator()(const Quad& q) {
             enum Ordering : int8_t { kTopLeft = 0, kTopRight = 1, kBottomLeft = 2, kBottomRight = 3, kSize = 4 };
@@ -110,7 +114,10 @@ void Buffer2Df::update_batch(const Primitive& primitive, size_t& index) {
         std::vector<Eigen::Vector2f>& vertices;
 
         void operator()(const Point& p) { vertices.at(index++) = p.point; }
-        void operator()(const Line&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
+        void operator()(const Line& l) {
+            vertices.at(index++) = l.start;
+            vertices.at(index++) = l.end;
+        }
         void operator()(const Triangle&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
         void operator()(const Quad& q) {
             vertices.at(index++) = q.top_left;
