@@ -2,8 +2,9 @@
 
 #include <OpenGL/gl3.h>
 
-#include "engine/gl.hh"
 #include <iostream>
+
+#include "engine/gl.hh"
 
 namespace objects {
 namespace {
@@ -59,27 +60,36 @@ void main() {
     float end_y = gl_in[1].gl_Position.y;
 
     float grid_width = end_x - start_x;
-    // Note: this will be negative since Y is inverted, The math works itself out with the negative though.
-    float grid_height = end_y - start_y;
+    // Note: this will be negative since Y is inverted
+    float grid_height = abs(end_y - start_y);
 
-    float top_left_x = -1.0;
-    float top_left_y = 1.0;
-    float bottom_right_x = 1.0;
-    float bottom_right_y = -1.0;
+    vertical_line(start_x);
+    horizontal_line(start_y);
 
-    // Note: unlike std::fmod(), this keeps the sign of the rhs (so mod(-0.1, 1.0) is 0.9, instead of -0.1)
-    start_x = top_left_x + mod(start_x, grid_width);
-    start_y = top_left_y + mod(start_y, grid_height);
-
-    while (start_x <= bottom_right_x)
+    float x = start_x + grid_width;
+    while (x <= 1.0)
     {
-        vertical_line(start_x);
-        start_x += grid_width;
+        vertical_line(x);
+        x += grid_width;
     }
-    while (start_y >= bottom_right_y)
+    x = start_x - grid_width;
+    while (x >= -1.0)
     {
-        horizontal_line(start_y);
-        start_y += grid_height;
+        vertical_line(x);
+        x -= grid_width;
+    }
+
+    float y = start_y + grid_height;
+    while (y <= 1.0)
+    {
+        horizontal_line(y);
+        y += grid_height;
+    }
+    y = start_y - grid_height;
+    while (y >= -1.0)
+    {
+        horizontal_line(y);
+        y -= grid_height;
     }
 })";
 }  // namespace

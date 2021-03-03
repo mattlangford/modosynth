@@ -8,7 +8,7 @@ constexpr size_t kHeight = 720;
 
 int main() {
     engine::GlobalObjectManager object_manager;
-    object_manager.add_manager(std::make_shared<objects::GridObjectManager>(100, 100));
+    object_manager.add_manager(std::make_shared<objects::GridObjectManager>(25, 25));
     object_manager.add_manager(std::make_shared<objects::BlockObjectManager>("objects/blocks.yml"));
 
     engine::Window window{kWidth, kHeight, std::move(object_manager)};
