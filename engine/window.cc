@@ -12,7 +12,7 @@ Window::Window(size_t width, size_t height, GlobalObjectManager object_manager)
       kWindowDim{width, height},
       kInitialHalfDim_{0.5 * Eigen::Vector2f{width, height}},
       kMinHalfDim_{0.5 * Eigen::Vector2f{0.1 * width, 0.1 * height}},
-      kMaxHalfDim_{0.5 * Eigen::Vector2f{3.0 * width, 3.0 * height}},
+      kMaxHalfDim_{0.5 * Eigen::Vector2f{2.0 * width, 2.0 * height}},
       center_{kInitialHalfDim_},
       half_dim_{kInitialHalfDim_},
       object_manager_(std::move(object_manager)) {}

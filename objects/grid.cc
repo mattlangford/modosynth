@@ -33,7 +33,7 @@ void main()
 static std::string geometry_shader_text = R"(
 #version 330 core
 layout (lines) in;
-layout (line_strip, max_vertices = 512) out;
+layout (line_strip, max_vertices = 256) out;
 
 out float color;
 
@@ -53,6 +53,16 @@ void horizontal_line(float y) {
     EndPrimitive();
 }
 
+float move_near_zero(float value, float step)
+{
+    float diff = value;
+    while (diff >= step)
+        diff -= step;
+    while (diff < 0)
+        diff += step;
+    return diff;
+}
+
 void main() {
     float start_x = gl_in[0].gl_Position.x;
     float end_x = gl_in[1].gl_Position.x;
@@ -63,35 +73,32 @@ void main() {
     // Note: this will be negative since Y is inverted
     float grid_height = abs(end_y - start_y);
 
+    start_x = move_near_zero(start_x, grid_width);
+    start_y = move_near_zero(start_y, grid_height);
     vertical_line(start_x);
     horizontal_line(start_y);
 
-    // TODO: I tried to get it working with mod() but it seems like it has trouble scaling. Oh well for now
-    float x = start_x + grid_width;
-    while (x <= 1.0)
+    float positive_x = start_x;
+    float negative_x = start_x;
+    while (positive_x <= 1.0)
     {
-        vertical_line(x);
-        x += grid_width;
-    }
-    x = start_x - grid_width;
-    while (x >= -1.0)
-    {
-        vertical_line(x);
-        x -= grid_width;
+        positive_x += grid_width;
+        negative_x -= grid_width;
+        vertical_line(positive_x);
+        vertical_line(negative_x);
     }
 
-    float y = start_y + grid_height;
-    while (y <= 1.0)
+    float positive_y = start_y;
+    float negative_y = start_y;
+    while (positive_y <= 1.0)
     {
-        horizontal_line(y);
-        y += grid_height;
+        positive_y += grid_height;
+        negative_y -= grid_height;
+        horizontal_line(positive_y);
+        horizontal_line(negative_y);
     }
-    y = start_y - grid_height;
-    while (y >= -1.0)
-    {
-        horizontal_line(y);
-        y -= grid_height;
-    }
+
+    return;
 })";
 }  // namespace
 
@@ -128,9 +135,6 @@ void GridObjectManager::init() {
 
 void GridObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     shader_.activate();
-
-    Eigen::Vector2f start = (screen_from_world * Eigen::Vector3f{0, 0, 1.0}).head(2);
-    Eigen::Vector2f end = (screen_from_world * Eigen::Vector3f{width_, height_, 1.0}).head(2);
 
     gl_safe(glBindVertexArray, vertex_array_object_);
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
