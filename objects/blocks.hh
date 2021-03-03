@@ -58,10 +58,6 @@ public:
     BlockObjectManager(const std::filesystem::path& path_config);
     virtual ~BlockObjectManager() = default;
 
-    void spawn_object(BlockObject object_);
-
-    void despawn_object(const engine::ObjectId& id);
-
 protected:
     void init_with_vao() override;
 
@@ -79,6 +75,10 @@ private:
 
     engine::Quad coords(const BlockObject& block) const;
     engine::Quad uv(const BlockObject& block) const;
+
+    void spawn_object(BlockObject object_);
+
+    void despawn_object(const engine::ObjectId& id);
 
 private:
     const Config config_;

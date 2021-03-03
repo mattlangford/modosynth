@@ -74,25 +74,6 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
 // #############################################################################
 //
 
-void BlockObjectManager::spawn_object(BlockObject object_) {
-    auto [id, object] = pool_->add(std::move(object_));
-    object.id = id;
-
-    bind_vao();
-    vertex_.add(coords(object));
-    uv_.add(uv(object));
-}
-
-//
-// #############################################################################
-//
-
-void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
-
-//
-// #############################################################################
-//
-
 void BlockObjectManager::init_with_vao() {
     texture_.init();
 
@@ -168,7 +149,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
 BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     if (pool_->empty()) return nullptr;
 
-    auto is_in_object = [&position, this](const BlockObject& object) {
+    auto is_in_object = [&position](const BlockObject& object) {
         Eigen::Vector2f top_left = object.top_left();
         Eigen::Vector2f bottom_right = top_left + object.config.px_dim.cast<float>();
 
@@ -219,4 +200,28 @@ engine::Quad BlockObjectManager::uv(const BlockObject& block) const {
     quad.bottom_right = bottom_right;
     return quad;
 }
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::spawn_object(BlockObject object_) {
+    auto [id, object] = pool_->add(std::move(object_));
+    object.id = id;
+
+    bind_vao();
+    vertex_.add(coords(object));
+    uv_.add(uv(object));
+}
+
+//
+// #############################################################################
+//
+
+void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
+
+//
+// #############################################################################
+//
+
 }  // namespace objects

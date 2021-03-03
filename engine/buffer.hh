@@ -46,10 +46,16 @@ public:
     void init(int location);
 
 public:
+    // TODO: maybe add_batch?
     size_t add(const Primitive& primitive);
+
     void update(const Primitive& primitive, size_t& index);
     void update_batch(const Primitive& primitive, size_t& index);
+
     void finish_batch();
+
+    // Get a pointer to the provided index. This can be used to do partial rendering.
+    const unsigned int* offset(size_t index) const;
 
 private:
     void reset_buffers();
