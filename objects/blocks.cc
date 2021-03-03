@@ -21,7 +21,7 @@ void main()
 {
     vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
     gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
-    uv = vertex_uv; //vec2(1.0, 1.0); // vertex_uv;
+    uv = vertex_uv;
 }
 )";
 
@@ -32,7 +32,7 @@ out vec4 fragment;
 uniform sampler2D sampler;
 void main()
 {
-    fragment = vec4(1.0, 0.6, 0.1, 1.0);//texture(sampler, uv);
+    fragment = texture(sampler, uv);
 }
 )";
 }  // namespace
@@ -201,12 +201,6 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     }
     return select_object;
 }
-
-//
-// #############################################################################
-//
-
-void BlockObjectManager::bind_vertex_data() { throw; }
 
 //
 // #############################################################################
