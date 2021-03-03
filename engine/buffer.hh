@@ -43,7 +43,7 @@ public:
     ~Buffer2Df();
 
 public:
-    void init(unsigned int location);
+    void init(int location);
 
 public:
     size_t add(const Primitive& primitive);

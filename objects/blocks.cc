@@ -75,31 +75,12 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
 //
 
 void BlockObjectManager::spawn_object(BlockObject object_) {
-    const size_t vertices_size = vertices_.size();
-
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
 
-    add_space_for_new_object();
-
-    size_t index = vertices_size;
-    assign_uv(object, index);
-    index = vertices_size;
-    assign_coords(object, index);
-
     gl_safe(glBindVertexArray, vertex_array_index_);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_index_);
-    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, element_buffer_index_);
-    gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices_.size(), indices_.data(),
-            GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_index_uv_);
-    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_uv_.size(), vertices_uv_.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, element_buffer_index_uv_);
-    gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices_uv_.size(), indices_uv_.data(),
-            GL_STATIC_DRAW);
-
+    vertex_.add(coords(object));
+    uv_.add(uv(object));
     gl_safe(glBindVertexArray, 0);
 }
 
@@ -118,29 +99,11 @@ void BlockObjectManager::init() {
     shader_.init();
     texture_.init();
 
-    // vertex array
     gl_safe(glGenVertexArrays, 1, &vertex_array_index_);
     gl_safe(glBindVertexArray, vertex_array_index_);
 
-    // vertex buffer 1
-    gl_safe(glGenBuffers, 1, &vertex_buffer_index_);
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_);
-    gl_safe(glGenBuffers, 1, &element_buffer_index_);
-    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_index_);
-
-    int world_position = glGetAttribLocation(shader_.get_program_id(), "world_position");
-    gl_safe(glEnableVertexAttribArray, world_position);
-    gl_safe(glVertexAttribPointer, world_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-    // vertex buffer 2
-    gl_safe(glGenBuffers, 1, &vertex_buffer_index_uv_);
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_index_uv_);
-    gl_safe(glGenBuffers, 1, &element_buffer_index_uv_);
-    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_index_uv_);
-
-    int uv_position = glGetAttribLocation(shader_.get_program_id(), "vertex_uv");
-    gl_safe(glEnableVertexAttribArray, uv_position);
-    gl_safe(glVertexAttribPointer, uv_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    vertex_.init(glGetAttribLocation(shader_.get_program_id(), "world_position"));
+    uv_.init(glGetAttribLocation(shader_.get_program_id(), "vertex_uv"));
 
     gl_safe(glBindVertexArray, 0);
 
@@ -161,13 +124,13 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
 
     size_t index = 0;
+    size_t num_objects = 0;
     for (auto object : pool_->iterate()) {
-        assign_coords(*object, index);
+        vertex_.update(coords(*object), index);
+        num_objects++;
     }
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_index_);
-    gl_safe(glBufferData, GL_ARRAY_BUFFER, sizeof(Vertex) * vertices_.size(), vertices_.data(), GL_STREAM_DRAW);
 
-    gl_safe(glDrawElements, GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, (void*)0);
+    gl_safe(glDrawElements, GL_TRIANGLES, 3 * 2 * num_objects, GL_UNSIGNED_INT, (void*)0);
 }
 
 //
@@ -249,78 +212,36 @@ void BlockObjectManager::bind_vertex_data() { throw; }
 // #############################################################################
 //
 
-void BlockObjectManager::assign_coords(const BlockObject& block, size_t& index) {
-    auto& top_left_vertex = vertices_.at(index++);
-    auto& top_right_vertex = vertices_.at(index++);
-    auto& bottom_left_vertex = vertices_.at(index++);
-    auto& bottom_right_vertex = vertices_.at(index++);
-
+engine::Quad BlockObjectManager::coords(const BlockObject& block) const {
+    engine::Quad quad;
     const auto& config = config_.blocks[block.config_id];
 
     const Eigen::Vector2f top_left = block.offset;
     const Eigen::Vector2f bottom_right = top_left + config.px_dim.cast<float>();
 
-    top_left_vertex.point = top_left;
-    top_right_vertex.point = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    bottom_left_vertex.point = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    bottom_right_vertex.point = bottom_right;
+    quad.top_left = top_left;
+    quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    quad.bottom_left = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    quad.bottom_right = bottom_right;
+    return quad;
 }
 
 //
 // #############################################################################
 //
 
-void BlockObjectManager::assign_uv(const BlockObject& block, size_t& index) {
-    auto& top_left_vertex = vertices_uv_.at(index++);
-    auto& top_right_vertex = vertices_uv_.at(index++);
-    auto& bottom_left_vertex = vertices_uv_.at(index++);
-    auto& bottom_right_vertex = vertices_uv_.at(index++);
-
+engine::Quad BlockObjectManager::uv(const BlockObject& block) const {
+    engine::Quad quad;
     const auto& config = config_.blocks[block.config_id];
 
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
     const Eigen::Vector2f top_left = config.px_start.cast<float>().cwiseQuotient(texture_dim);
     const Eigen::Vector2f bottom_right = (config.px_start + config.px_dim).cast<float>().cwiseQuotient(texture_dim);
 
-    top_left_vertex.point = top_left;
-    top_right_vertex.point = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    bottom_left_vertex.point = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    bottom_right_vertex.point = bottom_right;
-}
-
-//
-// #############################################################################
-//
-
-void BlockObjectManager::add_space_for_new_object() {
-    enum Ordering : int8_t { kTopLeft = 0, kTopRight = 1, kBottomLeft = 2, kBottomRight = 3, kSize = 4 };
-    size_t start = vertices_.size();
-
-    // 4 coordinates per object
-    vertices_.emplace_back(Vertex{});
-    vertices_.emplace_back(Vertex{});
-    vertices_.emplace_back(Vertex{});
-    vertices_.emplace_back(Vertex{});
-
-    vertices_uv_.emplace_back(Vertex{});
-    vertices_uv_.emplace_back(Vertex{});
-    vertices_uv_.emplace_back(Vertex{});
-    vertices_uv_.emplace_back(Vertex{});
-
-    // Upper triangle
-    indices_.emplace_back(start + Ordering::kTopLeft);
-    indices_.emplace_back(start + Ordering::kTopRight);
-    indices_.emplace_back(start + Ordering::kBottomLeft);
-    indices_uv_.emplace_back(start + Ordering::kTopLeft);
-    indices_uv_.emplace_back(start + Ordering::kTopRight);
-    indices_uv_.emplace_back(start + Ordering::kBottomLeft);
-
-    // Lower triangle
-    indices_.emplace_back(start + Ordering::kBottomRight);
-    indices_.emplace_back(start + Ordering::kBottomLeft);
-    indices_.emplace_back(start + Ordering::kTopRight);
-    indices_uv_.emplace_back(start + Ordering::kBottomRight);
-    indices_uv_.emplace_back(start + Ordering::kBottomLeft);
-    indices_uv_.emplace_back(start + Ordering::kTopRight);
+    quad.top_left = top_left;
+    quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    quad.bottom_left = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    quad.bottom_right = bottom_right;
+    return quad;
 }
 }  // namespace objects

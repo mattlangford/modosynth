@@ -2,8 +2,9 @@
 
 #include <OpenGL/gl3.h>
 
-#include "engine/gl.hh"
 #include <iostream>
+
+#include "engine/gl.hh"
 
 namespace engine {
 template <typename T>
@@ -27,15 +28,15 @@ Buffer2Df::~Buffer2Df() { reset_buffers(); }
 // #############################################################################
 //
 
-void Buffer2Df::init(unsigned int location) {
+void Buffer2Df::init(int location) {
     gl_safe(glGenBuffers, 1, &vertex_buffer_);
     gl_safe(glGenBuffers, 1, &element_buffer_);
 
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
-    //gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+    // gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
 
     gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
-    //gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
+    // gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
 
     gl_safe(glEnableVertexAttribArray, location);
     gl_safe(glVertexAttribPointer, location, 2, GL_FLOAT, GL_FALSE, 0, 0);
@@ -77,14 +78,11 @@ size_t Buffer2Df::add(const Primitive& primitive) {
 
     const size_t index = vertices_.size();
     std::visit(AddImpl{vertices_, indices_}, primitive);
-    return index;
 
     // Since a  new element was added, we'll need to update the buffers. Assume neither will be updated often at first,
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-
-    // TODO: GL_ELEMENT_ARRAY_BUFFER instead of GL_ARRAY_BUFFER
-    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, element_buffer_);
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
     gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
 
     return index;

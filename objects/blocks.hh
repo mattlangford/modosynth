@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <vector>
 
+#include "engine/buffer.hh"
 #include "engine/object_manager.hh"
 #include "engine/pool.hh"
 #include "engine/shader.hh"
@@ -72,11 +73,8 @@ public:
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
-    void bind_vertex_data();
-
-    void assign_coords(const BlockObject& block, size_t& index);
-    void assign_uv(const BlockObject& block, size_t& index);
-    void add_space_for_new_object();
+    engine::Quad coords(const BlockObject& block) const;
+    engine::Quad uv(const BlockObject& block) const;
 
 private:
     const Config config_;
@@ -88,21 +86,10 @@ private:
 
     std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
 
-    unsigned int vertex_buffer_index_ = -1;
-    unsigned int element_buffer_index_ = -1;
-    unsigned int vertex_buffer_index_uv_ = -1;
-    unsigned int element_buffer_index_uv_ = -1;
-
     unsigned int vertex_array_index_ = -1;
     int screen_from_world_loc_;
 
-    struct Vertex {
-        Eigen::Vector2f point;
-    };
-    std::vector<Vertex> vertices_;
-    std::vector<unsigned int> indices_;
-
-    std::vector<Vertex> vertices_uv_;
-    std::vector<unsigned int> indices_uv_;
+    engine::Buffer2Df vertex_;
+    engine::Buffer2Df uv_;
 };
 }  // namespace objects
