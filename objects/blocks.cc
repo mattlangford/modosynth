@@ -139,8 +139,7 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     }
 
     if (selected_) {
-        selected_->real_offset += event.delta_position;
-        selected_->offset = selected_->real_offset.cast<int>().cast<float>();
+        selected_->offset += event.delta_position;
     } else {
         selected_ = select(event.mouse_position);
     }
@@ -158,12 +157,8 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
         return;
     }
 
-    BlockObject object;
     static size_t id = 0;
-    object.real_offset = {100, 200};
-    object.offset = {100, 200};
-    object.config_id = id++ % 2;
-    spawn_object(object);
+    spawn_object(BlockObject{{}, config_.blocks[id++ % 2], Eigen::Vector2f{100, 200}});
 }
 
 //
@@ -174,8 +169,8 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     if (pool_->empty()) return nullptr;
 
     auto is_in_object = [&position, this](const BlockObject& object) {
-        Eigen::Vector2f top_left = object.offset;
-        Eigen::Vector2f bottom_right = top_left + config_.blocks[object.config_id].px_dim.cast<float>();
+        Eigen::Vector2f top_left = object.top_left();
+        Eigen::Vector2f bottom_right = top_left + object.config.px_dim.cast<float>();
 
         return position.x() >= top_left.x() && position.x() < bottom_right.x() && position.y() >= top_left.y() &&
                position.y() < bottom_right.y();
@@ -197,10 +192,8 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 
 engine::Quad BlockObjectManager::coords(const BlockObject& block) const {
     engine::Quad quad;
-    const auto& config = config_.blocks[block.config_id];
-
-    const Eigen::Vector2f top_left = block.offset;
-    const Eigen::Vector2f bottom_right = top_left + config.px_dim.cast<float>();
+    const Eigen::Vector2f top_left = block.top_left();
+    const Eigen::Vector2f bottom_right = top_left + block.config.px_dim.cast<float>();
 
     quad.top_left = top_left;
     quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
@@ -215,11 +208,10 @@ engine::Quad BlockObjectManager::coords(const BlockObject& block) const {
 
 engine::Quad BlockObjectManager::uv(const BlockObject& block) const {
     engine::Quad quad;
-    const auto& config = config_.blocks[block.config_id];
-
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
-    const Eigen::Vector2f top_left = config.px_start.cast<float>().cwiseQuotient(texture_dim);
-    const Eigen::Vector2f bottom_right = (config.px_start + config.px_dim).cast<float>().cwiseQuotient(texture_dim);
+    const Eigen::Vector2f top_left = block.config.px_start.cast<float>().cwiseQuotient(texture_dim);
+    const Eigen::Vector2f bottom_right =
+        (block.config.px_start + block.config.px_dim).cast<float>().cwiseQuotient(texture_dim);
 
     quad.top_left = top_left;
     quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};

@@ -15,20 +15,6 @@ namespace objects {
 // #############################################################################
 //
 
-struct BlockObject {
-    engine::ObjectId id;
-
-    // Used to associate this block with it's configuration
-    size_t config_id;
-
-    Eigen::Vector2f real_offset;
-    Eigen::Vector2f offset;  // floor'd version of the real offset
-};
-
-//
-// #############################################################################
-//
-
 struct Config {
     Config(const std::filesystem::path& path);
 
@@ -45,6 +31,22 @@ struct Config {
     };
 
     std::vector<BlockConfig> blocks;
+};
+
+//
+// #############################################################################
+//
+
+struct BlockObject {
+    engine::ObjectId id;
+
+    // This is a reference to the BlockObjectManager owned configuration
+    const Config::BlockConfig& config;
+
+    Eigen::Vector2f offset;
+
+    // To get it more pixel-y, this will only move in single pixel increments.
+    inline Eigen::Vector2f top_left() const { return offset.cast<int>().cast<float>(); };
 };
 
 //

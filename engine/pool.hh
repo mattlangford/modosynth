@@ -23,9 +23,15 @@ public:
 
     virtual ~AbstractObjectPool() = default;
 
+    ///
+    /// @brief Add or remove an object. No active Object references should be invalidated (unless it's been removed)
+    ///
     virtual std::pair<ObjectId, Object&> add(Object object) = 0;
     virtual void remove(const ObjectId& id) = 0;
 
+    ///
+    /// @brief Get the object referenced by the ID. If the ObjectId isn't valid the reference won't be either.
+    ///
     virtual Object& get(const ObjectId& id) = 0;
     virtual const Object& get(const ObjectId& id) const = 0;
 
