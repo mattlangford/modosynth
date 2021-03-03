@@ -117,11 +117,11 @@ void BlockObjectManager::init() {
 void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     if (pool_->empty()) return;
 
-    shader_.activate();
-    texture_.activate();
-
     gl_safe(glBindVertexArray, vertex_array_index_);
     gl_safe(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
+
+    shader_.activate();
+    texture_.activate();
 
     size_t index = 0;
     size_t num_objects = 0;

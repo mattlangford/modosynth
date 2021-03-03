@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "engine/events.hh"
+#include "engine/shader.hh"
 
 namespace engine {
 class AbstractObjectManager {
@@ -29,5 +30,33 @@ public:
     ///
     virtual void handle_mouse_event(const MouseEvent& event) = 0;
     virtual void handle_keyboard_event(const KeyboardEvent& event) = 0;
+};
+
+//
+// #############################################################################
+//
+
+///
+/// @brief Provides basic Vertex Array Object support as well as automatically setting the screen_from_world matrix
+///
+class AbstractSingleShaderObjectManager : AbstractObjectManager {
+public:
+    AbstractSingleShaderObjectManager(std::string vertex, std::string fragment,
+                                      std::optional<std::string> geometry = std::nullopt);
+    virtual ~AbstractSingleShaderObjectManager() = default;
+
+    void init() override final;
+
+    void render(const Eigen::Matrix3f& screen_from_world) override final;
+
+protected:
+    virtual void init_with_vao() = 0;
+    virtual void render_with_vao() = 0;
+
+private:
+    unsigned int vertex_array_object_;
+    int screen_from_world_loc_;
+
+    Shader shader_;
 };
 }  // namespace engine
