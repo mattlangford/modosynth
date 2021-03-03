@@ -126,9 +126,10 @@ void BlockObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
     size_t index = 0;
     size_t num_objects = 0;
     for (auto object : pool_->iterate()) {
-        vertex_.update(coords(*object), index);
+        vertex_.update_batch(coords(*object), index);
         num_objects++;
     }
+    vertex_.finish_batch();
 
     gl_safe(glDrawElements, GL_TRIANGLES, 3 * 2 * num_objects, GL_UNSIGNED_INT, (void*)0);
 }

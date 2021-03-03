@@ -48,6 +48,8 @@ public:
 public:
     size_t add(const Primitive& primitive);
     void update(const Primitive& primitive, size_t& index);
+    void update_batch(const Primitive& primitive, size_t& index);
+    void finish_batch();
 
 private:
     void reset_buffers();

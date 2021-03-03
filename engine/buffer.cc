@@ -51,8 +51,11 @@ size_t Buffer2Df::add(const Primitive& primitive) {
         std::vector<Eigen::Vector2f>& vertices;
         std::vector<unsigned int>& indices;
 
-        void operator()(const Point&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
-        void operator()(const Line&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
+        void operator()(const Point& p) {
+            indices.emplace_back(vertices.size());
+            vertices.emplace_back(p.point);
+        }
+        void operator()(const Line&) { throw std::runtime_error("Unsupported primitive!"); }
         void operator()(const Triangle&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
         void operator()(const Quad& q) {
             enum Ordering : int8_t { kTopLeft = 0, kTopRight = 1, kBottomLeft = 2, kBottomRight = 3, kSize = 4 };
@@ -93,11 +96,20 @@ size_t Buffer2Df::add(const Primitive& primitive) {
 //
 
 void Buffer2Df::update(const Primitive& primitive, size_t& index) {
+    update_batch(primitive, index);
+    finish_batch();
+}
+
+//
+// #############################################################################
+//
+
+void Buffer2Df::update_batch(const Primitive& primitive, size_t& index) {
     struct UpdateImpl {
         size_t& index;
         std::vector<Eigen::Vector2f>& vertices;
 
-        void operator()(const Point&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
+        void operator()(const Point& p) { vertices.at(index++) = p.point; }
         void operator()(const Line&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
         void operator()(const Triangle&) { throw std::runtime_error("Only supporting Quads in primitive variant."); }
         void operator()(const Quad& q) {
@@ -109,7 +121,13 @@ void Buffer2Df::update(const Primitive& primitive, size_t& index) {
     };
 
     std::visit(UpdateImpl{index, vertices_}, primitive);
+}
 
+//
+// #############################################################################
+//
+
+void Buffer2Df::finish_batch() {
     // Only need to update the vertex array since the number of elements didn't change
     gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
     gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STREAM_DRAW);
