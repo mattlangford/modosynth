@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "engine/gl.hh"
+#include "objects/ports.hh"
 #include "yaml-cpp/yaml.h"
 
 namespace objects {
@@ -64,9 +65,11 @@ Config::Config(const std::filesystem::path& path) {
 // #############################################################################
 //
 
-BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path)
+BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path,
+                                       std::shared_ptr<PortsObjectManager> ports_manager)
     : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
       config_(config_path),
+      ports_manager_(std::move(ports_manager)),
       texture_(config_.texture_path),
       pool_(std::make_unique<engine::ListObjectPool<BlockObject>>()) {}
 
@@ -212,6 +215,8 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     bind_vao();
     vertex_.add(coords(object));
     uv_.add(uv(object));
+
+    ports_manager_->spawn_object(PortsObject::from_block(object));
 }
 
 //

@@ -11,6 +11,8 @@
 
 namespace objects {
 
+class PortsObjectManager;
+
 //
 // #############################################################################
 //
@@ -55,7 +57,7 @@ struct BlockObject {
 
 class BlockObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
-    BlockObjectManager(const std::filesystem::path& path_config);
+    BlockObjectManager(const std::filesystem::path& path_config, std::shared_ptr<PortsObjectManager> ports_manager);
     virtual ~BlockObjectManager() = default;
 
 protected:
@@ -82,6 +84,8 @@ private:
 
 private:
     const Config config_;
+
+    std::shared_ptr<PortsObjectManager> ports_manager_;
 
     BlockObject* selected_ = nullptr;
 

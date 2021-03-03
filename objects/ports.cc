@@ -35,6 +35,10 @@ void main()
 )";
 }  // namespace
 
+//
+// #############################################################################
+//
+
 PortsObject PortsObject::from_block(const BlockObject& parent) {
     const float width = parent.config.px_dim.x();
     const float height = parent.config.px_dim.y();
@@ -64,7 +68,8 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
 //
 
 PortsObjectManager::PortsObjectManager()
-    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text) {}
+    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
+      pool_(std::make_unique<engine::ListObjectPool<PortsObject>>()) {}
 
 //
 // #############################################################################
@@ -98,7 +103,7 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
     if (object_.offsets.empty()) throw std::runtime_error("Trying to spawn PortsObject with no ports!");
 
     auto [id, object] = pool_->add(std::move(object_));
-    tobject.pool_id = id;
+    object.pool_id = id;
 
     std::optional<size_t> starting_index;
 
@@ -116,7 +121,7 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
 // #############################################################################
 //
 
-void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
+void PortsObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
 
 //
 // #############################################################################
