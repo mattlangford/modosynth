@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "engine/gl.hh"
+#include "engine/utils.hh"
 #include "objects/ports.hh"
 #include "yaml-cpp/yaml.h"
 
@@ -155,9 +156,7 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     auto is_in_object = [&position](const BlockObject& object) {
         Eigen::Vector2f top_left = object.top_left();
         Eigen::Vector2f bottom_right = top_left + object.config.px_dim.cast<float>();
-
-        return position.x() >= top_left.x() && position.x() < bottom_right.x() && position.y() >= top_left.y() &&
-               position.y() < bottom_right.y();
+        return engine::is_in_rectangle(position, top_left, bottom_right);
     };
 
     // TODO Iterating backwards so we select the most recently added object easier

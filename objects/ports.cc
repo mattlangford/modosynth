@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "engine/gl.hh"
+#include "engine/utils.hh"
 #include "objects/blocks.hh"
 
 namespace objects {
@@ -168,8 +169,30 @@ void PortsObjectManager::despawn_object(const engine::ObjectId& id) { pool_->rem
 // #############################################################################
 //
 
+void PortsObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
+    if (event.right || !event.clicked) {
+        return;
+    }
+
+    if (pool_->empty()) return;
+
+    const Eigen::Vector2f half_dim{kHalfPortWidth, kHalfPortHeight};
+
+    // TODO Iterating backwards so we select the most recently added object easier
+    for (auto object : pool_->iterate()) {
+        for (size_t offset = 0; offset < object->offsets.size(); ++offset) {
+            const Eigen::Vector2f center = object->parent_block.top_left() + object->offsets[offset];
+            const Eigen::Vector2f top_left = center - half_dim;
+            const Eigen::Vector2f bottom_right = center + half_dim;
+
+            if (engine::is_in_rectangle(event.mouse_position, top_left, bottom_right)) {
+                std::cout << "Clicked!\n";
+            }
+        }
+    }
+}
+
 // no-ops
 void PortsObjectManager::update(float) {}
-void PortsObjectManager::handle_mouse_event(const engine::MouseEvent&) {}
 void PortsObjectManager::handle_keyboard_event(const engine::KeyboardEvent&) {}
 }  // namespace objects
