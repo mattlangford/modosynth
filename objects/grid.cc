@@ -38,17 +38,17 @@ layout (line_strip, max_vertices = 512) out;
 out float color;
 
 void vertical_line(float x) {
-    gl_Position = vec4(x, 1.0, 0.0, 1.0);
+    gl_Position = vec4(x, 1.0, 1.0, 1.0);
     EmitVertex();
-    gl_Position = vec4(x, -1.0, 0.0, 1.0);
+    gl_Position = vec4(x, -1.0, 1.0, 1.0);
     EmitVertex();
     EndPrimitive();
 }
 
 void horizontal_line(float y) {
-    gl_Position = vec4(1.0, y, 0.0, 1.0);
+    gl_Position = vec4(1.0, y, 1.0, 1.0);
     EmitVertex();
-    gl_Position = vec4(-1.0, y, 0.0, 1.0);
+    gl_Position = vec4(-1.0, y, 1.0, 1.0);
     EmitVertex();
     EndPrimitive();
 }

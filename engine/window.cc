@@ -58,6 +58,10 @@ void Window::init() {
 
     gl_safe(glEnable, GL_BLEND);
     gl_safe(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glDepthRange(0.0f, 1.0f);
 
     object_manager_.init();
 }
@@ -67,7 +71,7 @@ void Window::init() {
 //
 
 bool Window::render_loop() {
-    gl_safe(glClear, GL_COLOR_BUFFER_BIT);
+    gl_safe(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     gl_safe(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
     object_manager_.render(get_screen_from_world());
