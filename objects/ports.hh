@@ -5,6 +5,7 @@
 #include "engine/buffer.hh"
 #include "engine/object_manager.hh"
 #include "engine/pool.hh"
+#include "engine/texture.hh"
 
 namespace objects {
 
@@ -52,5 +53,6 @@ private:
     int object_position_loc_;
 
     engine::Buffer2Df buffer_;
+    engine::Texture texture_;
 };
 }  // namespace objects

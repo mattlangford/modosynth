@@ -2,7 +2,7 @@ cc_library(
     name = "objects",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.hh"]),
-    data = glob(["*.yml"]),
+    data = glob(["*.yml", "*.bmp"]),
     visibility = ["//visibility:public"],
     deps = [
         "@glfw//:glfw",

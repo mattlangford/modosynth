@@ -12,8 +12,8 @@ int main() {
     auto ports_manager = std::make_shared<objects::PortsObjectManager>();
 
     object_manager.add_manager(std::make_shared<objects::GridObjectManager>(25, 25));
-    object_manager.add_manager(std::make_shared<objects::BlockObjectManager>("objects/blocks.yml", ports_manager));
     object_manager.add_manager(ports_manager);
+    object_manager.add_manager(std::make_shared<objects::BlockObjectManager>("objects/blocks.yml", ports_manager));
 
     engine::Window window{kWidth, kHeight, std::move(object_manager)};
 
