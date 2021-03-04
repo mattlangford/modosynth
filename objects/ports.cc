@@ -35,10 +35,10 @@ void main()
 static std::string geometry_shader_text = R"(
 #version 330 core
 layout (points) in;
-layout (triangle_strip, max_vertices = 4) out;
+layout (triangle_strip, max_vertices = 64) out;
 
 uniform mat3 screen_from_world;
-uniform vec2 half_dim;
+uniform float radius;
 
 // We have to do the world->screen transform in the geometry shader since the whole shape needs to be transformed
 vec4 to_screen(vec2 world_position)
@@ -49,29 +49,37 @@ vec4 to_screen(vec2 world_position)
 }
 
 void main() {
-    // bottom right
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + half_dim);
-    EmitVertex();
+    int count = 25;
+    float angle_inc = 2 * 3.1415926592 / count;
 
-    // top right
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(half_dim.x, -half_dim.y));
-    EmitVertex();
+    // // top right
+    // gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(half_dim.x, -half_dim.y));
+    // EmitVertex();
 
-    // bottom left
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(-half_dim.x, half_dim.y));
-    EmitVertex();
+    // // bottom left
+    // gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(-half_dim.x, half_dim.y));
+    // EmitVertex();
 
-    // top left
-    gl_Position = to_screen(gl_in[0].gl_Position.xy - half_dim);
-    EmitVertex();
+    // // top left
+    // gl_Position = to_screen(gl_in[0].gl_Position.xy - half_dim);
+    // EmitVertex();
+
+    vec4 center = to_screen(gl_in[0].gl_Position.xy);
+
+    // Safe, GLfloats can represent small integers exactly
+    float angle = 0;
+    for (int i = 0; i <= count; i++, angle += angle_inc) {
+        gl_Position = to_screen(gl_in[0].gl_Position.xy + radius * vec2(cos(angle), -sin(angle)));
+        EmitVertex();
+
+        gl_Position = center;
+        EmitVertex();
+    }
 
     EndPrimitive();
 })";
 
-static constexpr float kPortWidth = 2.0;   // in px
-static constexpr float kPortHeight = 2.0;  // in px
-static constexpr float kHalfPortWidth = 0.5 * kPortWidth;
-static constexpr float kHalfPortHeight = 0.5 * kPortHeight;
+static constexpr float kPortRadius = 1.5;  // in px
 }  // namespace
 
 //
@@ -83,8 +91,8 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
     const float height = parent.config.px_dim.y();
 
     // We'll only use this much of the height for putting ports
-    const float effective_height = height;
-    const float top_spacing = height - effective_height;
+    const float effective_height = 0.9 * height;
+    const float top_spacing = (height - effective_height) / 2.0;
 
     const size_t inputs = parent.config.inputs;
     const size_t outputs = parent.config.outputs;
@@ -93,14 +101,18 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
         throw std::runtime_error("Too many ports for the given object!");
     }
 
+    // Pixels between each port
     const float input_spacing = effective_height / (inputs + 1);
     const float output_spacing = effective_height / (outputs + 1);
 
+    // Create a bit of overlap between bock and port
+    const float radius_offset = 0.1 * kPortRadius;
+
     std::vector<Eigen::Vector2f> offsets;
     for (size_t i = 0; i < inputs; ++i)
-        offsets.push_back(Eigen::Vector2f{-kHalfPortWidth, (i + 1) * input_spacing + top_spacing});
+        offsets.push_back(Eigen::Vector2f{-radius_offset, (i + 1) * input_spacing + top_spacing});
     for (size_t i = 0; i < outputs; ++i)
-        offsets.push_back(Eigen::Vector2f{width + kHalfPortWidth, (i + 1) * output_spacing + top_spacing});
+        offsets.push_back(Eigen::Vector2f{width + radius_offset, (i + 1) * output_spacing + top_spacing});
 
     return PortsObject{{}, {}, std::move(offsets), parent};
 }
@@ -120,7 +132,9 @@ PortsObjectManager::PortsObjectManager()
 void PortsObjectManager::init_with_vao() {
     buffer_.init(glGetAttribLocation(get_shader().get_program_id(), "port_offset"));
     object_position_loc_ = glGetUniformLocation(get_shader().get_program_id(), "object_position");
-    half_dim_loc_ = glGetUniformLocation(get_shader().get_program_id(), "half_dim");
+
+    get_shader().activate();
+    gl_safe(glUniform1f, glGetUniformLocation(get_shader().get_program_id(), "radius"), kPortRadius);
 }
 
 //
@@ -129,7 +143,6 @@ void PortsObjectManager::init_with_vao() {
 
 void PortsObjectManager::render_with_vao() {
     if (pool_->empty()) return;
-    gl_safe(glUniform2f, half_dim_loc_, kHalfPortWidth, kHalfPortHeight);
 
     for (auto object : pool_->iterate()) {
         Eigen::Vector2f object_position = object->parent_block.top_left();
@@ -176,16 +189,11 @@ void PortsObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 
     if (pool_->empty()) return;
 
-    const Eigen::Vector2f half_dim{kHalfPortWidth, kHalfPortHeight};
-
     // TODO Iterating backwards so we select the most recently added object easier
     for (auto object : pool_->iterate()) {
         for (size_t offset = 0; offset < object->offsets.size(); ++offset) {
             const Eigen::Vector2f center = object->parent_block.top_left() + object->offsets[offset];
-            const Eigen::Vector2f top_left = center - half_dim;
-            const Eigen::Vector2f bottom_right = center + half_dim;
-
-            if (engine::is_in_rectangle(event.mouse_position, top_left, bottom_right)) {
+            if ((center - event.mouse_position).squaredNorm() <= kPortRadius * kPortRadius) {
                 std::cout << "Clicked!\n";
             }
         }
