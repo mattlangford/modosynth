@@ -1,15 +1,15 @@
 ---
 texture_path: "/Users/mlangford/Downloads/test.bmp"
 blocks:
+    - name: "vco_mega"
+      description: "Voltage Controlled Oscillator, but MEGA"
+      px_start: [32, 16]
+      px_dim: [32, 32]
+      inputs: 2
+      outputs: 5
     - name: "vco"
       description: "Voltage Controlled Oscillator"
       px_start: [0, 0]
       px_dim: [32, 16]
       inputs: 1
       outputs: 1
-    - name: "vco_mega"
-      description: "Voltage Controlled Oscillator, but MEGA"
-      px_start: [32, 16]
-      px_dim: [32, 32]
-      inputs: 1
-      outputs: 5

@@ -34,7 +34,7 @@ int compile_shader(int type, const std::string& source) {
         // We don't need the shader anymore.
         glDeleteShader(shader);
 
-        throw std::runtime_error("Failed to compile shader: " + log);
+        throw std::runtime_error("Failed to compile " + std::to_string(type) + " shader: " + log);
     }
     return shader;
 }

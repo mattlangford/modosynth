@@ -50,6 +50,7 @@ private:
     std::unique_ptr<engine::AbstractObjectPool<PortsObject>> pool_;
 
     int object_position_loc_;
+    int half_dim_loc_;
 
     engine::Buffer2Df buffer_;
 };

@@ -83,7 +83,7 @@ size_t Buffer2Df::add(const Primitive& primitive) {
         }
     };
 
-    const size_t index = indices_.size();
+    const size_t index = get_index_count();
     std::visit(AddImpl{vertices_, indices_}, primitive);
 
     // Since a new element was added, we'll need to update the buffers. Assume neither will be updated often at first,
@@ -144,7 +144,25 @@ void Buffer2Df::finish_batch() {
 // #############################################################################
 //
 
-const unsigned int* Buffer2Df::offset(size_t index) const { return &indices_[index]; }
+void Buffer2Df::print() const {
+    for (unsigned int index : indices_)
+        std::cout << "Index: " << index << ", v: " << vertices_[index].transpose() << "\n";
+}
+
+//
+// #############################################################################
+//
+
+void Buffer2Df::bind() {
+    gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
+    gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
+}
+
+//
+// #############################################################################
+//
+
+size_t Buffer2Df::get_index_count() const { return indices_.size(); }
 
 //
 // #############################################################################

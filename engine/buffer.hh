@@ -54,8 +54,9 @@ public:
 
     void finish_batch();
 
-    // Get a pointer to the provided index. This can be used to do partial rendering.
-    const unsigned int* offset(size_t index) const;
+    void print() const;
+    void bind();
+    size_t get_index_count() const;
 
 private:
     void reset_buffers();
