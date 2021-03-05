@@ -80,7 +80,7 @@ void main() {
 
     float positive_x = start_x;
     float negative_x = start_x;
-    while (positive_x <= 1.0)
+    while (positive_x <= 1.5)
     {
         positive_x += grid_width;
         negative_x -= grid_width;
@@ -90,7 +90,7 @@ void main() {
 
     float positive_y = start_y;
     float negative_y = start_y;
-    while (positive_y <= 1.0)
+    while (positive_y <= 1.5)
     {
         positive_y += grid_height;
         negative_y -= grid_height;

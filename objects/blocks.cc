@@ -102,8 +102,13 @@ void BlockObjectManager::render_with_vao() {
     }
     vertex_.finish_batch();
 
-    // 3 vertices per triangle, 2 triangles per object
-    gl_safe(glDrawElements, GL_TRIANGLES, 3 * 2 * num_objects, GL_UNSIGNED_INT, (void*)0);
+    auto ptrs = pool_->iterate();
+    std::sort(ptrs.begin(), ptrs.end(), [](const BlockObject* lhs, const BlockObject* rhs) { return lhs->z > rhs->z; });
+
+    for (auto object : ptrs) {
+        // 3 vertices per triangle, 2 triangles per object
+        gl_safe(glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * object->block_id));
+    }
 }
 
 //
@@ -147,7 +152,8 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     static size_t id = 0;
-    spawn_object(BlockObject{{}, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
+    spawn_object(
+        BlockObject{{}, {}, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
 }
 
 //
@@ -213,6 +219,7 @@ engine::Quad2Df BlockObjectManager::uv(const BlockObject& block) const {
 void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
+    object.block_id = vertex_.get_index_count();
 
     bind_vao();
     vertex_.add(coords(object));

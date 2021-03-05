@@ -41,6 +41,7 @@ struct Config {
 
 struct BlockObject {
     engine::ObjectId id;
+    size_t block_id;
 
     // This is a reference to the BlockObjectManager owned configuration
     const Config::BlockConfig& config;
