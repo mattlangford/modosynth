@@ -13,3 +13,9 @@ blocks:
       px_dim: [32, 32]
       inputs: 2
       outputs: 5
+    - name: "lpf"
+      description: "Low Pass Filter"
+      px_start: [32, 48]
+      px_dim: [32, 16]
+      inputs: 3
+      outputs: 1

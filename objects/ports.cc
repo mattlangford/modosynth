@@ -93,8 +93,8 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
     const float height = parent.config.px_dim.y();
 
     // We'll only use this much of the height for putting ports
-    const float effective_height = height;
-    const float top_spacing = height - effective_height;
+    const size_t effective_height = height;
+    const size_t top_spacing = height - effective_height;
 
     const size_t inputs = parent.config.inputs;
     const size_t outputs = parent.config.outputs;
@@ -103,8 +103,8 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
         throw std::runtime_error("Too many ports for the given object!");
     }
 
-    const float input_spacing = effective_height / (inputs + 1);
-    const float output_spacing = effective_height / (outputs + 1);
+    const size_t input_spacing = effective_height / (inputs + 1);
+    const size_t output_spacing = effective_height / (outputs + 1);
 
     std::vector<Eigen::Vector2f> offsets;
     for (size_t i = 0; i < inputs; ++i)

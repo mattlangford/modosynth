@@ -147,7 +147,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     static size_t id = 0;
-    spawn_object(BlockObject{{}, config_.blocks[id++ % 2], Eigen::Vector2f{100, 200}, next_z()});
+    spawn_object(BlockObject{{}, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
 }
 
 //
@@ -169,7 +169,6 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 
         select_object = object;
     }
-    std::cout << std::endl;
     return select_object;
 }
 
