@@ -50,6 +50,7 @@ void AbstractSingleShaderObjectManager::render(const Eigen::Matrix3f& screen_fro
     render_with_vao();
 
     gl_safe(glBindVertexArray, 0);
+    gl_safe(glUseProgram, 0);
 }
 
 //
