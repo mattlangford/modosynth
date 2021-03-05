@@ -16,28 +16,32 @@ namespace engine {
 
 template <typename T, int Dim>
 struct Point {
-    Eigen::Matrix<T, Dim, 1> point;
+    using Storage = Eigen::Matrix<T, Dim, 1>;
+    Storage point;
 };
 
 template <typename T, int Dim>
 struct Line {
-    Eigen::Matrix<T, Dim, 1> start;
-    Eigen::Matrix<T, Dim, 1> end;
+    using Storage = Eigen::Matrix<T, Dim, 1>;
+    Storage start;
+    Storage end;
 };
 
 template <typename T, int Dim>
 struct Triangle {
-    Eigen::Matrix<T, Dim, 1> p0;
-    Eigen::Matrix<T, Dim, 1> p1;
-    Eigen::Matrix<T, Dim, 1> p2;
+    using Storage = Eigen::Matrix<T, Dim, 1>;
+    Storage p0;
+    Storage p1;
+    Storage p2;
 };
 
 template <typename T, int Dim>
 struct Quad {
-    Eigen::Matrix<T, Dim, 1> top_left;
-    Eigen::Matrix<T, Dim, 1> top_right;
-    Eigen::Matrix<T, Dim, 1> bottom_left;
-    Eigen::Matrix<T, Dim, 1> bottom_right;
+    using Storage = Eigen::Matrix<T, Dim, 1>;
+    Storage top_left;
+    Storage top_right;
+    Storage bottom_left;
+    Storage bottom_right;
 };
 
 template <typename T, int Dim>
@@ -129,7 +133,7 @@ private:
     using Storage = Eigen::Matrix<T, Dim, 1>;
 
     struct AddImpl {
-        std::vector<Eigen::Matrix<T, Dim, 1>>& vertices;
+        std::vector<Storage>& vertices;
         std::vector<unsigned int>& indices;
 
         void operator()(const Point& p) {
@@ -169,7 +173,7 @@ private:
 
     struct UpdateImpl {
         size_t& index;
-        std::vector<Eigen::Matrix<T, Dim, 1>>& vertices;
+        std::vector<Storage>& vertices;
 
         void operator()(const Point& p) { vertices.at(index++) = p.point; }
         void operator()(const Line& l) {
@@ -189,7 +193,7 @@ private:
     unsigned int vertex_buffer_ = -1;
     unsigned int element_buffer_ = -1;
 
-    std::vector<Eigen::Matrix<T, Dim, 1>> vertices_;
+    std::vector<Storage> vertices_;
     std::vector<unsigned int> indices_;
 };
 
