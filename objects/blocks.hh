@@ -46,6 +46,7 @@ struct BlockObject {
     const Config::BlockConfig& config;
 
     Eigen::Vector2f offset;
+    float z;
 
     // To get it more pixel-y, this will only move in single pixel increments.
     inline Eigen::Vector2f top_left() const { return offset.cast<int>().cast<float>(); };
@@ -75,12 +76,14 @@ public:
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
-    engine::Quad2Df coords(const BlockObject& block) const;
+    engine::Quad3Df coords(const BlockObject& block) const;
     engine::Quad2Df uv(const BlockObject& block) const;
 
     void spawn_object(BlockObject object_);
 
     void despawn_object(const engine::ObjectId& id);
+
+    float next_z();
 
 private:
     const Config config_;
@@ -89,11 +92,15 @@ private:
 
     BlockObject* selected_ = nullptr;
 
+    // closer points are at 0.0, farther points are at 1.0
+    float current_z_ = 1.0;
+    constexpr static float kZInc = 1E-5;
+
     engine::Texture texture_;
 
     std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
 
-    engine::Buffer2Df vertex_;
+    engine::Buffer3Df vertex_;
     engine::Buffer2Df uv_;
 };
 }  // namespace objects

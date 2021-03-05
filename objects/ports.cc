@@ -12,13 +12,13 @@ namespace objects {
 namespace {
 static std::string vertex_shader_text = R"(
 #version 330
-uniform vec2 object_position;
+uniform vec3 object_position;
 
 in vec2 port_offset;
 
 void main()
 {
-    gl_Position = vec4(object_position + port_offset, 0.0, 1.0);
+    gl_Position = vec4(object_position.xy + port_offset, object_position.z, 1.0);
 }
 )";
 
@@ -45,32 +45,34 @@ uniform vec2 half_dim;
 out vec2 uv;
 
 // We have to do the world->screen transform in the geometry shader since the whole shape needs to be transformed
-vec4 to_screen(vec2 world_position)
+vec4 to_screen(vec2 world_position, float z)
 {
     vec3 world = vec3(world_position, 1.0);
     vec3 screen = screen_from_world * world;
-    return vec4(screen.xy, 0.0, 1.0);
+    return vec4(screen.xy, z, 1.0);
 }
 
 void main() {
+    float z = gl_in[0].gl_Position.z;
+
     // bottom right
     uv = vec2(1, 1);
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + half_dim);
+    gl_Position = to_screen(gl_in[0].gl_Position.xy + half_dim, z);
     EmitVertex();
 
     // top right
     uv = vec2(1, 0);
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(half_dim.x, -half_dim.y));
+    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(half_dim.x, -half_dim.y), z);
     EmitVertex();
 
     // bottom left
     uv = vec2(0, 1);
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(-half_dim.x, half_dim.y));
+    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(-half_dim.x, half_dim.y), z);
     EmitVertex();
 
     // top left
     uv = vec2(0, 0);
-    gl_Position = to_screen(gl_in[0].gl_Position.xy - half_dim);
+    gl_Position = to_screen(gl_in[0].gl_Position.xy - half_dim, z);
     EmitVertex();
 
     EndPrimitive();
@@ -147,7 +149,7 @@ void PortsObjectManager::render_with_vao() {
 
     for (auto object : pool_->iterate()) {
         Eigen::Vector2f object_position = object->parent_block.top_left();
-        gl_safe(glUniform2f, object_position_loc_, object_position.x(), object_position.y());
+        gl_safe(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
 
         // The pointer here doesn't actually point to anything. It's an offset into the current element array but needs
         // to be a pointer for some reason (and have the right size).

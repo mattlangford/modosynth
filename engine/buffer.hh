@@ -66,7 +66,7 @@ public:
         gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
 
         gl_safe(glEnableVertexAttribArray, location);
-        gl_safe(glVertexAttribPointer, location, 2, GL_FLOAT, GL_FALSE, 0, 0);
+        gl_safe(glVertexAttribPointer, location, Dim, GL_FLOAT, GL_FALSE, 0, 0);
     }
 
 public:
@@ -206,5 +206,6 @@ private:
     using Buffer##dim##D##type_short = Buffer<type, dim>;
 
 define_for(float, f, 2);
+define_for(float, f, 3);
 
 }  // namespace engine

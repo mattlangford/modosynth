@@ -14,7 +14,7 @@ namespace {
 static std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
-in vec2 world_position;
+in vec3 world_position;
 in vec2 vertex_uv;
 
 out vec2 uv;
@@ -22,7 +22,7 @@ out vec2 uv;
 void main()
 {
     vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
-    gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
+    gl_Position = vec4(screen.x, screen.y, world_position.z, 1.0);
     uv = vertex_uv;
 }
 )";
@@ -102,6 +102,7 @@ void BlockObjectManager::render_with_vao() {
     }
     vertex_.finish_batch();
 
+    // 3 vertices per triangle, 2 triangles per object
     gl_safe(glDrawElements, GL_TRIANGLES, 3 * 2 * num_objects, GL_UNSIGNED_INT, (void*)0);
 }
 
@@ -119,12 +120,15 @@ void BlockObjectManager::update(float /* dt */) {
 
 void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.right || !event.clicked) {
+        if (selected_) selected_->z = next_z();
         selected_ = nullptr;
         return;
     }
 
     if (selected_) {
-        selected_->offset += event.delta_position;
+        // bring the selected object to the front
+        selected_->z = 0.0;
+        selected_->offset.head(2) += event.delta_position;
     } else {
         selected_ = select(event.mouse_position);
     }
@@ -143,7 +147,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     static size_t id = 0;
-    spawn_object(BlockObject{{}, config_.blocks[id++ % 2], Eigen::Vector2f{100, 200}});
+    spawn_object(BlockObject{{}, config_.blocks[id++ % 2], Eigen::Vector2f{100, 200}, next_z()});
 }
 
 //
@@ -159,13 +163,13 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
         return engine::is_in_rectangle(position, top_left, bottom_right);
     };
 
-    // TODO Iterating backwards so we select the most recently added object easier
-    BlockObject* select_object;
+    BlockObject* select_object = nullptr;
     for (auto object : pool_->iterate()) {
-        if (is_in_object(*object)) {
-            select_object = object;
-        }
+        if ((select_object && object->z > select_object->z) || !is_in_object(*object)) continue;
+
+        select_object = object;
     }
+    std::cout << std::endl;
     return select_object;
 }
 
@@ -173,15 +177,15 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 // #############################################################################
 //
 
-engine::Quad2Df BlockObjectManager::coords(const BlockObject& block) const {
-    engine::Quad2Df quad;
+engine::Quad3Df BlockObjectManager::coords(const BlockObject& block) const {
+    engine::Quad3Df quad;
     const Eigen::Vector2f top_left = block.top_left();
     const Eigen::Vector2f bottom_right = top_left + block.config.px_dim.cast<float>();
 
-    quad.top_left = top_left;
-    quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    quad.bottom_left = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    quad.bottom_right = bottom_right;
+    quad.top_left = Eigen::Vector3f(top_left.x(), top_left.y(), block.z);
+    quad.top_right = Eigen::Vector3f{bottom_right.x(), top_left.y(), block.z};
+    quad.bottom_left = Eigen::Vector3f{top_left.x(), bottom_right.y(), block.z};
+    quad.bottom_right = Eigen::Vector3f{bottom_right.x(), bottom_right.y(), block.z};
     return quad;
 }
 
@@ -227,5 +231,7 @@ void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->rem
 //
 // #############################################################################
 //
+
+float BlockObjectManager::next_z() { return current_z_ -= kZInc; }
 
 }  // namespace objects
