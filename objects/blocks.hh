@@ -75,8 +75,8 @@ public:
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
-    engine::Quad coords(const BlockObject& block) const;
-    engine::Quad uv(const BlockObject& block) const;
+    engine::Quad2Df coords(const BlockObject& block) const;
+    engine::Quad2Df uv(const BlockObject& block) const;
 
     void spawn_object(BlockObject object_);
 

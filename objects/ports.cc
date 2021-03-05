@@ -169,7 +169,7 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
 
     bind_vao();
     for (const Eigen::Vector2f& offset : object.offsets) {
-        buffer_.add(engine::Point{offset});
+        buffer_.add(engine::Point2Df{offset});
     }
 }
 

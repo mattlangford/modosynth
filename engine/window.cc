@@ -43,7 +43,7 @@ void Window::init() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    window_ = glfwCreateWindow(kWindowDim.x(), kWindowDim.y(), "Window", NULL, NULL);
+    window_ = glfwCreateWindow(kWindowDim.x(), kWindowDim.y(), "ModoSynth", NULL, NULL);
     if (!window_) {
         std::cerr << "Unable to create window_!\n";
         glfwTerminate();

@@ -173,8 +173,8 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 // #############################################################################
 //
 
-engine::Quad BlockObjectManager::coords(const BlockObject& block) const {
-    engine::Quad quad;
+engine::Quad2Df BlockObjectManager::coords(const BlockObject& block) const {
+    engine::Quad2Df quad;
     const Eigen::Vector2f top_left = block.top_left();
     const Eigen::Vector2f bottom_right = top_left + block.config.px_dim.cast<float>();
 
@@ -189,8 +189,8 @@ engine::Quad BlockObjectManager::coords(const BlockObject& block) const {
 // #############################################################################
 //
 
-engine::Quad BlockObjectManager::uv(const BlockObject& block) const {
-    engine::Quad quad;
+engine::Quad2Df BlockObjectManager::uv(const BlockObject& block) const {
+    engine::Quad2Df quad;
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
     const Eigen::Vector2f top_left = block.config.px_start.cast<float>().cwiseQuotient(texture_dim);
     const Eigen::Vector2f bottom_right =

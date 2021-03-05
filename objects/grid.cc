@@ -117,7 +117,7 @@ GridObjectManager::GridObjectManager(const size_t grid_width, const size_t grid_
 
 void GridObjectManager::init_with_vao() {
     buffer_.init(glGetAttribLocation(get_shader().get_program_id(), "world_position"));
-    buffer_.add(engine::Line{Eigen::Vector2f::Zero(), Eigen::Vector2f{width_, height_}});
+    buffer_.add(engine::Line2Df{Eigen::Vector2f::Zero(), Eigen::Vector2f{width_, height_}});
 }
 
 //
