@@ -97,8 +97,8 @@ void MouseEventManager::mouse_button_callback(GLFWwindow* /*window*/, int button
 
     is_clicked_ = action == GLFW_PRESS;
     right_ = button == GLFW_MOUSE_BUTTON_RIGHT;
-    control_ = (mods | GLFW_MOD_CONTROL) != 0;
-    shift_ = (mods | GLFW_MOD_SHIFT) != 0;
+    control_ = (mods & GLFW_MOD_CONTROL) != 0;
+    shift_ = (mods & GLFW_MOD_SHIFT) != 0;
 
     event.clicked = is_clicked_;
     event.control = control_;
@@ -133,8 +133,8 @@ void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int key, int /*s
     event.was_clicked = was_clicked;
 
     event.clicked = action == GLFW_PRESS;
-    event.control = (mods | GLFW_MOD_CONTROL) != 0;
-    event.shift = (mods | GLFW_MOD_SHIFT) != 0;
+    event.control = (mods & GLFW_MOD_CONTROL) != 0;
+    event.shift = (mods & GLFW_MOD_SHIFT) != 0;
 
     event.key = '\0';
     event.enter = false;

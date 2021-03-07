@@ -125,8 +125,10 @@ void BlockObjectManager::update(float /* dt */) {
 
 void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.right || !event.clicked) {
-        if (selected_) selected_->z = next_z();
-        selected_ = nullptr;
+        if (selected_) {
+            selected_->z = next_z();
+            selected_ = nullptr;
+        }
         return;
     }
 
@@ -134,7 +136,8 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         // bring the selected object to the front
         selected_->z = 0.0;
         selected_->offset.head(2) += event.delta_position;
-    } else {
+    } else if (event.shift && event.pressed()) {
+        // only select a new one if the mouse was just shift-clicked
         selected_ = select(event.mouse_position);
     }
 }
