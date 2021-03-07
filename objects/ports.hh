@@ -29,6 +29,11 @@ struct PortsObject {
 // #############################################################################
 //
 
+static constexpr float kPortWidth = 3.0;   // in px
+static constexpr float kPortHeight = 3.0;  // in px
+static constexpr float kHalfPortWidth = 0.5 * kPortWidth;
+static constexpr float kHalfPortHeight = 0.5 * kPortHeight;
+
 class PortsObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
     PortsObjectManager();
@@ -45,7 +50,8 @@ public:
 
 public:
     void spawn_object(PortsObject object_);
-    void despawn_object(const engine::ObjectId& id);
+
+    const engine::AbstractObjectPool<PortsObject>& pool() const;
 
 private:
     std::unique_ptr<engine::AbstractObjectPool<PortsObject>> pool_;

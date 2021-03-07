@@ -77,11 +77,6 @@ void main() {
 
     EndPrimitive();
 })";
-
-static constexpr float kPortWidth = 3.0;   // in px
-static constexpr float kPortHeight = 3.0;  // in px
-static constexpr float kHalfPortWidth = 0.5 * kPortWidth;
-static constexpr float kHalfPortHeight = 0.5 * kPortHeight;
 }  // namespace
 
 //
@@ -179,36 +174,14 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
 // #############################################################################
 //
 
-void PortsObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
+const engine::AbstractObjectPool<PortsObject>& PortsObjectManager::pool() const { return *pool_; }
 
 //
 // #############################################################################
 //
 
-void PortsObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
-    if (event.right || !event.pressed()) {
-        return;
-    }
-
-    if (pool_->empty()) return;
-
-    const Eigen::Vector2f half_dim{kHalfPortWidth, kHalfPortHeight};
-
-    // TODO Iterating backwards so we select the most recently added object easier
-    for (auto object : pool_->iterate()) {
-        for (size_t offset = 0; offset < object->offsets.size(); ++offset) {
-            const Eigen::Vector2f center = object->parent_block.top_left() + object->offsets[offset];
-            const Eigen::Vector2f top_left = center - half_dim;
-            const Eigen::Vector2f bottom_right = center + half_dim;
-
-            if (engine::is_in_rectangle(event.mouse_position, top_left, bottom_right)) {
-                std::cout << "Clicked!\n";
-            }
-        }
-    }
-}
-
 // no-ops
 void PortsObjectManager::update(float) {}
+void PortsObjectManager::handle_mouse_event(const engine::MouseEvent&) {}
 void PortsObjectManager::handle_keyboard_event(const engine::KeyboardEvent&) {}
 }  // namespace objects

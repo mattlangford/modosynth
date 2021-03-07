@@ -28,6 +28,7 @@ struct MouseEvent {
     bool control;
     bool shift;
     bool right;
+    inline bool any_modifiers() const { return control || shift || right; }
 };
 
 class MouseEventManager {

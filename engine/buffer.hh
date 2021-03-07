@@ -2,7 +2,9 @@
 #include <OpenGL/gl3.h>
 
 #include <Eigen/Dense>
+#include <array>
 #include <iostream>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -58,16 +60,7 @@ public:
     ~Buffer() { reset_buffers(); }
 
 public:
-    void init(int location) {
-        gl_safe(glGenBuffers, 1, &vertex_buffer_);
-        gl_safe(glGenBuffers, 1, &element_buffer_);
-
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
-        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
-
-        gl_safe(glEnableVertexAttribArray, location);
-        gl_safe(glVertexAttribPointer, location, Dim, GL_FLOAT, GL_FALSE, 0, 0);
-    }
+    void init(int location) { location_ = location; }
 
 public:
     // TODO: maybe add_batch?
@@ -75,12 +68,20 @@ public:
         const size_t index = get_index_count();
         std::visit(AddImpl{vertices_, indices_}, primitive);
 
+        reset_buffers();
+        buffer_ids_.emplace();
+        auto& [vertex, element] = *buffer_ids_;
+
+        gl_safe(glGenBuffers, 2, buffer_ids_->data());
+
         // Since a new element was added, we'll need to update the buffers. Assume neither will be updated often at
         // first,
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
+        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex);
         gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
+        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element);
         gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
+        gl_safe(glEnableVertexAttribArray, location_);
+        gl_safe(glVertexAttribPointer, location_, Dim, GL_FLOAT, GL_FALSE, 0, 0);
 
         return index;
     }
@@ -95,8 +96,13 @@ public:
     }
 
     void finish_batch() {
+        if (!buffer_ids_) {
+            return;
+        }
+        auto& [vertex, element] = *buffer_ids_;
+
         // Only need to update the vertex array since the number of elements didn't change
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
+        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex);
         gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STREAM_DRAW);
     }
 
@@ -105,18 +111,17 @@ public:
             std::cout << "Index: " << index << ", v: " << vertices_[index].transpose() << "\n";
     }
     void bind() {
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex_buffer_);
-        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element_buffer_);
+        auto& [vertex, element] = *buffer_ids_;
+        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex);
+        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element);
     }
     size_t get_index_count() const { return indices_.size(); }
 
 private:
     void reset_buffers() {
-        if (vertex_buffer_ > 0) {
-            glDeleteBuffers(1, &vertex_buffer_);
-        }
-        if (element_buffer_ > 0) {
-            glDeleteBuffers(1, &element_buffer_);
+        if (buffer_ids_) {
+            gl_safe(glDeleteBuffers, 2, buffer_ids_->data());
+            buffer_ids_.reset();
         }
     }
 
@@ -190,8 +195,8 @@ private:
     };
 
 private:
-    unsigned int vertex_buffer_ = -1;
-    unsigned int element_buffer_ = -1;
+    int location_;
+    std::optional<std::array<unsigned int, 2>> buffer_ids_;
 
     std::vector<Storage> vertices_;
     std::vector<unsigned int> indices_;

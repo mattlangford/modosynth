@@ -94,18 +94,18 @@ void BlockObjectManager::render_with_vao() {
 
     texture_.activate();
 
+    auto objects = pool_->iterate();
+
     size_t index = 0;
-    size_t num_objects = 0;
-    for (auto object : pool_->iterate()) {
+    for (const auto* object : objects) {
         vertex_.update_batch(coords(*object), index);
-        num_objects++;
     }
     vertex_.finish_batch();
 
-    auto ptrs = pool_->iterate();
-    std::sort(ptrs.begin(), ptrs.end(), [](const BlockObject* lhs, const BlockObject* rhs) { return lhs->z > rhs->z; });
+    std::sort(objects.begin(), objects.end(),
+              [](const BlockObject* const lhs, const BlockObject* const rhs) { return lhs->z > rhs->z; });
 
-    for (auto object : ptrs) {
+    for (const auto* object : objects) {
         // 3 vertices per triangle, 2 triangles per object
         gl_safe(glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * object->block_id));
     }
@@ -136,8 +136,8 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         // bring the selected object to the front
         selected_->z = 0.0;
         selected_->offset.head(2) += event.delta_position;
-    } else if (event.shift && event.pressed()) {
-        // only select a new one if the mouse was just shift-clicked
+    } else if (!event.any_modifiers() && event.pressed()) {
+        // only select a new one if the mouse was just clicked
         selected_ = select(event.mouse_position);
     }
 }
@@ -230,12 +230,6 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
 
     ports_manager_->spawn_object(PortsObject::from_block(object));
 }
-
-//
-// #############################################################################
-//
-
-void BlockObjectManager::despawn_object(const engine::ObjectId& id) { pool_->remove(id); }
 
 //
 // #############################################################################

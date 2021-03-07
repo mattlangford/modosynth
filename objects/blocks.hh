@@ -82,8 +82,6 @@ private:
 
     void spawn_object(BlockObject object_);
 
-    void despawn_object(const engine::ObjectId& id);
-
     float next_z();
 
 private:
