@@ -45,6 +45,9 @@ private:
     Eigen::Vector2f center_;
     Eigen::Vector2f half_dim_;
 
+    Eigen::Matrix3f world_from_screen_;
+    std::optional<Eigen::Vector3f> previous_screen_mouse_;
+
     GlobalObjectManager object_manager_;
 };
 

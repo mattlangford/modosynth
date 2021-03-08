@@ -204,7 +204,7 @@ public:
           point_shader_(vertex_shader_text, fragment_shader_text, point_geometry_shader_text) {}
     virtual ~TestObjectManager() = default;
 
-    static constexpr size_t kNumSteps = 20;
+    static constexpr size_t kNumSteps = 2;
     void init() override {
         shader_.init();
         point_shader_.init();
@@ -213,7 +213,7 @@ public:
         engine::throw_on_gl_error("glGetUniformLocation");
 
         start_ = {100, 200};
-        end_ = {728.641, 500.947};
+        end_ = {200, 300};
         length_ = 1.3 * (end_ - start_).norm();
         std::cout << "Initial length: " << length_ << "\n";
 
@@ -296,6 +296,14 @@ public:
     void handle_keyboard_event(const engine::KeyboardEvent&) override {}
 
     void populate_vertices() {
+        vertices_[0] = start_.x();
+        vertices_[1] = start_.y();
+        vertices_[2] = end_.x();
+        vertices_[3] = end_.y();
+        vertices_[4] = end_.x();
+        vertices_[5] = end_.y();
+        return;
+
         CatenarySolver solver{start_, end_, length_};
         if (!solver.solve(alpha_)) {
             throw std::runtime_error("CatenarySolver unable to converge!");

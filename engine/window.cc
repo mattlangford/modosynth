@@ -15,6 +15,7 @@ Window::Window(size_t width, size_t height, GlobalObjectManager object_manager)
       kMaxHalfDim_{0.5 * Eigen::Vector2f{2.0 * width, 2.0 * height}},
       center_{kInitialHalfDim_},
       half_dim_{kInitialHalfDim_},
+      world_from_screen_(get_screen_from_world().inverse()),
       object_manager_(std::move(object_manager)) {}
 
 //
@@ -88,18 +89,41 @@ bool Window::render_loop() {
 void Window::handle_mouse_event(const MouseEvent& event) {
     // Since the scale changes, changing the relative movement of the cursor makes things seem more natural
     MouseEvent scaled_event = event;
-    scaled_event.delta_position *= scale();
 
-    // Get the mouse position on the pan'd/zoom'd screen
-    const Eigen::Vector2f screen_position = event.mouse_position.cwiseQuotient(kWindowDim);
-    const Eigen::Vector2f top_left = center_ - half_dim_;
-    scaled_event.mouse_position = screen_position.cwiseProduct(2 * half_dim_) + top_left;
+    // Monitor for changes in the viewport, this is an optimization so we can reuse the old data if nothing changes
+    bool screen_change = false;
 
-    if (event.right && event.clicked) {
+    // The mouse frame is reported from the top left of the screen with +Y going down. Here we get the mouse position
+    // in the world. First normalize the mouse position to be in (0, 1)
+    Eigen::Vector2f mouse = event.mouse_position.cwiseQuotient(kWindowDim);
+    if (mouse.x() < 0.0 || mouse.x() >= 1.0 || mouse.y() < 0.0 || mouse.y() >= 1.0)
+    {
+        // off screen, don't worry about anything else
+        return;
+    }
+    // Next scale to be between (-1, 1)
+    mouse = 2.f * (mouse - Eigen::Vector2f{0.5f, 0.5f});
+
+    // Then invert the Y axis, this makes it screen coordinates now: (-1, 1) at the top left, (0, 0) at the center,
+    // and (1, -1) at the bottom right
+    mouse.y() *= -1.f;
+    const Eigen::Vector3f screen_mouse {mouse.x(), mouse.y(), 1.0f};
+    const Eigen::Vector2f world_mouse = (world_from_screen_ * screen_mouse).head(2);
+    const Eigen::Vector2f previous_world_mouse = (world_from_screen_ * previous_screen_mouse_.value_or(screen_mouse)).head(2);
+    previous_screen_mouse_ = screen_mouse;
+
+    // Update the positions to be in the "world" frame since those are more useful generally to the object managers. The
+    // delta is re-computed with respect to the previous mouse position
+    scaled_event.delta_position = world_mouse - previous_world_mouse;
+    scaled_event.mouse_position = world_mouse;
+
+    if (!event.control && !event.shift && event.right && event.clicked) {
+        screen_change = true;
         center_ -= scaled_event.delta_position;
     }
 
     if (event.delta_scroll != 0.0) {
+        screen_change = true;
         double zoom_factor = 0.05 * -event.delta_scroll;
         Eigen::Vector2f new_half_dim_ = half_dim_ + zoom_factor * half_dim_;
 
@@ -115,6 +139,13 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     }
 
     object_manager_.handle_mouse_event(scaled_event);
+
+    // If there was something that changed our view, update the screen_from_world matrix, This is an optimization so we
+    // don't invert a matrix on every mouse event.
+    if (screen_change)
+    {
+        world_from_screen_ = get_screen_from_world().inverse();
+    }
 }
 
 //
@@ -143,7 +174,7 @@ Eigen::Matrix3f Window::get_screen_from_world() const {
 
     translate(0, 2) = -center_.x();
     translate(1, 2) = -center_.y();
-    scale.diagonal() = Eigen::Vector3f{1 / half_dim_.x(), -1 / half_dim_.y(), 1};
+    scale.diagonal() = Eigen::Vector3f{1 / half_dim_.x(), 1 / half_dim_.y(), 1};
 
     return scale * translate;
 }
