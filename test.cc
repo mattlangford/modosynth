@@ -121,17 +121,9 @@ size_t size_in_bytes(const std::vector<Data>& vec) {
 class CatenarySolver {
 public:
     CatenarySolver(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
-        // Assign the start/end correctly based on their order. Assume start.x() comes before end.x()
-        if (start.x() <= end.x()) {
-            start_ = start;
-            end_ = end;
-        } else if (end.x() < start.x()) {
-            start_ = end;
-            end_ = start;
-        } else {
-            start_ = start;
-            end_ = end + Eigen::Vector2f{1E-5, 0};
-        }
+        start_ = start;
+        diff_.x() = end.x() - start.x();
+        diff_.y() = -end.y() - -start.y();
 
         length_ = length;
     }
@@ -139,23 +131,13 @@ public:
     constexpr static float sq(float in) { return in * in; }
 
     float y(float x) const {
-        const float& x0 = start_.x();
-        const float& y0 = start_.y();
-        const float& x1 = end_.x();
-        const float& y1 = end_.y();
-
-        float h = x1 - x0;
-        float v = y1 - y0;
-        float b = sqrt(x / h);
+        float h = diff_.x();
+        float v = diff_.y();
 
         return 1.0/std::sqrt(2*x*std::sinh(h/(2*x))/h - 1) - 1/std::sqrt(std::sqrt(sq(length_) - sq(v))/h - 1);
     }
     float dy(float x) const {
-        float x0 = start_.x();
-        float x1 = end_.x();
-
-        float h = x1 - x0;
-        float b = sqrt(x / h);
+        float h = diff_.x();
         return (-std::sinh(h / (2 * x)) / h + std::cosh(h / (2 * x)) / (2 * x)) /
                std::pow(2 * x * std::sinh(h / (2 * x)) / h - 1, 3.0 / 2.0);
     }
@@ -174,16 +156,20 @@ public:
                       << " iterations \n";
             x = x - y(x) / dy(x);
             diff = y(x);
+            if (std::isnan(diff))
+            {
+                throw std::runtime_error("Got NaN in CatenarySolver::solve()");
+            }
         }
 
         std::cout << "Converged to x=" << x << " y=" << y(x) << " after " << iter << " iterations \n";
         alpha_ = x;
 
-        float h = end_.x() - start_.x();
-        float v = end_.y() - start_.y();
+        float h = diff_.x();
+        float v = diff_.y();
 
-        x_offset_ = start_.x() + 0.5 * (h + alpha_ * std::log((length_ - v) / (length_ + v)));
-        y_offset_ = start_.y() - f(start_.x());
+        x_offset_ = 0.5 * (h + alpha_ * std::log((length_ - v) / (length_ + v)));
+        y_offset_ = -f(0);
         return iter < max_iter;
     }
 
@@ -191,18 +177,17 @@ public:
         std::vector<Eigen::Vector2f> result;
         result.reserve(steps);
 
-        float step_size = (end_.x() - start_.x()) / (steps - 1);
-        float x = start_.x();
+        float step_size = diff_.x() / (steps - 1);
+        float x = 0;
         for (size_t step = 0; step < steps; ++step, x += step_size) {
-            std::cout << "x: " << x << " y: " << (f(x) + y_offset_)<< "\n";
-            result.push_back({x, f(x)});
+            result.push_back({x + start_.x(), -f(x) + start_.y()});
         }
         return result;
     }
 
 private:
     Eigen::Vector2f start_;
-    Eigen::Vector2f end_;
+    Eigen::Vector2f diff_;
     float length_;
     float alpha_;
     float y_offset_ = 0;
@@ -225,7 +210,7 @@ public:
         engine::throw_on_gl_error("glGetUniformLocation");
 
         start_ = {100, 200};
-        end_ = {500, 300};
+        end_ = {500, 500};
         length_ = 2 * (end_ - start_).norm();
         std::cout << "Initial length: " << length_ << "\n";
 
@@ -262,9 +247,12 @@ public:
 
         gl_safe(glBindVertexArray, vao_);
 
-        populate_vertices();
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
+        if (updated_)
+        {
+            populate_vertices();
+            gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
+            gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
+        }
         gl_safe(glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
 
         gl_safe(glBindVertexArray, 0);
@@ -274,9 +262,6 @@ public:
         gl_safe(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
 
         gl_safe(glBindVertexArray, vao_);
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-
         gl_safe(glDrawArrays, GL_POINTS, 0, kNumSteps);
         gl_safe(glBindVertexArray, 0);
     }
@@ -284,9 +269,12 @@ public:
     void update(float) override {}
 
     void handle_mouse_event(const engine::MouseEvent& event) override {
+        updated_ = false;
         if (point_ && event.held()) {
-            float new_length = 1.5 * (start_ - end_).norm();
+            updated_ = true;
+            float new_length = 1.5 * (end_ - start_).norm();
             if (new_length > length_) {
+                std::cout << "Increasing length from " << length_ << " to " << new_length << "\n";
                 length_ = new_length;
             }
 
@@ -330,6 +318,7 @@ public:
     float length_;
     Eigen::Vector2f start_;
     Eigen::Vector2f end_;
+    bool updated_ = false;
 
     std::vector<float> vertices_;
     std::vector<unsigned int> elements_;
