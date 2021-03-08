@@ -125,6 +125,9 @@ public:
         diff_.x() = end.x() - start.x();
         diff_.y() = -end.y() - -start.y();
 
+        std::cout << "Start: " << start.transpose() << ", end: " << end.transpose() << ", diff: " << diff_.transpose()
+                  << ", len: " << length << "\n";
+
         length_ = length;
     }
 
@@ -134,7 +137,8 @@ public:
         float h = diff_.x();
         float v = diff_.y();
 
-        return 1.0/std::sqrt(2*x*std::sinh(h/(2*x))/h - 1) - 1/std::sqrt(std::sqrt(sq(length_) - sq(v))/h - 1);
+        return 1.0 / std::sqrt(2 * x * std::sinh(h / (2 * x)) / h - 1) -
+               1 / std::sqrt(std::sqrt(sq(length_) - sq(v)) / h - 1);
     }
     float dy(float x) const {
         float h = diff_.x();
@@ -142,10 +146,7 @@ public:
                std::pow(2 * x * std::sinh(h / (2 * x)) / h - 1, 3.0 / 2.0);
     }
 
-    float f(float x) const
-    {
-        return alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_;
-    }
+    float f(float x) const { return -alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
 
     bool solve(float x0 = 10.f, float tol = 1E-3, size_t max_iter = 100) {
         float diff = 1E5;
@@ -156,8 +157,7 @@ public:
                       << " iterations \n";
             x = x - y(x) / dy(x);
             diff = y(x);
-            if (std::isnan(diff))
-            {
+            if (std::isnan(diff)) {
                 throw std::runtime_error("Got NaN in CatenarySolver::solve()");
             }
         }
@@ -180,7 +180,7 @@ public:
         float step_size = diff_.x() / (steps - 1);
         float x = 0;
         for (size_t step = 0; step < steps; ++step, x += step_size) {
-            result.push_back({x + start_.x(), -f(x) + start_.y()});
+            result.push_back({x + start_.x(), f(x) + start_.y()});
         }
         return result;
     }
@@ -247,8 +247,7 @@ public:
 
         gl_safe(glBindVertexArray, vao_);
 
-        if (updated_)
-        {
+        if (updated_) {
             populate_vertices();
             gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
             gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
