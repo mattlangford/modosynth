@@ -89,7 +89,6 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
 
     // We'll only use this much of the height for putting ports
     const size_t effective_height = height;
-    const size_t top_spacing = height - effective_height;
 
     const size_t inputs = parent.config.inputs;
     const size_t outputs = parent.config.outputs;
@@ -103,9 +102,9 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
 
     std::vector<Eigen::Vector2f> offsets;
     for (size_t i = 0; i < inputs; ++i)
-        offsets.push_back(Eigen::Vector2f{-kHalfPortWidth, (i + 1) * input_spacing + top_spacing});
+        offsets.push_back(Eigen::Vector2f{-kHalfPortWidth, effective_height - (i + 1) * input_spacing});
     for (size_t i = 0; i < outputs; ++i)
-        offsets.push_back(Eigen::Vector2f{width + kHalfPortWidth, (i + 1) * output_spacing + top_spacing});
+        offsets.push_back(Eigen::Vector2f{width + kHalfPortWidth, effective_height - (i + 1) * output_spacing});
 
     return PortsObject{{}, {}, std::move(offsets), parent};
 }
@@ -143,7 +142,7 @@ void PortsObjectManager::render_with_vao() {
     texture_.activate();
 
     for (auto object : pool_->iterate()) {
-        Eigen::Vector2f object_position = object->parent_block.top_left();
+        Eigen::Vector2f object_position = object->parent_block.bottom_left();
         gl_safe(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
 
         // The pointer here doesn't actually point to anything. It's an offset into the current element array but needs

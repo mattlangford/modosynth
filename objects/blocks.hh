@@ -50,7 +50,7 @@ struct BlockObject {
     float z;
 
     // To get it more pixel-y, this will only move in single pixel increments.
-    inline Eigen::Vector2f top_left() const { return offset.cast<int>().cast<float>(); };
+    inline Eigen::Vector2f bottom_left() const { return offset.cast<int>().cast<float>(); };
 };
 
 //

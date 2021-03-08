@@ -96,8 +96,7 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     // The mouse frame is reported from the top left of the screen with +Y going down. Here we get the mouse position
     // in the world. First normalize the mouse position to be in (0, 1)
     Eigen::Vector2f mouse = event.mouse_position.cwiseQuotient(kWindowDim);
-    if (mouse.x() < 0.0 || mouse.x() >= 1.0 || mouse.y() < 0.0 || mouse.y() >= 1.0)
-    {
+    if (mouse.x() < 0.0 || mouse.x() >= 1.0 || mouse.y() < 0.0 || mouse.y() >= 1.0) {
         // off screen, don't worry about anything else
         return;
     }
@@ -107,9 +106,10 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     // Then invert the Y axis, this makes it screen coordinates now: (-1, 1) at the top left, (0, 0) at the center,
     // and (1, -1) at the bottom right
     mouse.y() *= -1.f;
-    const Eigen::Vector3f screen_mouse {mouse.x(), mouse.y(), 1.0f};
+    const Eigen::Vector3f screen_mouse{mouse.x(), mouse.y(), 1.0f};
     const Eigen::Vector2f world_mouse = (world_from_screen_ * screen_mouse).head(2);
-    const Eigen::Vector2f previous_world_mouse = (world_from_screen_ * previous_screen_mouse_.value_or(screen_mouse)).head(2);
+    const Eigen::Vector2f previous_world_mouse =
+        (world_from_screen_ * previous_screen_mouse_.value_or(screen_mouse)).head(2);
     previous_screen_mouse_ = screen_mouse;
 
     // Update the positions to be in the "world" frame since those are more useful generally to the object managers. The
@@ -142,8 +142,7 @@ void Window::handle_mouse_event(const MouseEvent& event) {
 
     // If there was something that changed our view, update the screen_from_world matrix, This is an optimization so we
     // don't invert a matrix on every mouse event.
-    if (screen_change)
-    {
+    if (screen_change) {
         world_from_screen_ = get_screen_from_world().inverse();
     }
 }

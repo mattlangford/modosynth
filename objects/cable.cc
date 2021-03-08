@@ -74,15 +74,15 @@ void CableObjectManager::render_from_buffer(engine::Buffer2Df& buffer) const {
     size_t index = 0;
     for (const auto* object : objects) {
         engine::Line2Df line;
-        line.start = object->parent_start.top_left() + object->offset_start;
-        line.end = object->parent_end.top_left() + object->offset_end;
+        line.start = object->parent_start.bottom_left() + object->offset_start;
+        line.end = object->parent_end.bottom_left() + object->offset_end;
         buffer.update_batch(line, index);
     }
 
     size_t building_id = -1;
     if (building_) {
         engine::Line2Df line;
-        line.start = building_->parent_start.top_left() + building_->offset_start;
+        line.start = building_->parent_start.bottom_left() + building_->offset_start;
         line.end = building_->end;
 
         building_id = buffer.get_index_count();
@@ -114,11 +114,11 @@ const PortsObject* CableObjectManager::get_active_port(const Eigen::Vector2f& po
     const PortsObject* selected_object = nullptr;
     for (const auto* object : ports_manager_->pool().iterate()) {
         for (size_t this_offset = 0; this_offset < object->offsets.size(); ++this_offset) {
-            const Eigen::Vector2f center = object->parent_block.top_left() + object->offsets[this_offset];
-            const Eigen::Vector2f top_left = center - half_dim;
+            const Eigen::Vector2f center = object->parent_block.bottom_left() + object->offsets[this_offset];
+            const Eigen::Vector2f bottom_left = center - half_dim;
             const Eigen::Vector2f bottom_right = center + half_dim;
 
-            if (engine::is_in_rectangle(position, top_left, bottom_right)) {
+            if (engine::is_in_rectangle(position, bottom_left, bottom_right)) {
                 offset = object->offsets[this_offset];
                 selected_object = object;
             }

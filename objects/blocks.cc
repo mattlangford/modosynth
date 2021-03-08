@@ -167,9 +167,9 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
     if (pool_->empty()) return nullptr;
 
     auto is_in_object = [&position](const BlockObject& object) {
-        Eigen::Vector2f top_left = object.top_left();
-        Eigen::Vector2f bottom_right = top_left + object.config.px_dim.cast<float>();
-        return engine::is_in_rectangle(position, top_left, bottom_right);
+        Eigen::Vector2f bottom_left = object.bottom_left();
+        Eigen::Vector2f top_right = bottom_left + object.config.px_dim.cast<float>();
+        return engine::is_in_rectangle(position, bottom_left, top_right);
     };
 
     BlockObject* select_object = nullptr;
@@ -187,13 +187,13 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 
 engine::Quad3Df BlockObjectManager::coords(const BlockObject& block) const {
     engine::Quad3Df quad;
-    const Eigen::Vector2f top_left = block.top_left();
-    const Eigen::Vector2f bottom_right = top_left + block.config.px_dim.cast<float>();
+    const Eigen::Vector2f bottom_left = block.bottom_left();
+    const Eigen::Vector2f top_right = bottom_left + block.config.px_dim.cast<float>();
 
-    quad.top_left = Eigen::Vector3f(top_left.x(), top_left.y(), block.z);
-    quad.top_right = Eigen::Vector3f{bottom_right.x(), top_left.y(), block.z};
-    quad.bottom_left = Eigen::Vector3f{top_left.x(), bottom_right.y(), block.z};
-    quad.bottom_right = Eigen::Vector3f{bottom_right.x(), bottom_right.y(), block.z};
+    quad.top_left = Eigen::Vector3f(bottom_left.x(), top_right.y(), block.z);
+    quad.top_right = Eigen::Vector3f{top_right.x(), top_right.y(), block.z};
+    quad.bottom_left = Eigen::Vector3f{bottom_left.x(), bottom_left.y(), block.z};
+    quad.bottom_right = Eigen::Vector3f{top_right.x(), bottom_left.y(), block.z};
     return quad;
 }
 
@@ -204,13 +204,16 @@ engine::Quad3Df BlockObjectManager::coords(const BlockObject& block) const {
 engine::Quad2Df BlockObjectManager::uv(const BlockObject& block) const {
     engine::Quad2Df quad;
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
+
     const Eigen::Vector2f top_left = block.config.px_start.cast<float>().cwiseQuotient(texture_dim);
     const Eigen::Vector2f bottom_right =
         (block.config.px_start + block.config.px_dim).cast<float>().cwiseQuotient(texture_dim);
 
     quad.top_left = top_left;
     quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    ;
     quad.bottom_left = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    ;
     quad.bottom_right = bottom_right;
     return quad;
 }
