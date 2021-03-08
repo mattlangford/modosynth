@@ -131,30 +131,31 @@ public:
         length_ = length;
     }
 
-    constexpr static float sq(float in) { return in * in; }
+    constexpr static double sq(double in) { return in * in; }
 
-    float y(float x) const {
-        float h = diff_.x();
-        float v = diff_.y();
+    double y(double x) const {
+        double h = diff_.x();
+        double v = diff_.y();
 
         return 1.0 / std::sqrt(2 * x * std::sinh(h / (2 * x)) / h - 1) -
-               1 / std::sqrt(std::sqrt(sq(length_) - sq(v)) / h - 1);
+               1.0 / std::sqrt(std::sqrt(sq(length_) - sq(v)) / h - 1);
     }
-    float dy(float x) const {
-        float h = diff_.x();
+    double dy(double x) const {
+        double h = diff_.x();
         return (-std::sinh(h / (2 * x)) / h + std::cosh(h / (2 * x)) / (2 * x)) /
                std::pow(2 * x * std::sinh(h / (2 * x)) / h - 1, 3.0 / 2.0);
     }
 
-    float f(float x) const { return -alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
+    double f(double x) const { return -alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
 
-    bool solve(float x0 = 10.f, float tol = 1E-3, size_t max_iter = 100) {
-        float diff = 1E5;
-        float x = x0;
+    bool solve(double x0 = 10, double tol = 1E-3, size_t max_iter = 100) {
+        double diff = 1E5;
+        double x = x0;
         size_t iter = 0;
         for (; (iter < max_iter) && (abs(diff) > tol); ++iter) {
             std::cout << "Trying x=" << x << " y=" << y(x) << " (dy=" << dy(x) << ") after " << iter
                       << " iterations \n";
+
             x = x - y(x) / dy(x);
             diff = y(x);
             if (std::isnan(diff)) {
@@ -165,8 +166,8 @@ public:
         std::cout << "Converged to x=" << x << " y=" << y(x) << " after " << iter << " iterations \n";
         alpha_ = x;
 
-        float h = diff_.x();
-        float v = diff_.y();
+        double h = diff_.x();
+        double v = diff_.y();
 
         x_offset_ = 0.5 * (h + alpha_ * std::log((length_ - v) / (length_ + v)));
         y_offset_ = -f(0);
@@ -177,18 +178,20 @@ public:
         std::vector<Eigen::Vector2f> result;
         result.reserve(steps);
 
-        float step_size = diff_.x() / (steps - 1);
-        float x = 0;
+        double step_size = diff_.x() / (steps - 1);
+        double x = 0;
         for (size_t step = 0; step < steps; ++step, x += step_size) {
             result.push_back({x + start_.x(), f(x) + start_.y()});
         }
         return result;
     }
 
+    float get_alpha() const { return alpha_; }
+
 private:
     Eigen::Vector2f start_;
-    Eigen::Vector2f diff_;
-    float length_;
+    Eigen::Vector2d diff_;
+    double length_;
     float alpha_;
     float y_offset_ = 0;
     float x_offset_ = 0;
@@ -210,8 +213,8 @@ public:
         engine::throw_on_gl_error("glGetUniformLocation");
 
         start_ = {100, 200};
-        end_ = {500, 500};
-        length_ = 2 * (end_ - start_).norm();
+        end_ = {728.641, 500.947};
+        length_ = 1.3 * (end_ - start_).norm();
         std::cout << "Initial length: " << length_ << "\n";
 
         vertices_.resize(64);
@@ -271,7 +274,7 @@ public:
         updated_ = false;
         if (point_ && event.held()) {
             updated_ = true;
-            float new_length = 1.5 * (end_ - start_).norm();
+            float new_length = 1.3 * (end_ - start_).norm();
             if (new_length > length_) {
                 std::cout << "Increasing length from " << length_ << " to " << new_length << "\n";
                 length_ = new_length;
@@ -294,9 +297,10 @@ public:
 
     void populate_vertices() {
         CatenarySolver solver{start_, end_, length_};
-        if (!solver.solve()) {
+        if (!solver.solve(alpha_)) {
             throw std::runtime_error("CatenarySolver unable to converge!");
         }
+        alpha_ = solver.get_alpha();
         auto points = solver.trace(kNumSteps);
 
         constexpr size_t stride = 2;
@@ -318,6 +322,7 @@ public:
     Eigen::Vector2f start_;
     Eigen::Vector2f end_;
     bool updated_ = false;
+    float alpha_ = 10;
 
     std::vector<float> vertices_;
     std::vector<unsigned int> elements_;

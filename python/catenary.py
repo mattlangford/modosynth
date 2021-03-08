@@ -7,8 +7,8 @@ dx, dy, a = sympy.symbols("dx dy a")
 
 start_x = 100
 start_y = 200
-end_x = 500
-end_y = 500
+end_x = 728.641
+end_y = 500.947
 
 vals = [(dx, end_x - start_x), (dy, -end_y - -start_y)]
 
@@ -24,7 +24,14 @@ print (f"df(x): {df}")
 def solve(f):
     return (f.subs(vals).subs(a, x)).evalf()
 
-x = 100
+x = 513702
+print (solve(b))
+print (solve(1 / (2 * (b**2))))
+print (solve(2 * (b**2) * sympy.sinh(1 / (2 * (b**2)))))
+print (solve(1 / sympy.sqrt(2 * (b**2) * sympy.sinh(1 / (2 * (b**2))) - 1)))
+exit()
+
+x = 10
 for i in range(10):
     print (f"Iteration {i}, x={x} f(x)={solve(f)} df(x)={solve(df)}")
     x = x - solve(f / df)
