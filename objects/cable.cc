@@ -132,15 +132,15 @@ const PortsObject* CableObjectManager::get_active_port(const Eigen::Vector2f& po
 //
 
 void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
-    if (!event.any_modifiers() && event.pressed()) {
+    if (event.right || (!event.clicked && !event.was_clicked)) {
+        building_.reset();
+    } else if (!event.any_modifiers() && event.pressed()) {
         Eigen::Vector2f offset;
         if (auto ptr = get_active_port(event.mouse_position, offset)) {
             building_.emplace(BuildingCableObject{ptr->parent_block, offset, event.mouse_position});
         }
-    }
-
-    else if (building_ && event.released()) {
-        // Check for ports, finalize current building object
+    } else if (building_ && event.released()) {
+        // Check for ports, if we're on one finalize current building object
         Eigen::Vector2f offset;
         if (auto ptr = get_active_port(event.mouse_position, offset)) {
             spawn_object(
@@ -149,14 +149,8 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 
         // Either it finished or wasn't connected, either way we reset
         building_.reset();
-    }
-
-    else if (building_ && event.clicked) {
+    } else if (building_ && event.held()) {
         building_->end = event.mouse_position;
-    }
-
-    else if (event.right || !event.clicked) {
-        building_.reset();
     }
 }
 

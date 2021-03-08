@@ -6,3 +6,12 @@ cc_binary(
         "//objects",
     ]
 )
+
+cc_binary(
+    name = "test",
+    srcs = ["test.cc"],
+    deps = [
+        "//engine",
+        "//objects",
+    ]
+)
