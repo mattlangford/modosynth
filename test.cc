@@ -202,9 +202,14 @@ public:
 
         vao_.init();
 
-        gl_check_with_vao(vao_, glEnableVertexAttribArray, 0);
+        vertices_.resize(2 * (kNumSteps + 1));
 
-        populate_vertices();
+        update(0);
+        gl_check(glGenBuffers, 1, &vbo_);
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
+        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+        gl_check_with_vao(vao_, glEnableVertexAttribArray, 0);
+        gl_check_with_vao(vao_, glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
         for (size_t i = 0; i < kNumSteps - 1; ++i) {
             elements_.emplace_back(i);
@@ -218,24 +223,45 @@ public:
             gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, ebo_);
             gl_check(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(elements_), elements_.data(), GL_STATIC_DRAW);
         }
+
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
+        gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, 0);
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, 0);
+
         shader_.activate();
-
         gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
-
-        populate_vertices();
-
         gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
 
         point_shader_.activate();
         gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
-
         gl_check_with_vao(vao_, glDrawArrays, GL_POINTS, 0, kNumSteps);
     }
 
-    void update(float) override {}
+    void update(float) override {
+        lenght_ = std::max(min_length(), length_);
+        CatenarySolver solver{start_, end_, length_};
+        if (!solver.solve(alpha_)) {
+            throw std::runtime_error("CatenarySolver unable to converge!");
+        }
+        alpha_ = solver.get_alpha();
+        auto points = solver.trace(kNumSteps);
+
+        constexpr size_t stride = 2;
+        for (size_t i = 0; i < points.size(); ++i) {
+            const Eigen::Vector2f& point = points[i];
+
+            size_t el = 0;
+            vertices_[stride * i + el++] = point.x();
+            vertices_[stride * i + el++] = point.y();
+        }
+
+        size_t el = 0;
+        vertices_[stride * points.size() + el++] = end_.x();
+        vertices_[stride * points.size() + el++] = end_.y();
+
+    }
 
     void handle_mouse_event(const engine::MouseEvent& event) override {
         if (point_ && event.held()) {
@@ -252,56 +278,20 @@ public:
         }
     }
 
-    void set_min_length() {
-        float new_length = 1.1 * (end_ - start_).norm();
-        if (new_length > length_) {
-            length_ = new_length;
-        }
+    float min_length() const {
+        return 1.1 * (end_ - start_).norm();
     }
 
     void reset() {
         start_ = {100, 200};
         end_ = {200, 300};
-        length_ = 0;
-        set_min_length();
+        length_ = min_length();
     }
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override {
         if (event.space == true) {
             reset();
         }
-    }
-
-    void populate_vertices() {
-        set_min_length();
-        CatenarySolver solver{start_, end_, length_};
-        if (!solver.solve(alpha_)) {
-            throw std::runtime_error("CatenarySolver unable to converge!");
-        }
-        alpha_ = solver.get_alpha();
-        auto points = solver.trace(kNumSteps);
-
-        gl_check(glDeleteBuffers, 1, &vbo_);
-        vertices_.resize(2 * (kNumSteps + 1));
-
-        constexpr size_t stride = 2;
-        for (size_t i = 0; i < points.size(); ++i) {
-            const Eigen::Vector2f& point = points[i];
-
-            size_t el = 0;
-            vertices_[stride * i + el++] = point.x();
-            vertices_[stride * i + el++] = point.y();
-        }
-
-        size_t el = 0;
-        vertices_[stride * points.size() + el++] = end_.x();
-        vertices_[stride * points.size() + el++] = end_.y();
-
-        gl_check(glGenBuffers, 1, &vbo_);
-        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-
-        gl_check_with_vao(vao_, glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     }
 
     Eigen::Vector2f* point_;

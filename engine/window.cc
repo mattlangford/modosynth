@@ -72,11 +72,13 @@ void Window::init() {
 //
 
 bool Window::render_loop() {
+    // Assume this is expensive
+    object_manager_.update(0.f);
+
     gl_check(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     gl_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
     object_manager_.render(get_screen_from_world());
-
     glfwSwapBuffers(window_);
     glfwPollEvents();
     return !glfwWindowShouldClose(window_);
