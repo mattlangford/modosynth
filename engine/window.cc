@@ -122,9 +122,7 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     if (!event.control && !event.shift && event.right && event.clicked) {
         screen_change = true;
         center_ -= scaled_event.delta_position;
-    }
-
-    if (event.delta_scroll != 0.0) {
+    } else if (event.delta_scroll != 0.0) {
         screen_change = true;
         double zoom_factor = 0.05 * -event.delta_scroll;
         Eigen::Vector2f new_half_dim_ = half_dim_ + zoom_factor * half_dim_;
@@ -138,9 +136,9 @@ void Window::handle_mouse_event(const MouseEvent& event) {
         double translate_factor = new_half_dim_.norm() / half_dim_.norm() - 1;
         center_ -= translate_factor * (scaled_event.mouse_position - center_);
         half_dim_ = new_half_dim_;
+    } else {
+        object_manager_.handle_mouse_event(scaled_event);
     }
-
-    object_manager_.handle_mouse_event(scaled_event);
 
     // If there was something that changed our view, update the screen_from_world matrix, This is an optimization so we
     // don't invert a matrix on every mouse event.

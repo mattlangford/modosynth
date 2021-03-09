@@ -1,3 +1,4 @@
+#include <random>
 #include <cmath>
 
 #include "engine/buffer.hh"
@@ -124,6 +125,8 @@ public:
     CatenarySolver() {}
 
     void reset(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
+        if (start.x() > end.x())
+            std::swap(start, end);
         start_ = start;
         diff_.x() = end.x() - start.x();
         diff_.y() = end.y() - start.y();
@@ -162,13 +165,14 @@ public:
         return iter < max_iter;
     }
 
-    std::vector<Eigen::Vector2f> trace(size_t steps) {
+    std::vector<Eigen::Vector2f> trace(size_t points) {
+        if (points <= 1) throw std::runtime_error("Calling CatenarySolver::trace() with too few point steps");
         std::vector<Eigen::Vector2f> result;
-        result.reserve(steps);
+        result.reserve(points);
 
-        double step_size = diff_.x() / (steps - 1);
+        double step_size = diff_.x() / (points - 1);
         double x = 0;
-        for (size_t step = 0; step < steps; ++step, x += step_size) {
+        for (size_t point = 0; point < points; ++point, x += step_size) {
             result.push_back({x + start_.x(), f(x) + start_.y()});
         }
         return result;
@@ -190,13 +194,13 @@ private:
 };
 
 struct CatenaryObject {
-    static constexpr size_t kNumSteps = 3;
+    static constexpr size_t kNumSteps = 32;
     std::vector<Eigen::Vector2f> calculate_points() {
+        std::cout << "CatenaryObject::calculate_points() for object " << id << "\n";
         solver.reset(start, end, std::max(solver.length(), min_length()));
         if (!solver.solve()) throw std::runtime_error("Unable to update CatenaryObject, did not converge.");
 
         auto points = solver.trace(kNumSteps);
-        // points.emplace_back(end);
         return points;
     }
 
@@ -204,11 +208,13 @@ struct CatenaryObject {
 
     void draw_lines(engine::VertexArrayObject& vao) const {
         const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * start_element_index);
-        gl_check_with_vao(vao, glDrawElements, GL_TRIANGLES, 3 * 2 * kNumSteps, GL_UNSIGNED_INT, indices);
+
+        // Each step will generate a triangle, so render 3 times as many
+        gl_check_with_vao(vao, glDrawElements, GL_TRIANGLES, 3 * kNumSteps, GL_UNSIGNED_INT, indices);
     }
     void draw_points(engine::VertexArrayObject& vao) const {
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_element_index, 1);
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_element_index + (kNumSteps - 1), 1);
+        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_vertex_index / 2, 1);
+        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_vertex_index / 2 + (kNumSteps - 1), 1);
     }
 
     Eigen::Vector2f start;
@@ -217,6 +223,7 @@ struct CatenaryObject {
     size_t start_vertex_index;
     size_t start_element_index;
     bool needs_update;
+    size_t id;
 };
 
 class TestObjectManager final : public engine::AbstractObjectManager {
@@ -227,16 +234,32 @@ public:
     virtual ~TestObjectManager() = default;
 
     void spawn_object(Eigen::Vector2f start, Eigen::Vector2f end) {
-        objects_.emplace_back(CatenaryObject{start, end, {}, vbo_.size(), ebo_.size(), true});
+        static size_t id = 0;
+        objects_.emplace_back(CatenaryObject{start, end, {}, vbo_.size(), ebo_.size(), true, id++});
+
+        // The element index is the starting vertex. The VBO starts x,y, so to get points we have to divide by 2
+        size_t element_index = vbo_.size() / 2;
         vbo_.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
 
-        size_t element_index = ebo_.size();
+        // Now add in the elements needed to render this object
         auto elements = ebo_.batched_updater();
-        for (size_t i = 0; i < CatenaryObject::kNumSteps - 1; ++i) {
+        for (size_t i = 0; i < CatenaryObject::kNumSteps - 2; ++i) {
             elements.push_back(element_index + i);
             elements.push_back(element_index + i + 1);
             elements.push_back(element_index + i + 2);
         }
+        // Add the last element in, this one needs to be special so we don't duplicate points in the vbo
+        elements.push_back(element_index + CatenaryObject::kNumSteps - 2);
+        elements.push_back(element_index + CatenaryObject::kNumSteps - 1);
+        elements.push_back(element_index + CatenaryObject::kNumSteps - 1);
+    }
+
+    void spawn_random_object()
+    {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        static std::uniform_real_distribution<float> dis(-1000, 1000);
+        spawn_object({dis(gen), dis(gen)}, {dis(gen), dis(gen)});
     }
 
     void init() override {
@@ -249,8 +272,6 @@ public:
         vao_.init();
         vbo_.init(GL_ARRAY_BUFFER, 0, 2, vao_);
         ebo_.init(GL_ELEMENT_ARRAY_BUFFER, vao_);
-
-        spawn_object({100, 100}, {500, 500});
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -288,11 +309,11 @@ public:
             selected_->needs_update = true;
         } else if (event.pressed()) {
             for (auto& object : objects_) {
-                constexpr float kClickRadius = 10;
-                if ((event.mouse_position - object.start).squaredNorm() < kClickRadius) {
+                constexpr float kClickRadius = 100;
+                if ((event.mouse_position - object.start).squaredNorm() < kClickRadius * kClickRadius) {
                     point_ = &object.start;
                     selected_ = &object;
-                } else if ((event.mouse_position - object.end).squaredNorm() < kClickRadius) {
+                } else if ((event.mouse_position - object.end).squaredNorm() < kClickRadius * kClickRadius) {
                     point_ = &object.end;
                     selected_ = &object;
                 }
@@ -303,14 +324,17 @@ public:
         }
     }
 
-    void handle_keyboard_event(const engine::KeyboardEvent&) override {}
+    void handle_keyboard_event(const engine::KeyboardEvent& event) override {
+        if (event.space && event.pressed())
+        {
+            spawn_random_object();
+        }
+    }
 
     CatenaryObject* selected_;
     Eigen::Vector2f* point_;
 
     std::vector<CatenaryObject> objects_;
-
-    bool needs_update_ = true;
 
     engine::Shader shader_;
     engine::Shader point_shader_;
