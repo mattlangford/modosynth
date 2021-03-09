@@ -2,6 +2,7 @@
 
 #include "engine/object_manager.hh"
 #include "engine/shader.hh"
+#include "engine/vao.hh"
 #include "engine/window.hh"
 
 namespace {
@@ -208,8 +209,8 @@ public:
             elements_.emplace_back(i + 2);
         }
 
-        gl_safe(glGenVertexArrays, 1, &vao_);
-        gl_safe(glBindVertexArray, vao_);
+        vao_.init();
+        scoped_vao_bind(vao_);
 
         gl_safe(glGenBuffers, 1, &vbo_);
         gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
@@ -221,8 +222,6 @@ public:
         gl_safe(glGenBuffers, 1, &ebo_);
         gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, ebo_);
         gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(elements_), elements_.data(), GL_STATIC_DRAW);
-
-        gl_safe(glBindVertexArray, 0);
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -230,22 +229,25 @@ public:
 
         gl_safe(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
 
-        gl_safe(glBindVertexArray, vao_);
-
+        scoped_vao_bind(vao_);
         populate_vertices();
         gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
         gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
-        gl_safe(glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
 
-        gl_safe(glBindVertexArray, 0);
-        gl_safe(glUseProgram, 0);
+        auto draw_triangles = [this]() {
+            scoped_vao_bind(vao_);
+            gl_safe(glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
+        };
+        draw_triangles();
 
         point_shader_.activate();
         gl_safe(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
 
-        gl_safe(glBindVertexArray, vao_);
-        gl_safe(glDrawArrays, GL_POINTS, 0, kNumSteps);
-        gl_safe(glBindVertexArray, 0);
+        auto draw_points = [this]() {
+            scoped_vao_bind(vao_);
+            gl_safe(glDrawArrays, GL_POINTS, 0, kNumSteps);
+        };
+        draw_points();
     }
 
     void update(float) override {}
@@ -320,7 +322,7 @@ public:
     engine::Shader shader_;
     engine::Shader point_shader_;
     int sfw_;
-    unsigned int vao_;
+    engine::VertexArrayObject vao_;
     unsigned int vbo_;
     unsigned int ebo_;
 };
