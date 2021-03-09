@@ -204,7 +204,6 @@ public:
 
         vertices_.resize(2 * (kNumSteps + 1));
 
-        update(0);
         gl_check(glGenBuffers, 1, &vbo_);
         gl_check(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
         gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
@@ -227,9 +226,6 @@ public:
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
-        gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, 0);
-        gl_check(glBindBuffer, GL_ARRAY_BUFFER, 0);
-
         shader_.activate();
         gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
         gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
@@ -240,7 +236,7 @@ public:
     }
 
     void update(float) override {
-        lenght_ = std::max(min_length(), length_);
+        length_ = std::max(min_length(), length_);
         CatenarySolver solver{start_, end_, length_};
         if (!solver.solve(alpha_)) {
             throw std::runtime_error("CatenarySolver unable to converge!");
@@ -260,7 +256,8 @@ public:
         size_t el = 0;
         vertices_[stride * points.size() + el++] = end_.x();
         vertices_[stride * points.size() + el++] = end_.y();
-
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
+        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
     }
 
     void handle_mouse_event(const engine::MouseEvent& event) override {
