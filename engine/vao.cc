@@ -8,7 +8,7 @@ namespace engine {
 // #############################################################################
 //
 
-VertexArrayObject::ScopedBinder::ScopedBinder(VertexArrayObject& parent) : parent_(parent) { parent_.bind(); }
+VertexArrayObject::ScopedBinder::ScopedBinder(const VertexArrayObject& parent) : parent_(parent) { parent_.bind(); }
 
 //
 // #############################################################################
@@ -37,7 +37,7 @@ void VertexArrayObject::init() {
 // #############################################################################
 //
 
-void VertexArrayObject::bind() {
+void VertexArrayObject::bind() const {
     if (!handle_) throw std::runtime_error("VertexArrayObject::bind() called before VertexArrayObject::init()");
     gl_check(glBindVertexArray, *handle_);
 }
@@ -46,11 +46,11 @@ void VertexArrayObject::bind() {
 // #############################################################################
 //
 
-void VertexArrayObject::unbind() { gl_check(glBindVertexArray, 0); }
+void VertexArrayObject::unbind() const { gl_check(glBindVertexArray, 0); }
 
 //
 // #############################################################################
 //
 
-VertexArrayObject::ScopedBinder VertexArrayObject::scoped_bind() { return ScopedBinder{*this}; }
+VertexArrayObject::ScopedBinder VertexArrayObject::scoped_bind() const { return ScopedBinder{*this}; }
 }  // namespace engine

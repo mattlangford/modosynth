@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "engine/events.hh"
+#include "engine/vao.hh"
 #include "engine/shader.hh"
 
 namespace engine {
@@ -53,13 +54,13 @@ protected:
     virtual void init_with_vao() = 0;
     virtual void render_with_vao() = 0;
 
-    void bind_vao();
-    const Shader& get_shader() const;
+    const Shader& shader() const;
+    const VertexArrayObject& vao() const;
 
 private:
-    unsigned int vertex_array_object_;
     int screen_from_world_loc_;
 
     Shader shader_;
+    VertexArrayObject vao_;
 };
 }  // namespace engine

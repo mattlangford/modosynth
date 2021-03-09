@@ -81,8 +81,8 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path,
 void BlockObjectManager::init_with_vao() {
     texture_.init();
 
-    vertex_.init(glGetAttribLocation(get_shader().get_program_id(), "world_position"));
-    uv_.init(glGetAttribLocation(get_shader().get_program_id(), "vertex_uv"));
+    vertex_.init(glGetAttribLocation(shader().get_program_id(), "world_position"));
+    uv_.init(glGetAttribLocation(shader().get_program_id(), "vertex_uv"));
 }
 
 //
@@ -107,7 +107,7 @@ void BlockObjectManager::render_with_vao() {
 
     for (const auto* object : objects) {
         // 3 vertices per triangle, 2 triangles per object
-        gl_check(glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT,
+        gl_check_with_vao(vao(), glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT,
                  (void*)(sizeof(unsigned int) * object->block_id));
     }
 }
@@ -212,9 +212,7 @@ engine::Quad2Df BlockObjectManager::uv(const BlockObject& block) const {
 
     quad.top_left = top_left;
     quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    ;
     quad.bottom_left = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    ;
     quad.bottom_right = bottom_right;
     return quad;
 }
@@ -228,9 +226,11 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     object.id = id;
     object.block_id = vertex_.get_index_count();
 
-    bind_vao();
+    {
+    scoped_vao_bind(vao());
     vertex_.add(coords(object));
     uv_.add(uv(object));
+    }
 
     ports_manager_->spawn_object(PortsObject::from_block(object));
 }

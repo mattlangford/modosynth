@@ -17,14 +17,10 @@ AbstractSingleShaderObjectManager::AbstractSingleShaderObjectManager(std::string
 
 void AbstractSingleShaderObjectManager::init() {
     shader_.init();
-
-    gl_check(glGenVertexArrays, 1, &vertex_array_object_);
-    gl_check(glBindVertexArray, vertex_array_object_);
+    vao_.init();
 
     // Call the child function
     init_with_vao();
-
-    gl_check(glBindVertexArray, 0);
 
     screen_from_world_loc_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
     if (const std::string error = get_gl_error(); !error.empty()) {
@@ -44,12 +40,9 @@ void AbstractSingleShaderObjectManager::render(const Eigen::Matrix3f& screen_fro
 
     gl_check(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
 
-    gl_check(glBindVertexArray, vertex_array_object_);
-
     // Call the child function to do the actual rendering
     render_with_vao();
 
-    gl_check(glBindVertexArray, 0);
     gl_check(glUseProgram, 0);
 }
 
@@ -57,11 +50,6 @@ void AbstractSingleShaderObjectManager::render(const Eigen::Matrix3f& screen_fro
 // #############################################################################
 //
 
-void AbstractSingleShaderObjectManager::bind_vao() { gl_check(glBindVertexArray, vertex_array_object_); }
-
-//
-// #############################################################################
-//
-
-const Shader& AbstractSingleShaderObjectManager::get_shader() const { return shader_; }
+const Shader& AbstractSingleShaderObjectManager::shader() const { return shader_; }
+const VertexArrayObject& AbstractSingleShaderObjectManager::vao() const { return vao_; }
 }  // namespace engine

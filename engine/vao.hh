@@ -8,11 +8,11 @@ class VertexArrayObject {
 private:
     class ScopedBinder {
     public:
-        ScopedBinder(VertexArrayObject& parent);
+        ScopedBinder(const VertexArrayObject& parent);
         ~ScopedBinder();
 
     private:
-        VertexArrayObject& parent_;
+        const VertexArrayObject& parent_;
     };
 
 public:
@@ -20,15 +20,15 @@ public:
     ~VertexArrayObject();
 
     void init();
-    void bind();
-    void unbind();
+    void bind() const;
+    void unbind() const;
 
-    ScopedBinder scoped_bind();
+    ScopedBinder scoped_bind() const;
 
 private:
     std::optional<unsigned int> handle_;
 };
+}  // namespace engine
 
 #define scoped_vao_bind(vao) auto _vao_##__LINE__ = vao.scoped_bind()
 #define scoped_vao_ptr_bind(vao) auto _vao_##__LINE__ = vao->scoped_bind()
-}  // namespace engine

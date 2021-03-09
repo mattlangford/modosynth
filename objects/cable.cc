@@ -48,7 +48,7 @@ CableObjectManager::CableObjectManager(std::shared_ptr<PortsObjectManager> ports
 //
 
 void CableObjectManager::init_with_vao() {
-    buffer_.init(glGetAttribLocation(get_shader().get_program_id(), "world_position"));
+    buffer_.init(glGetAttribLocation(shader().get_program_id(), "world_position"));
 }
 
 //
@@ -163,7 +163,7 @@ void CableObjectManager::spawn_object(CableObject object_) {
     object.object_id = id;
     object.buffer_id = buffer_.get_index_count();
 
-    bind_vao();
+    scoped_vao_bind(vao());
     buffer_.add(engine::Line2Df{});
 }
 
