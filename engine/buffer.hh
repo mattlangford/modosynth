@@ -214,57 +214,42 @@ private:
 define_for(float, f, 2);
 define_for(float, f, 3);
 
-
-
 ///
 /// @brief Handles getting data to the GPU
 ///
 template <typename T>
-class Buffer
-{
+class Buffer {
     static_assert(std::is_arithmetic_v<T>);
 
 public:
     Buffer() = default;
 
-    ~Buffer()
-    {
+    ~Buffer() {
         if (handle_)
-        {
             gl_check(glDeleteBuffers, 1, &handle());
-        }
     }
 
 public:
-    void init(unsigned int index, size_t size, std::shared_ptr<VertexArrayObject>& vao)
-    {
+    void init(unsigned int index, size_t size, std::shared_ptr<VertexArrayObject>& vao) {
         vao_ = std::move(vao);
-        set_vertex_attribute_ = [index, size, stride, this](){
-            gl_check_with_vao(vao(), glVertexAttribPointer, index, size, enum_type<T>, GL_FALSE, 0, nullptr);
+        set_vertex_attribute_ = [index, size, this]() {
+            gl_check_with_vao(this->vao(), glVertexAttribPointer, index, size, enum_type<T>, GL_FALSE, 0, nullptr);
         };
 
         // Enable this index, only needs to be done once per index
-        gl_check_with_vao(vao(), glEnableVertexAttribArray, index_);
+        gl_check_with_vao(this->vao(), glEnableVertexAttribArray, index);
     }
 
-    void bind()
-    {
-        gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle());
-    }
+    void bind() { gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle()); }
 
-    void unbind()
-    {
-        gl_check(glBindBuffer(GL_ARRAY_BUFFER, 0));
-    }
+    void unbind() { gl_check(glBindBuffer, GL_ARRAY_BUFFER, 0); }
 
 private:
-    VertexBufferObject& vao()
-    {
+    VertexArrayObject& vao() {
         if (!vao_) throw std::runtime_error("VertexArrayObject not bound, has Buffer::init() been called?");
         return *vao_;
     }
-    unsigned int& handle()
-    {
+    unsigned int& handle() {
         if (!handle_) throw std::runtime_error("No buffer generated, has Buffer::init() been called?");
         return *handle_;
     }
@@ -272,10 +257,8 @@ private:
     ///
     /// @brief Deletes the current buffer and generates a new one. This should be called anytime the size changes
     ///
-    void rebind()
-    {
-        if (handle_)
-            gl_check(glDeleteBuffers, 1, &handle());
+    void rebind() {
+        if (handle_) gl_check(glDeleteBuffers, 1, &handle());
 
         handle_.emplace();
         gl_check(glGenBuffers, 1, &handle());
@@ -286,47 +269,33 @@ private:
     ///
     /// @brief Used when the size of the buffer doesn't change, only the data within
     ///
-    void sync()
-    {
+    void sync() {
         gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle());
-        gl_check(glBufferData, GL_ARRAY_BUFFER, sizeof(T) * data_.size(), data_.data(), dynamic_ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
-        dynamic_ = true; // in case sync is called after init...
+        gl_check(glBufferData, GL_ARRAY_BUFFER, sizeof(T) * data_.size(), data_.data(),
+                 dynamic_ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+        dynamic_ = true;  // in case sync is called after init...
     }
 
-    class BatchedUpdateBuffer
-    {
+    class BatchedUpdateBuffer {
     private:
         BatchedUpdateBuffer(Buffer<T>& parent) : parent_(parent), initial_start_(parent_.data_.data()) {}
 
-        ~BatchedUpdateBuffer()
-        {
+        ~BatchedUpdateBuffer() {
             // Reallocation happened
-            if (initial_start_ != parent_.data_.data())
-            {
+            if (initial_start_ != parent_.data_.data()) {
                 parent_.rebind();
             }
             // Data was only modified
-            else if (modified_)
-            {
+            else if (modified_) {
                 parent_.sync();
             }
         }
 
     public:
-        void reserve(size_t new_size)
-        {
-            parent_.data_.reserve(new_size);
-        }
-        void resize(size_t new_size)
-        {
-            parent_.data_.resize(new_size);
-        }
-        void push_back(const T& t)
-        {
-            parent_.data_.push_back(t);
-        }
-        T& operator[](size_t index)
-        {
+        void reserve(size_t new_size) { parent_.data_.reserve(new_size); }
+        void resize(size_t new_size) { parent_.data_.resize(new_size); }
+        void push_back(const T& t) { parent_.data_.push_back(t); }
+        T& operator[](size_t index) {
             modified_ = true;
             return parent_.data_.at(index);
         }
@@ -338,21 +307,25 @@ private:
         const T* initial_start_;
     };
 
-    template <typename Type> static constexpr GLenum enum_type = -1;
-    template <> static constexpr GLenum enum_type<float> = GL_FLOAT;
-    template <> static constexpr GLenum enum_type<double> = GL_DOUBLE;
-    template <> static constexpr GLenum enum_type<unsigned int> = GL_UNSIGNED_INT;
+    // Mapping between Type and the GLenum that represents that type
+    template <typename Type>
+    static constexpr GLenum enum_type = -1;
+    template <>
+    static constexpr GLenum enum_type<float> = GL_FLOAT;
+    template <>
+    static constexpr GLenum enum_type<double> = GL_DOUBLE;
+    template <>
+    static constexpr GLenum enum_type<unsigned int> = GL_UNSIGNED_INT;
     // TODO The rest of the types
 
 public:
-    void reserve(size_t new_size);
-    void resize(size_t new_size);
-    void push_back(const T& t);
-    T& operator[](size_t index);
-    const T& operator[](size_t index) const;
+    void reserve(size_t new_size) { batched_updater().reserve(new_size); }
+    void resize(size_t new_size) { batched_updater().resize(new_size); }
+    void push_back(const T& t) { batched_updater().push_back(t); }
+    T& operator[](size_t index) { return batched_updater()[index]; }
+    const T& operator[](size_t index) const {  return data_[index]; }
 
-    BatchedUpdateBuffer batched_updater();
-
+    BatchedUpdateBuffer batched_updater() { return {this}; }
 
 private:
     std::shared_ptr<VertexArrayObject> vao_;

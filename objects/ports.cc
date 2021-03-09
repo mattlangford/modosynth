@@ -130,7 +130,7 @@ void PortsObjectManager::init_with_vao() {
 
     get_shader().activate();
     gl_check(glUniform2f, glGetUniformLocation(get_shader().get_program_id(), "half_dim"), kHalfPortWidth,
-            kHalfPortHeight);
+             kHalfPortHeight);
 }
 
 //

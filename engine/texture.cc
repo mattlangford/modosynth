@@ -26,7 +26,7 @@ void Texture::init() {
 
     gl_check(glPixelStorei, GL_UNPACK_ALIGNMENT, 1);
     gl_check(glTexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, bitmap_.get_width(), bitmap_.get_height(), 0, GL_BGRA,
-            GL_UNSIGNED_BYTE, bitmap_.get_pixels().data());
+             GL_UNSIGNED_BYTE, bitmap_.get_pixels().data());
 }
 
 //

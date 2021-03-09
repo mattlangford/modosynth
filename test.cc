@@ -213,10 +213,10 @@ public:
         }
 
         {
-        scoped_vao_bind(vao_);
-        gl_check(glGenBuffers, 1, &ebo_);
-        gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, ebo_);
-        gl_check(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(elements_), elements_.data(), GL_STATIC_DRAW);
+            scoped_vao_bind(vao_);
+            gl_check(glGenBuffers, 1, &ebo_);
+            gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, ebo_);
+            gl_check(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(elements_), elements_.data(), GL_STATIC_DRAW);
         }
     }
 

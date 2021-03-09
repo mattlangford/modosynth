@@ -107,7 +107,8 @@ void BlockObjectManager::render_with_vao() {
 
     for (const auto* object : objects) {
         // 3 vertices per triangle, 2 triangles per object
-        gl_check(glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * object->block_id));
+        gl_check(glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT,
+                 (void*)(sizeof(unsigned int) * object->block_id));
     }
 }
 
