@@ -10,8 +10,8 @@ namespace objects {
 namespace {
 static std::string vertex_shader_text = R"(
 #version 330
+layout(location = 0) in vec2 world_position;
 uniform mat3 screen_from_world;
-in vec2 world_position;
 
 void main()
 {
@@ -107,24 +107,37 @@ void main() {
 //
 
 GridObjectManager::GridObjectManager(const size_t grid_width, const size_t grid_height)
-    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text, geometry_shader_text),
-      width_(grid_width),
-      height_(grid_height) {}
+    : width_(grid_width),
+      height_(grid_height),
+      shader_(vertex_shader_text, fragment_shader_text, geometry_shader_text) {}
 
 //
 // #############################################################################
 //
 
-void GridObjectManager::init_with_vao() {
-    buffer_.init(glGetAttribLocation(get_shader().get_program_id(), "world_position"));
-    buffer_.add(engine::Line2Df{Eigen::Vector2f::Zero(), Eigen::Vector2f{width_, height_}});
+void GridObjectManager::init() {
+    shader_.init();
+    vao_.init();
+    buffer_.init(GL_ARRAY_BUFFER, 0, 2, vao_);
+    auto buffer = buffer_.batched_updater();
+    buffer.push_back(0);        // x0
+    buffer.push_back(0);        // y0
+    buffer.push_back(width_);   // x1
+    buffer.push_back(height_);  // y1
+
+    screen_from_world_location_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
+    engine::throw_on_gl_error("glGetUniformLocation");
 }
 
 //
 // #############################################################################
 //
 
-void GridObjectManager::render_with_vao() { gl_check(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, nullptr); }
+void GridObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
+    shader_.activate();
+    gl_check(glUniformMatrix3fv, screen_from_world_location_, 1, GL_FALSE, screen_from_world.data());
+    gl_check_with_vao(vao_, glDrawArrays, GL_LINES, 0, 2);
+}
 
 //
 // #############################################################################

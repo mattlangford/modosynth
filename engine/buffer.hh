@@ -233,6 +233,7 @@ public:
 
     void init(GLenum target, unsigned int index, size_t size, VertexArrayObject& vao) {
         init(target, vao);
+        stride_ = size;
 
         // Enable this index, only needs to be done once per index
         gl_check_with_vao(this->vao(), glEnableVertexAttribArray, index);
@@ -309,6 +310,7 @@ private:
             modified_ = true;
             return parent_.data_.at(index);
         }
+        T& element(size_t index) { return this->operator[](parent_.stride_* index); }
 
     private:
         // modified but not reallocated
@@ -334,6 +336,8 @@ public:
     void push_back(const T& t) { batched_updater().push_back(t); }
     T& operator[](size_t index) { return batched_updater()[index]; }
     const T& operator[](size_t index) const { return data_[index]; }
+    T& element(size_t index) { return batched_updater()[stride_ * index]; }
+    const T& element(size_t index) const { return data_[stride_ * index]; }
     size_t size() const { return data_.size(); }
 
     BatchedUpdateBuffer batched_updater() { return {*this}; }
@@ -346,6 +350,7 @@ private:
     std::optional<unsigned int> handle_;
     std::vector<T> data_;
     bool dynamic_ = false;  // assume it's static, this will change after the first sync()
+    size_t stride_ = 0;
 };
 
 }  // namespace engine

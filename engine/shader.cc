@@ -126,7 +126,7 @@ void Shader::init() {
 
 void Shader::activate() const {
     if (program_ < 0) {
-        throw std::runtime_error("Invalid program set, did you call init()?");
+        throw std::runtime_error("Can't call Shader::activate() before Shader::init()");
     }
     gl_check(glUseProgram, program_);
 }
