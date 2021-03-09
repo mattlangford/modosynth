@@ -10,7 +10,7 @@ start_y = 200
 end_x = 500
 end_y = 500
 
-vals = [(dx, end_x - start_x), (dy, -end_y - -start_y)]
+vals = [(dx, end_x - start_x), (dy, end_y - start_y)]
 
 s = 2.0 * sympy.sqrt(dx ** 2 + dy ** 2)
 

@@ -130,13 +130,10 @@ public:
     constexpr static double sq(double in) { return in * in; }
 
     double y(double x) const {
-        double h = diff_.x();
-        double v = diff_.y();
         return 1.0 / std::sqrt(2 * sq(x) * std::sinh(1 / (2 * sq(x))) - 1) -
-               1.0 / std::sqrt(std::sqrt(sq(length_) - sq(v)) / h - 1);
+               1.0 / std::sqrt(std::sqrt(sq(length_) - sq(diff_.y())) / diff_.x() - 1);
     }
     double dy(double x) const {
-        double h = diff_.x();
         return (-2 * x * sinh(1 / (2 * sq(x))) + cosh(1.0 / (2.0 * sq(x))) / x) /
                std::pow(2.0 * sq(x) * std::sinh(1.0 / (2.0 * sq(x))) - 1.0, 3.0 / 2.0);
     }
@@ -254,9 +251,10 @@ public:
         if (point_ && event.held()) {
             *point_ = event.mouse_position;
         } else if (event.pressed()) {
-            if ((event.mouse_position - start_).squaredNorm() < 5 * 5) {
+            float sq_radius = 5 * 5;
+            if ((event.mouse_position - start_).squaredNorm() < sq_radius) {
                 point_ = &start_;
-            } else if ((event.mouse_position - end_).squaredNorm() < 5 * 5) {
+            } else if ((event.mouse_position - end_).squaredNorm() < sq_radius) {
                 point_ = &end_;
             }
         } else {
@@ -264,9 +262,20 @@ public:
         }
     }
 
+    void set_min_length()
+    {
+        float new_length = 1.1 * (end_ - start_).norm();
+        if (new_length > length_) {
+            length_ = new_length;
+        }
+
+    }
+
     void reset() {
         start_ = {100, 200};
         end_ = {200, 300};
+        length_ = 0;
+        set_min_length();
     }
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override {
@@ -276,11 +285,7 @@ public:
     }
 
     void populate_vertices() {
-        float new_length = 1.3 * (end_ - start_).norm();
-        if (new_length > length_) {
-            length_ = new_length;
-        }
-
+        set_min_length();
         CatenarySolver solver{start_, end_, length_};
         if (!solver.solve(alpha_)) {
             throw std::runtime_error("CatenarySolver unable to converge!");
@@ -303,10 +308,10 @@ public:
     }
 
     Eigen::Vector2f* point_;
-    float length_;
+    float length_ = 0.0;
     Eigen::Vector2f start_;
     Eigen::Vector2f end_;
-    float alpha_ = 10;
+    float alpha_ = 10.0;
 
     std::vector<float> vertices_;
     std::vector<unsigned int> elements_;
