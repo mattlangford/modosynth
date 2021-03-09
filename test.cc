@@ -203,6 +203,7 @@ struct CatenaryObject {
     }
 
     double min_length() const { return 1.01 * (end - start).norm(); }
+    size_t start_point_index() const { return start_vertex_index / 2; }
 
     void draw_lines(engine::VertexArrayObject& vao) const {
         const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * start_element_index);
@@ -210,8 +211,10 @@ struct CatenaryObject {
         // Each step will generate a triangle, so render 3 times as many
         gl_check_with_vao(vao, glDrawElements, GL_TRIANGLES, 3 * kNumSteps, GL_UNSIGNED_INT, indices);
     }
+
     void draw_points(engine::VertexArrayObject& vao) const {
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_vertex_index / 2, kNumSteps);
+        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_point_index(), 1);
+        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_point_index() + kNumSteps - 1, 1);
     }
 
     Eigen::Vector2f start;
