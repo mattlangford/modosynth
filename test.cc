@@ -132,13 +132,13 @@ public:
     double y(double x) const {
         double h = diff_.x();
         double v = diff_.y();
-        return 1.0 / std::sqrt(2 * x * std::sinh(h / (2 * x)) / h - 1) -
+        return 1.0 / std::sqrt(2 * sq(x) * std::sinh(1 / (2 * sq(x))) - 1) -
                1.0 / std::sqrt(std::sqrt(sq(length_) - sq(v)) / h - 1);
     }
     double dy(double x) const {
         double h = diff_.x();
-        return (-std::sinh(h / (2 * x)) / h + std::cosh(h / (2 * x)) / (2 * x)) /
-               std::pow(2 * x * std::sinh(h / (2 * x)) / h - 1, 3.0 / 2.0);
+        return (-2 * x * sinh(1 / (2 * sq(x))) + cosh(1.0 / (2.0 * sq(x))) / x) /
+               std::pow(2.0 * sq(x) * std::sinh(1.0 / (2.0 * sq(x))) - 1.0, 3.0 / 2.0);
     }
 
     double f(double x) const { return alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
@@ -151,10 +151,9 @@ public:
             x = x - y_val / dy(x);
         }
 
-        alpha_ = x;
-
         double h = diff_.x();
         double v = diff_.y();
+        alpha_ = h * sq(x);
         x_offset_ = 0.5 * (h + alpha_ * std::log((length_ - v) / (length_ + v)));
         y_offset_ = -f(0);
         return iter < max_iter;
@@ -183,43 +182,6 @@ private:
     float x_offset_ = 0;
 };
 
-struct CableSim {
-    using Vector = Eigen::Matrix<float, Eigen::Dynamic, 2>;
-    Vector position;
-    Vector velocity;
-
-    Vector target;
-
-    void update(float dt) {
-        Vector accel = target - position;
-        position += dt * velocity + 0.5 * dt * dt * accel;
-        velocity += dt * accel;
-
-        velocity *= 0.9;
-    }
-
-    void set_target(Vector new_target) {
-        target = std::move(new_target);
-
-        // Hack for the init phase
-        if (position.rows() == 0) return;
-
-        Vector diff = target - position;
-
-        float factor = 1.0;
-        float inc = 1.0 / (position.rows() / 2 - 1);
-        for (int row = 0; row < position.rows(); ++row) {
-            position.row(row) += std::clamp(factor, 0.3f, 1.0f) * diff.row(row);
-
-            if (row < position.rows() / 2) {
-                factor -= inc;
-            } else {
-                factor += inc;
-            }
-        }
-    }
-};
-
 class TestObjectManager final : public engine::AbstractObjectManager {
 public:
     TestObjectManager()
@@ -235,13 +197,7 @@ public:
         sfw_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
         engine::throw_on_gl_error("glGetUniformLocation");
 
-        start_ = {100, 200};
-        end_ = {200, 300};
-        length_ = 1.3 * (end_ - start_).norm();
-
-        populate_new_catenary();
-        sim_.position = sim_.target;
-        sim_.velocity = CableSim::Vector::Zero(kNumSteps, 2);
+        reset();
 
         vertices_.resize(2 * (kNumSteps + 1));
         populate_vertices();
@@ -276,7 +232,6 @@ public:
 
         gl_safe(glBindVertexArray, vao_);
 
-        sim_.update(0.1);
         populate_vertices();
         gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
         gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
@@ -295,29 +250,9 @@ public:
 
     void update(float) override {}
 
-    void populate_new_catenary() {
-        CatenarySolver solver{start_, end_, length_};
-        if (!solver.solve(alpha_)) {
-            throw std::runtime_error("CatenarySolver unable to converge!");
-        }
-        alpha_ = solver.get_alpha();
-        auto traced = solver.trace(kNumSteps);
-
-        CableSim::Vector target = CableSim::Vector::Zero(kNumSteps, 2);
-        for (size_t i = 0; i < kNumSteps; ++i) {
-            target.row(i) = traced[i];
-        }
-        sim_.set_target(std::move(target));
-    }
-
     void handle_mouse_event(const engine::MouseEvent& event) override {
         if (point_ && event.held()) {
-            float new_length = 1.3 * (end_ - start_).norm();
-            if (new_length > length_) {
-                length_ = new_length;
-            }
             *point_ = event.mouse_position;
-            populate_new_catenary();
         } else if (event.pressed()) {
             if ((event.mouse_position - start_).squaredNorm() < 5 * 5) {
                 point_ = &start_;
@@ -329,14 +264,33 @@ public:
         }
     }
 
-    void handle_keyboard_event(const engine::KeyboardEvent&) override {}
+    void reset() {
+        start_ = {100, 200};
+        end_ = {200, 300};
+    }
+
+    void handle_keyboard_event(const engine::KeyboardEvent& event) override {
+        if (event.space == true) {
+            reset();
+        }
+    }
 
     void populate_vertices() {
-        auto& points = sim_.position;
+        float new_length = 1.3 * (end_ - start_).norm();
+        if (new_length > length_) {
+            length_ = new_length;
+        }
+
+        CatenarySolver solver{start_, end_, length_};
+        if (!solver.solve(alpha_)) {
+            throw std::runtime_error("CatenarySolver unable to converge!");
+        }
+        alpha_ = solver.get_alpha();
+        auto points = solver.trace(kNumSteps);
 
         constexpr size_t stride = 2;
-        for (int i = 0; i < points.rows(); ++i) {
-            const Eigen::Vector2f& point = points.row(i);
+        for (size_t i = 0; i < points.size(); ++i) {
+            const Eigen::Vector2f& point = points[i];
 
             size_t el = 0;
             vertices_[stride * i + el++] = point.x();
@@ -353,8 +307,6 @@ public:
     Eigen::Vector2f start_;
     Eigen::Vector2f end_;
     float alpha_ = 10;
-
-    CableSim sim_;
 
     std::vector<float> vertices_;
     std::vector<unsigned int> elements_;
