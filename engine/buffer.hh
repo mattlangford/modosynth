@@ -225,13 +225,13 @@ public:
     }
 
 public:
-    void init(GLenum target, VertexArrayObject& vao) {
+    void init(GLenum target, const VertexArrayObject& vao) {
         vao_ = &vao;
         set_vertex_attribute_ = []() {};
         target_ = target;
     }
 
-    void init(GLenum target, unsigned int index, size_t size, VertexArrayObject& vao) {
+    void init(GLenum target, unsigned int index, size_t size, const VertexArrayObject& vao) {
         init(target, vao);
         stride_ = size;
 
@@ -246,7 +246,7 @@ public:
     void unbind() { gl_check(glBindBuffer, target_, 0); }
 
 private:
-    VertexArrayObject& vao() {
+    const VertexArrayObject& vao() {
         if (!vao_) throw std::runtime_error("VertexArrayObject not bound, has Buffer::init() been called?");
         return *vao_;
     }
@@ -339,12 +339,13 @@ public:
     T& element(size_t index) { return batched_updater()[stride_ * index]; }
     const T& element(size_t index) const { return data_[stride_ * index]; }
     size_t size() const { return data_.size(); }
+    size_t elements() const { return data_.size() / stride_; }
 
     BatchedUpdateBuffer batched_updater() { return {*this}; }
 
 private:
     GLenum target_;
-    VertexArrayObject* vao_;  // we don't own this
+    const VertexArrayObject* vao_;  // we don't own this
     std::function<void()> set_vertex_attribute_;
 
     std::optional<unsigned int> handle_;

@@ -14,7 +14,7 @@ struct BlockObject;
 struct PortsObject {
     engine::ObjectId pool_id;
 
-    size_t buffer_id;
+    size_t element_index;
 
     // The offsets from the parent object to each port represented by this object
     const std::vector<Eigen::Vector2f> offsets;
@@ -58,7 +58,8 @@ private:
 
     int object_position_loc_;
 
-    engine::Buffer2Df buffer_;
+    engine::Buffer<float> buffer_;
+
     engine::Texture texture_;
 };
 }  // namespace objects

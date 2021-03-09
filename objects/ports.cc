@@ -125,7 +125,7 @@ PortsObjectManager::PortsObjectManager()
 void PortsObjectManager::init_with_vao() {
     texture_.init();
 
-    buffer_.init(glGetAttribLocation(shader().get_program_id(), "port_offset"));
+    buffer_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "port_offset"), 2, vao());
     object_position_loc_ = glGetUniformLocation(shader().get_program_id(), "object_position");
 
     shader().activate();
@@ -144,11 +144,7 @@ void PortsObjectManager::render_with_vao() {
     for (auto object : pool_->iterate()) {
         Eigen::Vector2f object_position = object->parent_block.bottom_left();
         gl_check(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
-
-        // The pointer here doesn't actually point to anything. It's an offset into the current element array but needs
-        // to be a pointer for some reason (and have the right size).
-        const void* offset_ptr = reinterpret_cast<void*>(sizeof(unsigned int) * object->buffer_id);
-        gl_check_with_vao(vao(), glDrawElements, GL_POINTS, object->offsets.size(), GL_UNSIGNED_INT, offset_ptr);
+        gl_check_with_vao(vao(), glDrawArrays, GL_POINTS, object->element_index, object->offsets.size());
     }
 }
 
@@ -161,11 +157,12 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
 
     auto [id, object] = pool_->add(std::move(object_));
     object.pool_id = id;
-    object.buffer_id = buffer_.get_index_count();
+    object.element_index = buffer_.elements();
 
-    scoped_vao_bind(vao());
+    auto points = buffer_.batched_updater();
     for (const Eigen::Vector2f& offset : object.offsets) {
-        buffer_.add(engine::Point2Df{offset});
+        points.push_back(offset.x());
+        points.push_back(offset.y());
     }
 }
 
