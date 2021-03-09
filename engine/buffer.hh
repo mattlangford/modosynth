@@ -230,19 +230,27 @@ public:
     }
 
 public:
-    void init(unsigned int index, size_t size, std::shared_ptr<VertexArrayObject>& vao) {
-        vao_ = std::move(vao);
-        set_vertex_attribute_ = [index, size, this]() {
-            gl_check_with_vao(this->vao(), glVertexAttribPointer, index, size, enum_type<T>, GL_FALSE, 0, nullptr);
-        };
+    void init(GLenum target, VertexArrayObject& vao) {
+        vao_ = &vao;
+        set_vertex_attribute_ = [](){};
+        target_ = target;
+    }
+
+    void init(GLenum target, unsigned int index, size_t size, VertexArrayObject& vao) {
+        init(target, vao);
 
         // Enable this index, only needs to be done once per index
         gl_check_with_vao(this->vao(), glEnableVertexAttribArray, index);
+
+        set_vertex_attribute_ = [index, size, this]() {
+            gl_check_with_vao(this->vao(), glVertexAttribPointer, index, size, enum_type<T>, GL_FALSE, 0, nullptr);
+        };
     }
 
-    void bind() { gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle()); }
-
-    void unbind() { gl_check(glBindBuffer, GL_ARRAY_BUFFER, 0); }
+    void unbind()
+    {
+        gl_check(glBindBuffer, target_, 0);
+    }
 
 private:
     VertexArrayObject& vao() {
@@ -270,16 +278,15 @@ private:
     /// @brief Used when the size of the buffer doesn't change, only the data within
     ///
     void sync() {
-        gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle());
-        gl_check(glBufferData, GL_ARRAY_BUFFER, sizeof(T) * data_.size(), data_.data(),
+        gl_check(glBindBuffer, target_, handle());
+        gl_check(glBufferData, target_, sizeof(T) * data_.size(), data_.data(),
                  dynamic_ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
         dynamic_ = true;  // in case sync is called after init...
     }
 
     class BatchedUpdateBuffer {
-    private:
+    public:
         BatchedUpdateBuffer(Buffer<T>& parent) : parent_(parent), initial_start_(parent_.data_.data()) {}
-
         ~BatchedUpdateBuffer() {
             // Reallocation happened
             if (initial_start_ != parent_.data_.data()) {
@@ -289,6 +296,7 @@ private:
             else if (modified_) {
                 parent_.sync();
             }
+            parent_.unbind();
         }
 
     public:
@@ -300,7 +308,7 @@ private:
             return parent_.data_.at(index);
         }
 
-    public:
+    private:
         // modified but not reallocated
         bool modified_ = false;
         Buffer<T> parent_;
@@ -324,16 +332,18 @@ public:
     void push_back(const T& t) { batched_updater().push_back(t); }
     T& operator[](size_t index) { return batched_updater()[index]; }
     const T& operator[](size_t index) const {  return data_[index]; }
+    size_t size() const { return data_.size(); }
 
-    BatchedUpdateBuffer batched_updater() { return {this}; }
+    BatchedUpdateBuffer batched_updater() { return {*this}; }
 
 private:
-    std::shared_ptr<VertexArrayObject> vao_;
+    GLenum target_;
+    VertexArrayObject* vao_; // we don't own this
     std::function<void()> set_vertex_attribute_;
 
     std::optional<unsigned int> handle_;
     std::vector<T> data_;
-    bool dynamic_;
+    bool dynamic_ = false; // assume it's static, this will change after the first sync()
 };
 
 }  // namespace engine
