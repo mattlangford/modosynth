@@ -129,7 +129,7 @@ void PortsObjectManager::init_with_vao() {
     object_position_loc_ = glGetUniformLocation(get_shader().get_program_id(), "object_position");
 
     get_shader().activate();
-    gl_safe(glUniform2f, glGetUniformLocation(get_shader().get_program_id(), "half_dim"), kHalfPortWidth,
+    gl_check(glUniform2f, glGetUniformLocation(get_shader().get_program_id(), "half_dim"), kHalfPortWidth,
             kHalfPortHeight);
 }
 
@@ -143,12 +143,12 @@ void PortsObjectManager::render_with_vao() {
 
     for (auto object : pool_->iterate()) {
         Eigen::Vector2f object_position = object->parent_block.bottom_left();
-        gl_safe(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
+        gl_check(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
 
         // The pointer here doesn't actually point to anything. It's an offset into the current element array but needs
         // to be a pointer for some reason (and have the right size).
         const void* offset_ptr = reinterpret_cast<void*>(sizeof(unsigned int) * object->buffer_id);
-        gl_safe(glDrawElements, GL_POINTS, object->offsets.size(), GL_UNSIGNED_INT, offset_ptr);
+        gl_check(glDrawElements, GL_POINTS, object->offsets.size(), GL_UNSIGNED_INT, offset_ptr);
     }
 }
 

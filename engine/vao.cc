@@ -30,7 +30,7 @@ VertexArrayObject::~VertexArrayObject() {
 
 void VertexArrayObject::init() {
     auto& handle = handle_.emplace();
-    gl_safe(glGenVertexArrays, 1, &handle);
+    gl_check(glGenVertexArrays, 1, &handle);
 }
 
 //
@@ -39,14 +39,14 @@ void VertexArrayObject::init() {
 
 void VertexArrayObject::bind() {
     if (!handle_) throw std::runtime_error("VertexArrayObject::bind() called before VertexArrayObject::init()");
-    gl_safe(glBindVertexArray, *handle_);
+    gl_check(glBindVertexArray, *handle_);
 }
 
 //
 // #############################################################################
 //
 
-void VertexArrayObject::unbind() { gl_safe(glBindVertexArray, 0); }
+void VertexArrayObject::unbind() { gl_check(glBindVertexArray, 0); }
 
 //
 // #############################################################################

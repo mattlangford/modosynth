@@ -73,16 +73,16 @@ public:
         buffer_ids_.emplace();
         auto& [vertex, element] = *buffer_ids_;
 
-        gl_safe(glGenBuffers, 2, buffer_ids_->data());
+        gl_check(glGenBuffers, 2, buffer_ids_->data());
 
         // Since a new element was added, we'll need to update the buffers. Assume neither will be updated often at
         // first,
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex);
-        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element);
-        gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
-        gl_safe(glEnableVertexAttribArray, location_);
-        gl_safe(glVertexAttribPointer, location_, Dim, GL_FLOAT, GL_FALSE, 0, 0);
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vertex);
+        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+        gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element);
+        gl_check(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(indices_), indices_.data(), GL_STATIC_DRAW);
+        gl_check(glEnableVertexAttribArray, location_);
+        gl_check(glVertexAttribPointer, location_, Dim, GL_FLOAT, GL_FALSE, 0, 0);
 
         return index;
     }
@@ -103,8 +103,8 @@ public:
         auto& [vertex, element] = *buffer_ids_;
 
         // Only need to update the vertex array since the number of elements didn't change
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex);
-        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STREAM_DRAW);
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vertex);
+        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STREAM_DRAW);
     }
 
     void print() const {
@@ -113,15 +113,15 @@ public:
     }
     void bind() {
         auto& [vertex, element] = *buffer_ids_;
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vertex);
-        gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element);
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vertex);
+        gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, element);
     }
     size_t get_index_count() const { return indices_.size(); }
 
 private:
     void reset_buffers() {
         if (buffer_ids_) {
-            gl_safe(glDeleteBuffers, 2, buffer_ids_->data());
+            gl_check(glDeleteBuffers, 2, buffer_ids_->data());
             buffer_ids_.reset();
         }
     }
@@ -217,46 +217,80 @@ define_for(float, f, 3);
 
 
 ///
-/// @brief Handles getting data to the GPU. T is assumed to be something 
+/// @brief Handles getting data to the GPU
 ///
 template <typename T>
 class Buffer
 {
+    static_assert(std::is_arithmetic_v<T>);
 
 public:
     Buffer() = default;
-    ~Buffer();
+
+    ~Buffer()
+    {
+        if (handle_)
+        {
+            gl_check(glDeleteBuffers, 1, &handle());
+        }
+    }
 
 public:
-    ///
-    /// @brief Initialize with the vertex attribute index, the stride (in elements) between elements, and a VAO to bind
-    ///
-    void init(unsigned int index, size_t stride, std::shared_ptr<VertexArrayObject>& vao)
+    void init(unsigned int index, size_t size, std::shared_ptr<VertexArrayObject>& vao)
     {
-        index_ = index;
-        stride_ = stride;
         vao_ = std::move(vao);
+        set_vertex_attribute_ = [index, size, stride, this](){
+            gl_check_with_vao(vao(), glVertexAttribPointer, index, size, enum_type<T>, GL_FALSE, 0, nullptr);
+        };
 
-        handle_.emplace();
-        scoped_vao_ptr_bind(vao_);
-        gl_safe(glGenBuffers, 1, &*handle_);
+        // Enable this index, only needs to be done once per index
+        gl_check_with_vao(vao(), glEnableVertexAttribArray, index_);
     }
 
     void bind()
     {
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle());
     }
 
     void unbind()
     {
+        gl_check(glBindBuffer(GL_ARRAY_BUFFER, 0));
     }
 
 private:
-    void rebind()
+    VertexBufferObject& vao()
     {
+        if (!vao_) throw std::runtime_error("VertexArrayObject not bound, has Buffer::init() been called?");
+        return *vao_;
+    }
+    unsigned int& handle()
+    {
+        if (!handle_) throw std::runtime_error("No buffer generated, has Buffer::init() been called?");
+        return *handle_;
     }
 
+    ///
+    /// @brief Deletes the current buffer and generates a new one. This should be called anytime the size changes
+    ///
+    void rebind()
+    {
+        if (handle_)
+            gl_check(glDeleteBuffers, 1, &handle());
+
+        handle_.emplace();
+        gl_check(glGenBuffers, 1, &handle());
+        sync();
+        set_vertex_attribute_();
+    }
+
+    ///
+    /// @brief Used when the size of the buffer doesn't change, only the data within
+    ///
     void sync()
     {
+        gl_check(glBindBuffer, GL_ARRAY_BUFFER, handle());
+        gl_check(glBufferData, GL_ARRAY_BUFFER, sizeof(T) * data_.size(), data_.data(), dynamic_ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+        dynamic_ = true; // in case sync is called after init...
     }
 
     class BatchedUpdateBuffer
@@ -304,6 +338,12 @@ private:
         const T* initial_start_;
     };
 
+    template <typename Type> static constexpr GLenum enum_type = -1;
+    template <> static constexpr GLenum enum_type<float> = GL_FLOAT;
+    template <> static constexpr GLenum enum_type<double> = GL_DOUBLE;
+    template <> static constexpr GLenum enum_type<unsigned int> = GL_UNSIGNED_INT;
+    // TODO The rest of the types
+
 public:
     void reserve(size_t new_size);
     void resize(size_t new_size);
@@ -315,12 +355,12 @@ public:
 
 
 private:
-    unsigned int index_;
-    size_t stride_;
     std::shared_ptr<VertexArrayObject> vao_;
+    std::function<void()> set_vertex_attribute_;
 
     std::optional<unsigned int> handle_;
     std::vector<T> data_;
+    bool dynamic_;
 };
 
 }  // namespace engine

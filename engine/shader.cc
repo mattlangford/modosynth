@@ -79,8 +79,8 @@ void Shader::init() {
     program_ = glCreateProgram();
 
     // Attach our shaders to our program_
-    gl_safe(glAttachShader, program_, vertex_shader);
-    gl_safe(glAttachShader, program_, fragment_shader);
+    gl_check(glAttachShader, program_, vertex_shader);
+    gl_check(glAttachShader, program_, fragment_shader);
 
     int geometry_shader = 0;
     if (geometry_) {
@@ -88,11 +88,11 @@ void Shader::init() {
         if (geometry_shader < 0) {
             throw std::runtime_error("Failed to build geometry shader.");
         }
-        gl_safe(glAttachShader, program_, geometry_shader);
+        gl_check(glAttachShader, program_, geometry_shader);
     }
 
     // Link our program_
-    gl_safe(glLinkProgram, program_);
+    gl_check(glLinkProgram, program_);
 
     // Note the different functions here: glGetProgram* instead of glGetShader*.
     int linked = 0;
@@ -115,9 +115,9 @@ void Shader::init() {
     }
 
     // Always detach shaders after a successful link.
-    gl_safe(glDetachShader, program_, vertex_shader);
-    gl_safe(glDetachShader, program_, fragment_shader);
-    if (geometry_) gl_safe(glDetachShader, program_, geometry_shader);
+    gl_check(glDetachShader, program_, vertex_shader);
+    gl_check(glDetachShader, program_, fragment_shader);
+    if (geometry_) gl_check(glDetachShader, program_, geometry_shader);
 }
 
 //
@@ -128,7 +128,7 @@ void Shader::activate() const {
     if (program_ < 0) {
         throw std::runtime_error("Invalid program set, did you call init()?");
     }
-    gl_safe(glUseProgram, program_);
+    gl_check(glUseProgram, program_);
 }
 
 //

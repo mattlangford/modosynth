@@ -57,8 +57,8 @@ void Window::init() {
     std::cout << "GL_SHADING_LANGUAGE_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
     std::cout << "GL_VERSION: " << glGetString(GL_VERSION) << "\n";
 
-    gl_safe(glEnable, GL_BLEND);
-    gl_safe(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gl_check(glEnable, GL_BLEND);
+    gl_check(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LEQUAL);
@@ -72,8 +72,8 @@ void Window::init() {
 //
 
 bool Window::render_loop() {
-    gl_safe(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    gl_safe(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
+    gl_check(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    gl_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
     object_manager_.render(get_screen_from_world());
 

@@ -11,7 +11,7 @@ namespace engine {
 std::string get_gl_error();
 void throw_on_gl_error(std::string action = "");
 }  // namespace engine
-#define gl_safe(func, ...)                                                                           \
+#define gl_check(func, ...)                                                                           \
     func(__VA_ARGS__);                                                                               \
     do {                                                                                             \
         std::stringstream ss;                                                                        \
@@ -19,8 +19,8 @@ void throw_on_gl_error(std::string action = "");
         ::engine::throw_on_gl_error(ss.str());                                                       \
     } while (false)
 
-#define gl_safe_with_vao(vao, func, ...) \
+#define gl_check_with_vao(vao, func, ...) \
     do { \
         scoped_vao_bind(vao); \
-        gl_safe(func, __VA_ARGS__);\
+        gl_check(func, __VA_ARGS__);\
     } while(false)\

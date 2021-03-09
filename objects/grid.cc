@@ -124,7 +124,7 @@ void GridObjectManager::init_with_vao() {
 // #############################################################################
 //
 
-void GridObjectManager::render_with_vao() { gl_safe(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, nullptr); }
+void GridObjectManager::render_with_vao() { gl_check(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, nullptr); }
 
 //
 // #############################################################################

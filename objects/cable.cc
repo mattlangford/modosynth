@@ -95,11 +95,11 @@ void CableObjectManager::render_from_buffer(engine::Buffer2Df& buffer) const {
 
     for (const auto* object : objects) {
         // 2 triangles per object
-        gl_safe(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * object->buffer_id));
+        gl_check(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * object->buffer_id));
     }
 
     if (building_) {
-        gl_safe(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * building_id));
+        gl_check(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * building_id));
     }
 }
 
