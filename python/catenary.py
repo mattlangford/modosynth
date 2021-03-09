@@ -24,13 +24,6 @@ print (f"df(x): {df}")
 def solve(f):
     return (f.subs(vals).subs(a, x)).evalf()
 
-x = 513702
-print (solve(b))
-print (solve(1 / (2 * (b**2))))
-print (solve(2 * (b**2) * sympy.sinh(1 / (2 * (b**2)))))
-print (solve(1 / sympy.sqrt(2 * (b**2) * sympy.sinh(1 / (2 * (b**2))) - 1)))
-exit()
-
 x = 10
 for i in range(10):
     print (f"Iteration {i}, x={x} f(x)={solve(f)} df(x)={solve(df)}")
