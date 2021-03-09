@@ -20,6 +20,9 @@ df = f.diff(b)
 print (f"f(x): {f}")
 print (f"df(x): {df}")
 
+print (sympy.simplify(f))
+print (sympy.trigsimp(f))
+
 def solve(f):
     return (f.subs(vals).subs(b, x)).evalf()
 

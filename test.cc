@@ -117,7 +117,6 @@ size_t size_in_bytes(const std::vector<Data>& vec) {
 }
 }  // namespace
 
-/// Mostly from https://foggyhazel.wordpress.com/2018/02/12/catenary-passing-through-2-points/
 class CatenarySolver {
 public:
     CatenarySolver(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
@@ -127,31 +126,35 @@ public:
         length_ = length;
     }
 
-    constexpr static double sq(double in) { return in * in; }
-
-    double y(double x) const {
-        return 1.0 / std::sqrt(2 * sq(x) * std::sinh(1 / (2 * sq(x))) - 1) -
-               1.0 / std::sqrt(std::sqrt(sq(length_) - sq(diff_.y())) / diff_.x() - 1);
-    }
-    double dy(double x) const {
-        return (-2 * x * sinh(1 / (2 * sq(x))) + cosh(1.0 / (2.0 * sq(x))) / x) /
-               std::pow(2.0 * sq(x) * std::sinh(1.0 / (2.0 * sq(x))) - 1.0, 3.0 / 2.0);
-    }
-
     double f(double x) const { return alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
 
-    bool solve(double x = 10, double tol = 1E-3, size_t max_iter = 100) {
+    constexpr static double sq(double in) { return in * in; }
+
+    bool solve(double b = 10, double tol = 1E-3, size_t max_iter = 100) {
         size_t iter = 0;
+
+        // Function we're optimizing which relates the free parameter (b) to the size of the opening we need.
+        // [1] https://foggyhazel.wordpress.com/2018/02/12/catenary-passing-through-2-points/
+        auto y = [this](double b) {
+            return 1.0 / std::sqrt(2 * sq(b) * std::sinh(1 / (2 * sq(b))) - 1) -
+                   1.0 / std::sqrt(std::sqrt(sq(length_) - sq(diff_.y())) / diff_.x() - 1);
+        };
+        // Derivative according to sympy
+        auto dy = [](double b) {
+            return (-2 * b * sinh(1 / (2 * sq(b))) + cosh(1.0 / (2.0 * sq(b))) / b) /
+                   std::pow(2.0 * sq(b) * std::sinh(1.0 / (2.0 * sq(b))) - 1.0, 3.0 / 2.0);
+        };
+
+        // Newton iteration
         for (; iter < max_iter; ++iter) {
-            float y_val = y(x);
+            float y_val = y(b);
             if (abs(y_val) < tol) break;
-            x = x - y_val / dy(x);
+            b -= y_val / dy(b);
         }
 
-        double h = diff_.x();
-        double v = diff_.y();
-        alpha_ = h * sq(x);
-        x_offset_ = 0.5 * (h + alpha_ * std::log((length_ - v) / (length_ + v)));
+        // Since b = sqrt(h / a), we can solve easily for a
+        alpha_ = diff_.x() * sq(b);
+        x_offset_ = 0.5 * (diff_.x() + alpha_ * std::log((length_ - diff_.y()) / (length_ + diff_.y())));
         y_offset_ = -f(0);
         return iter < max_iter;
     }
@@ -262,13 +265,11 @@ public:
         }
     }
 
-    void set_min_length()
-    {
+    void set_min_length() {
         float new_length = 1.1 * (end_ - start_).norm();
         if (new_length > length_) {
             length_ = new_length;
         }
-
     }
 
     void reset() {
