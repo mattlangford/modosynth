@@ -1,5 +1,5 @@
-#include <random>
 #include <cmath>
+#include <random>
 
 #include "engine/buffer.hh"
 #include "engine/object_manager.hh"
@@ -125,8 +125,7 @@ public:
     CatenarySolver() {}
 
     void reset(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
-        if (start.x() > end.x())
-            std::swap(start, end);
+        if (start.x() > end.x()) std::swap(start, end);
         start_ = start;
         diff_.x() = end.x() - start.x();
         diff_.y() = end.y() - start.y();
@@ -196,7 +195,6 @@ private:
 struct CatenaryObject {
     static constexpr size_t kNumSteps = 32;
     std::vector<Eigen::Vector2f> calculate_points() {
-        std::cout << "CatenaryObject::calculate_points() for object " << id << "\n";
         solver.reset(start, end, std::max(solver.length(), min_length()));
         if (!solver.solve()) throw std::runtime_error("Unable to update CatenaryObject, did not converge.");
 
@@ -213,8 +211,7 @@ struct CatenaryObject {
         gl_check_with_vao(vao, glDrawElements, GL_TRIANGLES, 3 * kNumSteps, GL_UNSIGNED_INT, indices);
     }
     void draw_points(engine::VertexArrayObject& vao) const {
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_vertex_index / 2, 1);
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_vertex_index / 2 + (kNumSteps - 1), 1);
+        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_vertex_index / 2, kNumSteps);
     }
 
     Eigen::Vector2f start;
@@ -238,24 +235,23 @@ public:
         objects_.emplace_back(CatenaryObject{start, end, {}, vbo_.size(), ebo_.size(), true, id++});
 
         // The element index is the starting vertex. The VBO starts x,y, so to get points we have to divide by 2
-        size_t element_index = vbo_.size() / 2;
+        size_t vertex_index = vbo_.size() / 2;
         vbo_.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
 
         // Now add in the elements needed to render this object
         auto elements = ebo_.batched_updater();
         for (size_t i = 0; i < CatenaryObject::kNumSteps - 2; ++i) {
-            elements.push_back(element_index + i);
-            elements.push_back(element_index + i + 1);
-            elements.push_back(element_index + i + 2);
+            elements.push_back(vertex_index + i);
+            elements.push_back(vertex_index + i + 1);
+            elements.push_back(vertex_index + i + 2);
         }
         // Add the last element in, this one needs to be special so we don't duplicate points in the vbo
-        elements.push_back(element_index + CatenaryObject::kNumSteps - 2);
-        elements.push_back(element_index + CatenaryObject::kNumSteps - 1);
-        elements.push_back(element_index + CatenaryObject::kNumSteps - 1);
+        elements.push_back(vertex_index + CatenaryObject::kNumSteps - 2);
+        elements.push_back(vertex_index + CatenaryObject::kNumSteps - 1);
+        elements.push_back(vertex_index + CatenaryObject::kNumSteps - 1);
     }
 
-    void spawn_random_object()
-    {
+    void spawn_random_object() {
         static std::random_device rd;
         static std::mt19937 gen(rd());
         static std::uniform_real_distribution<float> dis(-1000, 1000);
@@ -325,8 +321,7 @@ public:
     }
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override {
-        if (event.space && event.pressed())
-        {
+        if (event.space && event.pressed()) {
             spawn_random_object();
         }
     }

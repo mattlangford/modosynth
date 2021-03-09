@@ -107,10 +107,6 @@ public:
         gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STREAM_DRAW);
     }
 
-    void print() const {
-        for (unsigned int index : indices_)
-            std::cout << "Index: " << index << ", v: " << vertices_[index].transpose() << "\n";
-    }
     void bind() {
         auto& [vertex, element] = *buffer_ids_;
         gl_check(glBindBuffer, GL_ARRAY_BUFFER, vertex);
@@ -274,6 +270,7 @@ private:
     /// @brief Used when the size of the buffer doesn't change, only the data within
     ///
     void sync() {
+        std::cout << "Syncing " << (target_ == GL_ARRAY_BUFFER) << "\n";
         // Some buffer targets require the VAO to be bound (GL_ELEMENT_ARRAY_BUFFER for example)
         scoped_vao_ptr_bind(vao_);
         gl_check(glBindBuffer, target_, handle());
@@ -305,7 +302,7 @@ private:
     public:
         void reserve(size_t new_size) { parent_.data_.reserve(new_size); }
         void resize(size_t new_size) { parent_.data_.resize(new_size); }
-        void push_back(const T& t) { parent_.data_.push_back(t); }
+        void push_back(const T& t) { modified_ = true; parent_.data_.push_back(t); }
         T& operator[](size_t index) {
             modified_ = true;
             return parent_.data_.at(index);
