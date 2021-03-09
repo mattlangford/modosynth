@@ -30,4 +30,5 @@ private:
 };
 
 #define scoped_vao_bind(vao) auto _vao_##__LINE__ = vao.scoped_bind()
+#define scoped_vao_ptr_bind(vao) auto _vao_##__LINE__ = vao->scoped_bind()
 }  // namespace engine

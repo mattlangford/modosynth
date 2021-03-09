@@ -200,7 +200,10 @@ public:
 
         reset();
 
-        vertices_.resize(2 * (kNumSteps + 1));
+        vao_.init();
+
+        gl_safe_with_vao(vao_, glEnableVertexAttribArray, 0);
+
         populate_vertices();
 
         for (size_t i = 0; i < kNumSteps - 1; ++i) {
@@ -209,19 +212,12 @@ public:
             elements_.emplace_back(i + 2);
         }
 
-        vao_.init();
+        {
         scoped_vao_bind(vao_);
-
-        gl_safe(glGenBuffers, 1, &vbo_);
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-
-        gl_safe(glEnableVertexAttribArray, 0);
-        gl_safe(glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-
         gl_safe(glGenBuffers, 1, &ebo_);
         gl_safe(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, ebo_);
         gl_safe(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(elements_), elements_.data(), GL_STATIC_DRAW);
+        }
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -229,25 +225,14 @@ public:
 
         gl_safe(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
 
-        scoped_vao_bind(vao_);
         populate_vertices();
-        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_DYNAMIC_DRAW);
 
-        auto draw_triangles = [this]() {
-            scoped_vao_bind(vao_);
-            gl_safe(glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
-        };
-        draw_triangles();
+        gl_safe_with_vao(vao_, glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
 
         point_shader_.activate();
         gl_safe(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
 
-        auto draw_points = [this]() {
-            scoped_vao_bind(vao_);
-            gl_safe(glDrawArrays, GL_POINTS, 0, kNumSteps);
-        };
-        draw_points();
+        gl_safe_with_vao(vao_, glDrawArrays, GL_POINTS, 0, kNumSteps);
     }
 
     void update(float) override {}
@@ -296,6 +281,9 @@ public:
         alpha_ = solver.get_alpha();
         auto points = solver.trace(kNumSteps);
 
+        gl_safe(glDeleteBuffers, 1, &vbo_);
+        vertices_.resize(2 * (kNumSteps + 1));
+
         constexpr size_t stride = 2;
         for (size_t i = 0; i < points.size(); ++i) {
             const Eigen::Vector2f& point = points[i];
@@ -308,6 +296,12 @@ public:
         size_t el = 0;
         vertices_[stride * points.size() + el++] = end_.x();
         vertices_[stride * points.size() + el++] = end_.y();
+
+        gl_safe(glGenBuffers, 1, &vbo_);
+        gl_safe(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
+        gl_safe(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+
+        gl_safe_with_vao(vao_, glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     }
 
     Eigen::Vector2f* point_;

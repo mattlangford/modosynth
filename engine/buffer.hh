@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "engine/gl.hh"
+#include "engine/vao.hh"
 
 namespace engine {
 
@@ -54,10 +55,10 @@ using Primitive = std::variant<Point<T, Dim>, Line<T, Dim>, Triangle<T, Dim>, Qu
 //
 
 template <typename T, int Dim>
-class Buffer {
+class Buffer_ {
 public:
-    Buffer() = default;
-    ~Buffer() { reset_buffers(); }
+    Buffer_() = default;
+    ~Buffer_() { reset_buffers(); }
 
 public:
     void init(int location) { location_ = location; }
@@ -208,9 +209,118 @@ private:
     using Triangle##dim##D##type_short = Triangle<type, dim>;   \
     using Quad##dim##D##type_short = Quad<type, dim>;           \
     using Primitive##dim##D##type_short = Primitive<type, dim>; \
-    using Buffer##dim##D##type_short = Buffer<type, dim>;
+    using Buffer##dim##D##type_short = Buffer_<type, dim>;
 
 define_for(float, f, 2);
 define_for(float, f, 3);
+
+
+
+///
+/// @brief Handles getting data to the GPU. T is assumed to be something 
+///
+template <typename T>
+class Buffer
+{
+
+public:
+    Buffer() = default;
+    ~Buffer();
+
+public:
+    ///
+    /// @brief Initialize with the vertex attribute index, the stride (in elements) between elements, and a VAO to bind
+    ///
+    void init(unsigned int index, size_t stride, std::shared_ptr<VertexArrayObject>& vao)
+    {
+        index_ = index;
+        stride_ = stride;
+        vao_ = std::move(vao);
+
+        handle_.emplace();
+        scoped_vao_ptr_bind(vao_);
+        gl_safe(glGenBuffers, 1, &*handle_);
+    }
+
+    void bind()
+    {
+    }
+
+    void unbind()
+    {
+    }
+
+private:
+    void rebind()
+    {
+    }
+
+    void sync()
+    {
+    }
+
+    class BatchedUpdateBuffer
+    {
+    private:
+        BatchedUpdateBuffer(Buffer<T>& parent) : parent_(parent), initial_start_(parent_.data_.data()) {}
+
+        ~BatchedUpdateBuffer()
+        {
+            // Reallocation happened
+            if (initial_start_ != parent_.data_.data())
+            {
+                parent_.rebind();
+            }
+            // Data was only modified
+            else if (modified_)
+            {
+                parent_.sync();
+            }
+        }
+
+    public:
+        void reserve(size_t new_size)
+        {
+            parent_.data_.reserve(new_size);
+        }
+        void resize(size_t new_size)
+        {
+            parent_.data_.resize(new_size);
+        }
+        void push_back(const T& t)
+        {
+            parent_.data_.push_back(t);
+        }
+        T& operator[](size_t index)
+        {
+            modified_ = true;
+            return parent_.data_.at(index);
+        }
+
+    public:
+        // modified but not reallocated
+        bool modified_ = false;
+        Buffer<T> parent_;
+        const T* initial_start_;
+    };
+
+public:
+    void reserve(size_t new_size);
+    void resize(size_t new_size);
+    void push_back(const T& t);
+    T& operator[](size_t index);
+    const T& operator[](size_t index) const;
+
+    BatchedUpdateBuffer batched_updater();
+
+
+private:
+    unsigned int index_;
+    size_t stride_;
+    std::shared_ptr<VertexArrayObject> vao_;
+
+    std::optional<unsigned int> handle_;
+    std::vector<T> data_;
+};
 
 }  // namespace engine
