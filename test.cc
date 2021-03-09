@@ -1,5 +1,6 @@
 #include <cmath>
 
+#include "engine/buffer.hh"
 #include "engine/object_manager.hh"
 #include "engine/shader.hh"
 #include "engine/vao.hh"
@@ -191,6 +192,7 @@ public:
     virtual ~TestObjectManager() = default;
 
     static constexpr size_t kNumSteps = 64;
+
     void init() override {
         shader_.init();
         point_shader_.init();
@@ -201,41 +203,32 @@ public:
         reset();
 
         vao_.init();
+        vbo_.init(GL_ARRAY_BUFFER, 0, 2, vao_);
+        ebo_.init(GL_ELEMENT_ARRAY_BUFFER, vao_);
 
-        vertices_.resize(2 * (kNumSteps + 1));
-
-        gl_check(glGenBuffers, 1, &vbo_);
-        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
-        gl_check_with_vao(vao_, glEnableVertexAttribArray, 0);
-        gl_check_with_vao(vao_, glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-
+        auto elements = ebo_.batched_updater();
         for (size_t i = 0; i < kNumSteps - 1; ++i) {
-            elements_.emplace_back(i);
-            elements_.emplace_back(i + 1);
-            elements_.emplace_back(i + 2);
+            elements.push_back(i);
+            elements.push_back(i + 1);
+            elements.push_back(i + 2);
         }
-
-        {
-            scoped_vao_bind(vao_);
-            gl_check(glGenBuffers, 1, &ebo_);
-            gl_check(glBindBuffer, GL_ELEMENT_ARRAY_BUFFER, ebo_);
-            gl_check(glBufferData, GL_ELEMENT_ARRAY_BUFFER, size_in_bytes(elements_), elements_.data(), GL_STATIC_DRAW);
-        }
-
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
         shader_.activate();
         gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
-        gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, elements_.size(), GL_UNSIGNED_INT, (void*)0);
+        gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, ebo_.size(), GL_UNSIGNED_INT, (void*)0);
 
         point_shader_.activate();
         gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
-        gl_check_with_vao(vao_, glDrawArrays, GL_POINTS, 0, kNumSteps);
+        gl_check_with_vao(vao_, glDrawArrays, GL_POINTS, 0, 1);
+        gl_check_with_vao(vao_, glDrawArrays, GL_POINTS, kNumSteps, 1);
     }
 
     void update(float) override {
+        if (!needs_update_) return;
+        needs_update_ = false;
+
         length_ = std::max(min_length(), length_);
         CatenarySolver solver{start_, end_, length_};
         if (!solver.solve(alpha_)) {
@@ -244,30 +237,32 @@ public:
         alpha_ = solver.get_alpha();
         auto points = solver.trace(kNumSteps);
 
+        auto vertices = vbo_.batched_updater();
+        vertices.resize(2 * (points.size() + 1));
+
         constexpr size_t stride = 2;
         for (size_t i = 0; i < points.size(); ++i) {
             const Eigen::Vector2f& point = points[i];
 
             size_t el = 0;
-            vertices_[stride * i + el++] = point.x();
-            vertices_[stride * i + el++] = point.y();
+            vertices[stride * i + el++] = point.x();
+            vertices[stride * i + el++] = point.y();
         }
 
         size_t el = 0;
-        vertices_[stride * points.size() + el++] = end_.x();
-        vertices_[stride * points.size() + el++] = end_.y();
-        gl_check(glBindBuffer, GL_ARRAY_BUFFER, vbo_);
-        gl_check(glBufferData, GL_ARRAY_BUFFER, size_in_bytes(vertices_), vertices_.data(), GL_STATIC_DRAW);
+        vertices[stride * points.size() + el++] = end_.x();
+        vertices[stride * points.size() + el++] = end_.y();
     }
 
     void handle_mouse_event(const engine::MouseEvent& event) override {
         if (point_ && event.held()) {
             *point_ = event.mouse_position;
+            needs_update_ = true;
         } else if (event.pressed()) {
-            float sq_radius = 5 * 5;
-            if ((event.mouse_position - start_).squaredNorm() < sq_radius) {
+            constexpr float kClickRadius = 10;
+            if ((event.mouse_position - start_).squaredNorm() < kClickRadius) {
                 point_ = &start_;
-            } else if ((event.mouse_position - end_).squaredNorm() < sq_radius) {
+            } else if ((event.mouse_position - end_).squaredNorm() < kClickRadius) {
                 point_ = &end_;
             }
         } else {
@@ -275,9 +270,7 @@ public:
         }
     }
 
-    float min_length() const {
-        return 1.1 * (end_ - start_).norm();
-    }
+    float min_length() const { return 1.01 * (end_ - start_).norm(); }
 
     void reset() {
         start_ = {100, 200};
@@ -297,15 +290,14 @@ public:
     Eigen::Vector2f end_;
     float alpha_ = 10.0;
 
-    std::vector<float> vertices_;
-    std::vector<unsigned int> elements_;
+    bool needs_update_ = true;
 
     engine::Shader shader_;
     engine::Shader point_shader_;
     int sfw_;
     engine::VertexArrayObject vao_;
-    unsigned int vbo_;
-    unsigned int ebo_;
+    engine::Buffer<float> vbo_;
+    engine::Buffer<unsigned int> ebo_;
 };
 
 int main() {

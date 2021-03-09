@@ -225,14 +225,13 @@ public:
     Buffer() = default;
 
     ~Buffer() {
-        if (handle_)
-            gl_check(glDeleteBuffers, 1, &handle());
+        if (handle_) gl_check(glDeleteBuffers, 1, &handle());
     }
 
 public:
     void init(GLenum target, VertexArrayObject& vao) {
         vao_ = &vao;
-        set_vertex_attribute_ = [](){};
+        set_vertex_attribute_ = []() {};
         target_ = target;
     }
 
@@ -247,10 +246,7 @@ public:
         };
     }
 
-    void unbind()
-    {
-        gl_check(glBindBuffer, target_, 0);
-    }
+    void unbind() { gl_check(glBindBuffer, target_, 0); }
 
 private:
     VertexArrayObject& vao() {
@@ -278,24 +274,31 @@ private:
     /// @brief Used when the size of the buffer doesn't change, only the data within
     ///
     void sync() {
+        // Some buffer targets require the VAO to be bound (GL_ELEMENT_ARRAY_BUFFER for example)
+        scoped_vao_ptr_bind(vao_);
         gl_check(glBindBuffer, target_, handle());
         gl_check(glBufferData, target_, sizeof(T) * data_.size(), data_.data(),
                  dynamic_ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
-        dynamic_ = true;  // in case sync is called after init...
+        dynamic_ = true;  // in case sync is called more than once...
     }
 
     class BatchedUpdateBuffer {
     public:
         BatchedUpdateBuffer(Buffer<T>& parent) : parent_(parent), initial_start_(parent_.data_.data()) {}
-        ~BatchedUpdateBuffer() {
+        ~BatchedUpdateBuffer() { finish(); }
+
+        void finish() {
             // Reallocation happened
             if (initial_start_ != parent_.data_.data()) {
                 parent_.rebind();
+                initial_start_ = parent_.data_.data();
             }
             // Data was only modified
             else if (modified_) {
                 parent_.sync();
+                modified_ = false;
             }
+
             parent_.unbind();
         }
 
@@ -311,8 +314,8 @@ private:
     private:
         // modified but not reallocated
         bool modified_ = false;
-        Buffer<T> parent_;
-        const T* initial_start_;
+        Buffer<T>& parent_;
+        T* initial_start_;
     };
 
     // Mapping between Type and the GLenum that represents that type
@@ -331,19 +334,19 @@ public:
     void resize(size_t new_size) { batched_updater().resize(new_size); }
     void push_back(const T& t) { batched_updater().push_back(t); }
     T& operator[](size_t index) { return batched_updater()[index]; }
-    const T& operator[](size_t index) const {  return data_[index]; }
+    const T& operator[](size_t index) const { return data_[index]; }
     size_t size() const { return data_.size(); }
 
     BatchedUpdateBuffer batched_updater() { return {*this}; }
 
 private:
     GLenum target_;
-    VertexArrayObject* vao_; // we don't own this
+    VertexArrayObject* vao_;  // we don't own this
     std::function<void()> set_vertex_attribute_;
 
     std::optional<unsigned int> handle_;
     std::vector<T> data_;
-    bool dynamic_ = false; // assume it's static, this will change after the first sync()
+    bool dynamic_ = false;  // assume it's static, this will change after the first sync()
 };
 
 }  // namespace engine
