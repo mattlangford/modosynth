@@ -21,7 +21,7 @@ struct BuildingCableObject {
 
 struct CableObject {
     engine::ObjectId object_id;
-    size_t element_index;
+    size_t vertex_index;
 
     const BlockObject& parent_start;
     const Eigen::Vector2f offset_start;

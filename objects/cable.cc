@@ -78,29 +78,24 @@ void CableObjectManager::render_from_buffer(engine::Buffer<float, 2>& buffer) co
 
     {
         auto points = buffer.batched_updater();
-        size_t index = 0;
         for (const auto* object : objects) {
-            const Eigen::Vector2f start = object->start();
-            const Eigen::Vector2f end = object->end();
-            points[index++] = start.x();
-            points[index++] = start.y();
-            points[index++] = end.x();
-            points[index++] = end.y();
+            points.element(object->vertex_index) = object->start();
+            points.element(object->vertex_index + 1) = object->end();
         }
 
         if (building_) {
             const Eigen::Vector2f start = building_->parent_start.bottom_left() + building_->offset_start;
             const Eigen::Vector2f end = building_->end;
 
-            points.push_back(start.x());
-            points.push_back(start.y());
-            points.push_back(end.x());
-            points.push_back(end.y());
+            // Put these points in at the end
+            size_t building_index = buffer.elements();
+            points.element(building_index) = start;
+            points.element(building_index + 1) = end;
         }
     }
 
     for (const auto* object : objects) {
-        gl_check_with_vao(vao(), glDrawArrays, GL_LINES, object->element_index, 2);
+        gl_check_with_vao(vao(), glDrawArrays, GL_LINES, object->vertex_index, 2);
     }
 
     if (building_) {
@@ -166,14 +161,11 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 void CableObjectManager::spawn_object(CableObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.object_id = id;
-    object.element_index = buffer_.elements();
+    object.vertex_index = buffer_.elements();
 
-    const Eigen::Vector2f start = object.start();
-    const Eigen::Vector2f end = object.end();
-    buffer_.push_back(start.x());
-    buffer_.push_back(start.y());
-    buffer_.push_back(end.x());
-    buffer_.push_back(end.y());
+    auto buffer = buffer_.batched_updater();
+    buffer.element(object.vertex_index) = object.start();
+    buffer.element(object.vertex_index + 1) = object.end();
 }
 
 //
