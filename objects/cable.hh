@@ -46,6 +46,12 @@ struct CatenaryObject {
     Eigen::Vector2f offset_start;
     Eigen::Vector2f offset_end;
 
+    // Used to determine if we need to rerender
+    Eigen::Vector2f previous_start;
+    Eigen::Vector2f previous_end;
+    bool needs_rendering = true;
+    bool should_update();
+
     Eigen::Vector2f start() const;
     Eigen::Vector2f end() const;
 

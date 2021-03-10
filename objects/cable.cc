@@ -173,6 +173,12 @@ double CatenarySolver::f(double x) const { return alpha_ * std::cosh((x - x_offs
 // #############################################################################
 //
 
+bool CatenaryObject::should_update() { return needs_rendering || start() != previous_start || end() != previous_end; }
+
+//
+// #############################################################################
+//
+
 std::vector<Eigen::Vector2f> CatenaryObject::calculate_points() {
     const Eigen::Vector2f current_start = start();
     const Eigen::Vector2f current_end = end();
@@ -258,10 +264,16 @@ void CableObjectManager::update(float) {
     auto vertices = vbo_.batched_updater();
 
     for (auto* object : pool_->iterate()) {
+        if (!object->should_update()) continue;
+
         size_t index = object->vertex_index;
         for (Eigen::Vector2f point : object->calculate_points()) {
             vertices.element(index++) = point;
         }
+
+        // Update so we can skip updating next time
+        object->previous_start = object->start();
+        object->previous_end = object->end();
     }
 }
 
@@ -306,6 +318,7 @@ void CableObjectManager::spawn_object(CatenaryObject object_) {
     object.object_id = id;
     object.vertex_index = vbo_.elements();
     object.element_index = ebo_.elements();
+    object.needs_rendering = true;
 
     vbo_.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
     populate_ebo(object.vertex_index);
@@ -331,6 +344,7 @@ void CableObjectManager::despawn_object(CatenaryObject& object) {
     for (auto* this_object : pool_->iterate()) {
         this_object->vertex_index = vertex_index;
         this_object->element_index = ebo_.elements();
+        this_object->needs_rendering = true;
         populate_ebo(this_object->vertex_index);
 
         vertices.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
