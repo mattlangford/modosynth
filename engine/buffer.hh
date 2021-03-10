@@ -171,7 +171,7 @@ private:
 
             return Eigen::Map<Eigen::Matrix<T, Stride, static_cast<int>(Rows)>>{&parent_.data_.at(Stride * index)};
         }
-        Eigen::Map<Eigen::Matrix<T, Stride, 1>>& element(size_t index) { return elements<1>(index); }
+        Eigen::Map<Eigen::Matrix<T, Stride, 1>> element(size_t index) { return elements<1>(index); }
 
     private:
         // modified but not reallocated

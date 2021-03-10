@@ -143,7 +143,7 @@ void PortsObjectManager::render_with_vao() {
     for (auto object : pool_->iterate()) {
         Eigen::Vector2f object_position = object->parent_block.bottom_left();
         gl_check(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
-        gl_check_with_vao(vao(), glDrawArrays, GL_POINTS, object->element_index, object->offsets.size());
+        gl_check_with_vao(vao(), glDrawArrays, GL_POINTS, object->vertex_index, object->offsets.size());
     }
 }
 
@@ -156,7 +156,7 @@ void PortsObjectManager::spawn_object(PortsObject object_) {
 
     auto [id, object] = pool_->add(std::move(object_));
     object.pool_id = id;
-    object.element_index = buffer_.elements();
+    object.vertex_index = buffer_.elements();
 
     auto points = buffer_.batched_updater();
     for (const Eigen::Vector2f& offset : object.offsets) {
