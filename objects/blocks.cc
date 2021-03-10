@@ -108,7 +108,7 @@ void BlockObjectManager::render_with_vao() {
     for (const auto* object : objects) {
         // 3 vertices per triangle, 2 triangles per object
         gl_check_with_vao(vao(), glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT,
-                 (void*)(sizeof(unsigned int) * object->block_id));
+                          (void*)(sizeof(unsigned int) * object->block_id));
     }
 }
 
@@ -227,9 +227,9 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     object.block_id = vertex_.get_index_count();
 
     {
-    scoped_vao_bind(vao());
-    vertex_.add(coords(object));
-    uv_.add(uv(object));
+        scoped_vao_bind(vao());
+        vertex_.add(coords(object));
+        uv_.add(uv(object));
     }
 
     ports_manager_->spawn_object(PortsObject::from_block(object));

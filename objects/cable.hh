@@ -21,13 +21,15 @@ struct BuildingCableObject {
 
 struct CableObject {
     engine::ObjectId object_id;
-    size_t buffer_id;
+    size_t element_index;
 
     const BlockObject& parent_start;
     const Eigen::Vector2f offset_start;
+    Eigen::Vector2f start() const;
 
     const BlockObject& parent_end;
     const Eigen::Vector2f offset_end;
+    Eigen::Vector2f end() const;
 };
 
 //
@@ -45,7 +47,7 @@ protected:
     void render_with_vao() override;
 
 private:
-    void render_from_buffer(engine::Buffer2Df& buffer) const;
+    void render_from_buffer(engine::Buffer<float>& buffer) const;
     const PortsObject* get_active_port(const Eigen::Vector2f& position, Eigen::Vector2f& offset) const;
     void spawn_object(CableObject object);
 
@@ -61,6 +63,6 @@ private:
     std::shared_ptr<PortsObjectManager> ports_manager_;
 
     std::unique_ptr<engine::AbstractObjectPool<CableObject>> pool_;
-    engine::Buffer2Df buffer_;
+    engine::Buffer<float> buffer_;
 };
 }  // namespace objects

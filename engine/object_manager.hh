@@ -3,8 +3,8 @@
 #include <memory>
 
 #include "engine/events.hh"
-#include "engine/vao.hh"
 #include "engine/shader.hh"
+#include "engine/vao.hh"
 
 namespace engine {
 class AbstractObjectManager {

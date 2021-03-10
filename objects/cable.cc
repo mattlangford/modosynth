@@ -14,7 +14,7 @@ namespace {
 static std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
-in vec2 world_position;
+layout(location = 0) in vec2 world_position;
 
 void main()
 {
@@ -38,6 +38,13 @@ void main()
 // #############################################################################
 //
 
+Eigen::Vector2f CableObject::start() const { return parent_start.bottom_left() + offset_start; }
+Eigen::Vector2f CableObject::end() const { return parent_end.bottom_left() + offset_end; }
+
+//
+// #############################################################################
+//
+
 CableObjectManager::CableObjectManager(std::shared_ptr<PortsObjectManager> ports_manager)
     : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
       ports_manager_(std::move(ports_manager)),
@@ -47,9 +54,7 @@ CableObjectManager::CableObjectManager(std::shared_ptr<PortsObjectManager> ports
 // #############################################################################
 //
 
-void CableObjectManager::init_with_vao() {
-    buffer_.init(glGetAttribLocation(shader().get_program_id(), "world_position"));
-}
+void CableObjectManager::init_with_vao() { buffer_.init(GL_ARRAY_BUFFER, 0, 2, vao()); }
 
 //
 // #############################################################################
@@ -68,38 +73,38 @@ void CableObjectManager::render_with_vao() {
 // #############################################################################
 //
 
-void CableObjectManager::render_from_buffer(engine::Buffer2Df& buffer) const {
+void CableObjectManager::render_from_buffer(engine::Buffer<float>& buffer) const {
     const auto objects = pool_->iterate();
 
-    size_t index = 0;
+    {
+        auto points = buffer.batched_updater();
+        size_t index = 0;
+        for (const auto* object : objects) {
+            const Eigen::Vector2f start = object->start();
+            const Eigen::Vector2f end = object->end();
+            points[index++] = start.x();
+            points[index++] = start.y();
+            points[index++] = end.x();
+            points[index++] = end.y();
+        }
+
+        if (building_) {
+            const Eigen::Vector2f start = building_->parent_start.bottom_left() + building_->offset_start;
+            const Eigen::Vector2f end = building_->end;
+
+            points.push_back(start.x());
+            points.push_back(start.y());
+            points.push_back(end.x());
+            points.push_back(end.y());
+        }
+    }
+
     for (const auto* object : objects) {
-        engine::Line2Df line;
-        line.start = object->parent_start.bottom_left() + object->offset_start;
-        line.end = object->parent_end.bottom_left() + object->offset_end;
-        buffer.update_batch(line, index);
-    }
-
-    size_t building_id = -1;
-    if (building_) {
-        engine::Line2Df line;
-        line.start = building_->parent_start.bottom_left() + building_->offset_start;
-        line.end = building_->end;
-
-        building_id = buffer.get_index_count();
-
-        // add will do the same thing "finish batch" does in terms of copying
-        buffer.add(line);
-    } else {
-        buffer.finish_batch();
-    }
-
-    for (const auto* object : objects) {
-        // 2 triangles per object
-        gl_check(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * object->buffer_id));
+        gl_check_with_vao(vao(), glDrawArrays, GL_LINES, object->element_index, 2);
     }
 
     if (building_) {
-        gl_check(glDrawElements, GL_LINES, 2, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * building_id));
+        gl_check_with_vao(vao(), glDrawArrays, GL_LINES, buffer_.elements(), 2);
     }
 }
 
@@ -161,10 +166,14 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 void CableObjectManager::spawn_object(CableObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.object_id = id;
-    object.buffer_id = buffer_.get_index_count();
+    object.element_index = buffer_.elements();
 
-    scoped_vao_bind(vao());
-    buffer_.add(engine::Line2Df{});
+    const Eigen::Vector2f start = object.start();
+    const Eigen::Vector2f end = object.end();
+    buffer_.push_back(start.x());
+    buffer_.push_back(start.y());
+    buffer_.push_back(end.x());
+    buffer_.push_back(end.y());
 }
 
 //

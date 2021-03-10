@@ -129,8 +129,7 @@ void PortsObjectManager::init_with_vao() {
     object_position_loc_ = glGetUniformLocation(shader().get_program_id(), "object_position");
 
     shader().activate();
-    gl_check(glUniform2f, glGetUniformLocation(shader().get_program_id(), "half_dim"), kHalfPortWidth,
-             kHalfPortHeight);
+    gl_check(glUniform2f, glGetUniformLocation(shader().get_program_id(), "half_dim"), kHalfPortWidth, kHalfPortHeight);
 }
 
 //
