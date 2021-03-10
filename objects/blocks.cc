@@ -99,8 +99,10 @@ void BlockObjectManager::render_with_vao() {
 
     {
         auto vertices = vertex_.batched_updater();
-        for (const auto* object : objects) {
+        for (auto* object : objects) {
+            if (!object->needs_update) continue;
             vertices.elements<4>(object->vertex_index) = coords(*object);
+            object->needs_update = false;
         }
     }
 
@@ -139,6 +141,7 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         // bring the selected object to the front
         selected_->z = 0.0;
         selected_->offset.head(2) += event.delta_position;
+        selected_->needs_update = true;
     } else if (!event.any_modifiers() && event.pressed()) {
         // only select a new one if the mouse was just clicked
         selected_ = select(event.mouse_position);
@@ -158,8 +161,8 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     static size_t id = 0;
-    spawn_object(
-        BlockObject{{}, {}, {}, true, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
+    spawn_object(BlockObject{
+        {}, {}, {}, true, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
 }
 
 //
