@@ -41,7 +41,7 @@ struct Config {
 
 struct BlockObject {
     engine::ObjectId id;
-    size_t block_id;
+    size_t element_index;
 
     // This is a reference to the BlockObjectManager owned configuration
     const Config::BlockConfig& config;
@@ -99,7 +99,8 @@ private:
 
     std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
 
-    engine::Buffer3Df vertex_;
-    engine::Buffer2Df uv_;
+    engine::Buffer<unsigned int> elements_;
+    engine::Buffer<float> vertex_;
+    engine::Buffer<float> uv_;
 };
 }  // namespace objects

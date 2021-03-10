@@ -81,8 +81,9 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path,
 void BlockObjectManager::init_with_vao() {
     texture_.init();
 
-    vertex_.init(glGetAttribLocation(shader().get_program_id(), "world_position"));
-    uv_.init(glGetAttribLocation(shader().get_program_id(), "vertex_uv"));
+    elements_.init(GL_ELEMENT_ARRAY_BUFFER, vao());
+    vertex_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "world_position"), 3, vao());
+    uv_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "vertex_uv"), 2, vao());
 }
 
 //
@@ -96,11 +97,28 @@ void BlockObjectManager::render_with_vao() {
 
     auto objects = pool_->iterate();
 
-    size_t index = 0;
-    for (const auto* object : objects) {
-        vertex_.update_batch(coords(*object), index);
+    {
+        size_t index = 0;
+        auto vertices = vertex_.batched_updater();
+        for (const auto* object : objects) {
+            auto c = coords(*object);
+            vertices[index++] = c.top_left.x();
+            vertices[index++] = c.top_left.y();
+            vertices[index++] = c.top_left.z();
+
+            vertices[index++] = c.top_right.x();
+            vertices[index++] = c.top_right.y();
+            vertices[index++] = c.top_right.z();
+
+            vertices[index++] = c.bottom_left.x();
+            vertices[index++] = c.bottom_left.y();
+            vertices[index++] = c.bottom_left.z();
+
+            vertices[index++] = c.bottom_right.x();
+            vertices[index++] = c.bottom_right.y();
+            vertices[index++] = c.bottom_right.z();
+        }
     }
-    vertex_.finish_batch();
 
     std::sort(objects.begin(), objects.end(),
               [](const BlockObject* const lhs, const BlockObject* const rhs) { return lhs->z > rhs->z; });
@@ -108,7 +126,7 @@ void BlockObjectManager::render_with_vao() {
     for (const auto* object : objects) {
         // 3 vertices per triangle, 2 triangles per object
         gl_check_with_vao(vao(), glDrawElements, GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT,
-                          (void*)(sizeof(unsigned int) * object->block_id));
+                          (void*)(sizeof(unsigned int) * object->element_index));
     }
 }
 
@@ -224,12 +242,45 @@ engine::Quad2Df BlockObjectManager::uv(const BlockObject& block) const {
 void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
-    object.block_id = vertex_.get_index_count();
+    object.element_index = elements_.size();
 
+    size_t vertex_index = vertex_.elements();
     {
-        scoped_vao_bind(vao());
-        vertex_.add(coords(object));
-        uv_.add(uv(object));
+        auto elements = elements_.batched_updater();
+        auto vertices = vertex_.batched_updater();
+        auto uv_batch = uv_.batched_updater();
+
+        auto c = coords(object);
+        vertices.push_back(c.top_left.x());
+        vertices.push_back(c.top_left.y());
+        vertices.push_back(c.top_left.z());
+        vertices.push_back(c.top_right.x());
+        vertices.push_back(c.top_right.y());
+        vertices.push_back(c.top_right.z());
+        vertices.push_back(c.bottom_left.x());
+        vertices.push_back(c.bottom_left.y());
+        vertices.push_back(c.bottom_left.z());
+        vertices.push_back(c.bottom_right.x());
+        vertices.push_back(c.bottom_right.y());
+        vertices.push_back(c.bottom_right.z());
+
+        elements_.push_back(vertex_index + 0);
+        elements_.push_back(vertex_index + 1);
+        elements_.push_back(vertex_index + 2);
+
+        elements_.push_back(vertex_index + 3);
+        elements_.push_back(vertex_index + 2);
+        elements_.push_back(vertex_index + 1);
+
+        auto u = uv(object);
+        uv_batch.push_back(u.top_left.x());
+        uv_batch.push_back(u.top_left.y());
+        uv_batch.push_back(u.top_right.x());
+        uv_batch.push_back(u.top_right.y());
+        uv_batch.push_back(u.bottom_left.x());
+        uv_batch.push_back(u.bottom_left.y());
+        uv_batch.push_back(u.bottom_right.x());
+        uv_batch.push_back(u.bottom_right.y());
     }
 
     ports_manager_->spawn_object(PortsObject::from_block(object));
