@@ -97,15 +97,6 @@ void BlockObjectManager::render_with_vao() {
 
     auto objects = pool_->iterate();
 
-    {
-        auto vertices = vertex_.batched_updater();
-        for (auto* object : objects) {
-            if (!object->needs_update) continue;
-            vertices.elements<4>(object->vertex_index) = coords(*object);
-            object->needs_update = false;
-        }
-    }
-
     std::sort(objects.begin(), objects.end(),
               [](const BlockObject* const lhs, const BlockObject* const rhs) { return lhs->z > rhs->z; });
 
@@ -121,7 +112,12 @@ void BlockObjectManager::render_with_vao() {
 //
 
 void BlockObjectManager::update(float /* dt */) {
-    // no-op for blocks
+    auto vertices = vertex_.batched_updater();
+    for (auto* object : pool_->iterate()) {
+        if (!object->needs_update) continue;
+        vertices.elements<4>(object->vertex_index) = coords(*object);
+        object->needs_update = false;
+    }
 }
 
 //
