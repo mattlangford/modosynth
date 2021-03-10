@@ -118,6 +118,20 @@ void CableObjectManager::init_with_vao() {
 
 void CableObjectManager::render_with_vao() {
     if (ebo_.size() == 0) return;
+
+    std::cout << "vbo_: ";
+    for (size_t i = 0; i < vbo_.size(); ++i)
+    {
+        std::cout << vbo_[i] << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "ebo_: ";
+    for (size_t i = 0; i < ebo_.size(); ++i)
+    {
+        std::cout << ebo_[i] << ", ";
+    }
+    std::cout << std::endl;
+
     for (const auto* object : pool_->iterate()){
         const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * object->element_index);
 
@@ -162,7 +176,6 @@ void CableObjectManager::update(float) {
             vertices.element(index++) = point;
         }
     }
-
 }
 
 //
@@ -188,7 +201,12 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
             selected_->parent_end = &ptr->parent_block;
             selected_->offset_end = offset;
         }
+        else
+        {
+            despawn_object(*selected_);
+        }
         selected_ = nullptr;
+
     } else if (selected_ && event.held()) {
         selected_->offset_end = event.mouse_position;
     }
@@ -205,20 +223,56 @@ void CableObjectManager::spawn_object(CatenaryObject object_) {
     object.element_index = ebo_.elements();
 
     vbo_.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
+    populate_ebo(object.vertex_index);
 
+    selected_ = &object;
+}
+
+//
+// #############################################################################
+//
+
+void CableObjectManager::despawn_object(CatenaryObject& object)
+{
+    // We'll need to reform the elements and vertices
+    auto elements = ebo_.batched_updater();
+    elements.resize(0);
+    auto vertices = vbo_.batched_updater();
+    vertices.resize(0);
+
+    pool_ = std::make_unique<engine::ListObjectPool<CatenaryObject>>();
+    return;
+
+    // object is now invalid
+    pool_->remove(object.object_id);
+
+    size_t vertex_index = 0;
+    for (auto* this_object : pool_->iterate()) {
+        this_object->vertex_index = vertex_index;
+        this_object->element_index = ebo_.elements();
+        populate_ebo(this_object->vertex_index);
+
+        vertices.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
+    }
+}
+
+//
+// #############################################################################
+//
+
+void CableObjectManager::populate_ebo(size_t vertex_index)
+{
     // Now add in the elements needed to render this object
     auto elements = ebo_.batched_updater();
     for (size_t i = 0; i < CatenaryObject::kNumSteps - 2; ++i) {
-        elements.push_back(object.vertex_index + i);
-        elements.push_back(object.vertex_index + i + 1);
-        elements.push_back(object.vertex_index + i + 2);
+        elements.push_back(vertex_index + i);
+        elements.push_back(vertex_index + i + 1);
+        elements.push_back(vertex_index + i + 2);
     }
     // Add the last element in, this one needs to be special so we don't duplicate points in the vbo
-    elements.push_back(object.vertex_index + CatenaryObject::kNumSteps - 2);
-    elements.push_back(object.vertex_index + CatenaryObject::kNumSteps - 1);
-    elements.push_back(object.vertex_index + CatenaryObject::kNumSteps - 1);
-
-    selected_ = &object;
+    elements.push_back(vertex_index + CatenaryObject::kNumSteps - 2);
+    elements.push_back(vertex_index + CatenaryObject::kNumSteps - 1);
+    elements.push_back(vertex_index + CatenaryObject::kNumSteps - 1);
 }
 
 //

@@ -85,7 +85,7 @@ private:
 struct BlockObject;
 
 struct CatenaryObject {
-    static constexpr size_t kNumSteps = 16;
+    static constexpr size_t kNumSteps = 2;
     std::vector<Eigen::Vector2f> calculate_points() {
         const Eigen::Vector2f current_start = start();
         const Eigen::Vector2f current_end = end();
@@ -127,6 +127,9 @@ protected:
 private:
     const PortsObject* get_active_port(const Eigen::Vector2f& position, Eigen::Vector2f& offset) const;
     void spawn_object(CatenaryObject object);
+    void despawn_object(CatenaryObject& object);
+
+    void populate_ebo(size_t vertex_index);
 
 public:
     void update(float dt) override;
@@ -140,7 +143,7 @@ private:
 
     std::unique_ptr<engine::AbstractObjectPool<CatenaryObject>> pool_;
 
-    CatenaryObject* selected_;
+    CatenaryObject* selected_ = nullptr;
 
     engine::VertexArrayObject vao_;
     engine::Buffer<float, 2> vbo_;
