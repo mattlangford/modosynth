@@ -119,24 +119,12 @@ void CableObjectManager::init_with_vao() {
 void CableObjectManager::render_with_vao() {
     if (ebo_.size() == 0) return;
 
-    std::cout << "vbo_: ";
-    for (size_t i = 0; i < vbo_.size(); ++i)
-    {
-        std::cout << vbo_[i] << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "ebo_: ";
-    for (size_t i = 0; i < ebo_.size(); ++i)
-    {
-        std::cout << ebo_[i] << ", ";
-    }
-    std::cout << std::endl;
-
     for (const auto* object : pool_->iterate()){
         const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * object->element_index);
 
         // Each step will generate a triangle, so render 3 times as many
-        gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, 3 * CatenaryObject::kNumSteps, GL_UNSIGNED_INT, indices);
+        constexpr auto kNumTriangles = CatenaryObject::kNumSteps - 1;
+        gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, 3 * kNumTriangles, GL_UNSIGNED_INT, indices);
     }
 }
 
@@ -239,9 +227,6 @@ void CableObjectManager::despawn_object(CatenaryObject& object)
     elements.resize(0);
     auto vertices = vbo_.batched_updater();
     vertices.resize(0);
-
-    pool_ = std::make_unique<engine::ListObjectPool<CatenaryObject>>();
-    return;
 
     // object is now invalid
     pool_->remove(object.object_id);

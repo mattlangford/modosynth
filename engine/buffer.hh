@@ -80,6 +80,9 @@ public:
         vao_ = &vao;
         set_vertex_attribute_ = []() {};
         target_ = target;
+
+        handle_.emplace();
+        gl_check(glGenBuffers, 1, &handle());
     }
 
     void init(GLenum target, unsigned int index, const VertexArrayObject& vao) {
@@ -109,6 +112,8 @@ private:
     /// @brief Deletes the current buffer and generates a new one. This should be called anytime the size changes
     ///
     void rebind() {
+        // Some buffer targets require the VAO to be bound (GL_ELEMENT_ARRAY_BUFFER for example)
+        scoped_vao_ptr_bind(vao_);
         if (handle_) gl_check(glDeleteBuffers, 1, &handle());
 
         handle_.emplace();
@@ -121,8 +126,6 @@ private:
     /// @brief Used when the size of the buffer doesn't change, only the data within
     ///
     void sync() {
-        // Some buffer targets require the VAO to be bound (GL_ELEMENT_ARRAY_BUFFER for example)
-        scoped_vao_ptr_bind(vao_);
         gl_check(glBindBuffer, target_, handle());
         gl_check(glBufferData, target_, sizeof(T) * data_.size(), data_.data(),
                  dynamic_ ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
@@ -152,7 +155,6 @@ private:
     public:
         void reserve(size_t new_size) { parent_.data_.reserve(new_size); }
         void resize(size_t new_size) {
-            modified_ = true;
             parent_.data_.resize(new_size);
         }
         void push_back(const T& t) {
@@ -199,9 +201,10 @@ public:
     void resize(size_t new_size) { batched_updater().resize(new_size); }
     void push_back(const T& t) { batched_updater().push_back(t); }
     T& operator[](size_t index) { return batched_updater()[index]; }
+
     const T& operator[](size_t index) const { return data_[index]; }
-    T& element(size_t index) { return batched_updater()[Stride * index]; }
     const T& element(size_t index) const { return data_[Stride * index]; }
+
     size_t size() const { return data_.size(); }
     size_t elements() const { return data_.size() / Stride; }
 
@@ -209,7 +212,7 @@ public:
 
 private:
     GLenum target_;
-    const VertexArrayObject* vao_;  // we don't own this
+    const VertexArrayObject* vao_ = nullptr;  // we don't own this
     std::function<void()> set_vertex_attribute_;
 
     std::optional<unsigned int> handle_;
