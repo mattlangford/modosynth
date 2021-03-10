@@ -154,9 +154,7 @@ private:
 
     public:
         void reserve(size_t new_size) { parent_.data_.reserve(new_size); }
-        void resize(size_t new_size) {
-            parent_.data_.resize(new_size);
-        }
+        void resize(size_t new_size) { parent_.data_.resize(new_size); }
         void push_back(const T& t) {
             modified_ = true;
             parent_.data_.push_back(t);

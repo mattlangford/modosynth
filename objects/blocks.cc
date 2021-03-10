@@ -127,6 +127,7 @@ void BlockObjectManager::update(float /* dt */) {
 void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.right || !event.clicked) {
         if (selected_) {
+            selected_->needs_update = true;
             selected_->z = next_z();
             selected_ = nullptr;
         }

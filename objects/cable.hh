@@ -92,7 +92,8 @@ struct CatenaryObject {
         double min_length = 1.01 * (current_end - current_start).norm();
         solver.reset(current_start, current_end, std::max(solver.length(), min_length));
         if (!solver.solve()) throw std::runtime_error("Unable to update CatenaryObject, did not converge.");
-        return solver.trace(kNumSteps);;
+        return solver.trace(kNumSteps);
+        ;
     }
 
     const BlockObject* parent_start = nullptr;

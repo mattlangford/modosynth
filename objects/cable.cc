@@ -90,8 +90,12 @@ void main()
 // #############################################################################
 //
 
-Eigen::Vector2f CatenaryObject::start() const { return offset_start + (parent_start ? parent_start->bottom_left() : Eigen::Vector2f::Zero()); }
-Eigen::Vector2f CatenaryObject::end() const { return offset_end + (parent_end ? parent_end->bottom_left() : Eigen::Vector2f::Zero()); }
+Eigen::Vector2f CatenaryObject::start() const {
+    return offset_start + (parent_start ? parent_start->bottom_left() : Eigen::Vector2f::Zero());
+}
+Eigen::Vector2f CatenaryObject::end() const {
+    return offset_end + (parent_end ? parent_end->bottom_left() : Eigen::Vector2f::Zero());
+}
 
 //
 // #############################################################################
@@ -119,7 +123,7 @@ void CableObjectManager::init_with_vao() {
 void CableObjectManager::render_with_vao() {
     if (ebo_.size() == 0) return;
 
-    for (const auto* object : pool_->iterate()){
+    for (const auto* object : pool_->iterate()) {
         const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * object->element_index);
 
         // Each step will generate a triangle, so render 3 times as many
@@ -188,9 +192,7 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         if (auto ptr = get_active_port(event.mouse_position, offset)) {
             selected_->parent_end = &ptr->parent_block;
             selected_->offset_end = offset;
-        }
-        else
-        {
+        } else {
             despawn_object(*selected_);
         }
         selected_ = nullptr;
@@ -220,8 +222,7 @@ void CableObjectManager::spawn_object(CatenaryObject object_) {
 // #############################################################################
 //
 
-void CableObjectManager::despawn_object(CatenaryObject& object)
-{
+void CableObjectManager::despawn_object(CatenaryObject& object) {
     // We'll need to reform the elements and vertices
     auto elements = ebo_.batched_updater();
     elements.resize(0);
@@ -245,8 +246,7 @@ void CableObjectManager::despawn_object(CatenaryObject& object)
 // #############################################################################
 //
 
-void CableObjectManager::populate_ebo(size_t vertex_index)
-{
+void CableObjectManager::populate_ebo(size_t vertex_index) {
     // Now add in the elements needed to render this object
     auto elements = ebo_.batched_updater();
     for (size_t i = 0; i < CatenaryObject::kNumSteps - 2; ++i) {
