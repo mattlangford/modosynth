@@ -269,7 +269,7 @@ public:
         engine::throw_on_gl_error("glGetUniformLocation");
 
         vao_.init();
-        vbo_.init(GL_ARRAY_BUFFER, 0, 2, vao_);
+        vbo_.init(GL_ARRAY_BUFFER, 0, vao_);
         ebo_.init(GL_ELEMENT_ARRAY_BUFFER, vao_);
     }
 
@@ -338,7 +338,7 @@ public:
     engine::Shader point_shader_;
     int sfw_;
     engine::VertexArrayObject vao_;
-    engine::Buffer<float> vbo_;
+    engine::Buffer<float, 2> vbo_;
     engine::Buffer<unsigned int> ebo_;
 };
 

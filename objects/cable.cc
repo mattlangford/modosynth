@@ -13,13 +13,11 @@ namespace objects {
 namespace {
 static std::string vertex_shader_text = R"(
 #version 330
-uniform mat3 screen_from_world;
-layout(location = 0) in vec2 world_position;
+layout (location = 0) in vec2 world_position;
 
 void main()
 {
-    vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
-    gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
+    gl_Position = vec4(world_position.x, world_position.y, 0.0, 1.0);
 }
 )";
 
@@ -29,7 +27,61 @@ out vec4 fragment;
 
 void main()
 {
-    fragment = vec4(0.8, 0.8, 0.8, 1.0);
+    fragment = vec4(1.0, 1.0, 1.0, 1.0);
+}
+)";
+
+static std::string geometry_shader_text = R"(
+#version 330
+layout(triangles) in;
+layout(triangle_strip, max_vertices = 10) out;
+
+uniform mat3 screen_from_world;
+
+vec4 to_screen(vec2 world)
+{
+    vec3 screen = screen_from_world * vec3(world.x, world.y, 1.0);
+    return vec4(screen.x, screen.y, 0.0, 1.0);
+}
+
+void main()
+{
+    float thickness = 0.25;
+    vec2 start = gl_in[0].gl_Position.xy;
+    vec2 end = gl_in[1].gl_Position.xy;
+
+    vec2 normal = thickness * normalize(vec2(-(end.y - start.y), end.x - start.x));
+
+    // Draw the main section
+    gl_Position = to_screen(start - normal);
+    EmitVertex();
+    gl_Position = to_screen(end - normal);
+    EmitVertex();
+    gl_Position = to_screen(start + normal);
+    EmitVertex();
+    gl_Position = to_screen(end + normal);
+    EmitVertex();
+    EndPrimitive();
+
+    // Then the end cap (which connects to the next line)
+    vec2 next = gl_in[2].gl_Position.xy;
+    vec2 next_normal = thickness * normalize(vec2(-(next.y - end.y), next.x - end.x));
+
+    gl_Position = to_screen(end - normal);
+    EmitVertex();
+    gl_Position = to_screen(end - next_normal);
+    EmitVertex();
+    gl_Position = to_screen(end);
+    EmitVertex();
+    EndPrimitive();
+
+    gl_Position = to_screen(end + normal);
+    EmitVertex();
+    gl_Position = to_screen(end + next_normal);
+    EmitVertex();
+    gl_Position = to_screen(end);
+    EmitVertex();
+    EndPrimitive();
 }
 )";
 }  // namespace
@@ -38,68 +90,39 @@ void main()
 // #############################################################################
 //
 
-Eigen::Vector2f CableObject::start() const { return parent_start.bottom_left() + offset_start; }
-Eigen::Vector2f CableObject::end() const { return parent_end.bottom_left() + offset_end; }
+Eigen::Vector2f CatenaryObject::start() const { return offset_start + (parent_start ? parent_start->bottom_left() : Eigen::Vector2f::Zero()); }
+Eigen::Vector2f CatenaryObject::end() const { return offset_end + (parent_end ? parent_end->bottom_left() : Eigen::Vector2f::Zero()); }
 
 //
 // #############################################################################
 //
 
 CableObjectManager::CableObjectManager(std::shared_ptr<PortsObjectManager> ports_manager)
-    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
+    : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text, geometry_shader_text),
       ports_manager_(std::move(ports_manager)),
-      pool_(std::make_unique<engine::ListObjectPool<CableObject>>()) {}
+      pool_(std::make_unique<engine::ListObjectPool<CatenaryObject>>()) {}
 
 //
 // #############################################################################
 //
 
-void CableObjectManager::init_with_vao() { buffer_.init(GL_ARRAY_BUFFER, 0, vao()); }
-
-//
-// #############################################################################
-//
-
-void CableObjectManager::render_with_vao() {
-    if (building_) {
-        auto local_buffer = buffer_;
-        render_from_buffer(local_buffer);
-    } else {
-        render_from_buffer(buffer_);
-    }
+void CableObjectManager::init_with_vao() {
+    vao_.init();
+    vbo_.init(GL_ARRAY_BUFFER, 0, vao_);
+    ebo_.init(GL_ELEMENT_ARRAY_BUFFER, vao_);
 }
 
 //
 // #############################################################################
 //
 
-void CableObjectManager::render_from_buffer(engine::Buffer<float, 2>& buffer) const {
-    const auto objects = pool_->iterate();
+void CableObjectManager::render_with_vao() {
+    if (ebo_.size() == 0) return;
+    for (const auto* object : pool_->iterate()){
+        const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * object->element_index);
 
-    {
-        auto points = buffer.batched_updater();
-        for (const auto* object : objects) {
-            points.element(object->vertex_index) = object->start();
-            points.element(object->vertex_index + 1) = object->end();
-        }
-
-        if (building_) {
-            const Eigen::Vector2f start = building_->parent_start.bottom_left() + building_->offset_start;
-            const Eigen::Vector2f end = building_->end;
-
-            // Put these points in at the end
-            size_t building_index = buffer.elements();
-            points.element(building_index) = start;
-            points.element(building_index + 1) = end;
-        }
-    }
-
-    for (const auto* object : objects) {
-        gl_check_with_vao(vao(), glDrawArrays, GL_LINES, object->vertex_index, 2);
-    }
-
-    if (building_) {
-        gl_check_with_vao(vao(), glDrawArrays, GL_LINES, buffer_.elements(), 2);
+        // Each step will generate a triangle, so render 3 times as many
+        gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, 3 * CatenaryObject::kNumSteps, GL_UNSIGNED_INT, indices);
     }
 }
 
@@ -128,29 +151,46 @@ const PortsObject* CableObjectManager::get_active_port(const Eigen::Vector2f& po
 }
 
 //
+//
+
+void CableObjectManager::update(float) {
+    auto vertices = vbo_.batched_updater();
+
+    for (auto* object : pool_->iterate()) {
+        size_t index = object->vertex_index;
+        for (Eigen::Vector2f point : object->calculate_points()) {
+            vertices.element(index++) = point;
+        }
+    }
+
+}
+
+//
 // #############################################################################
 //
 
 void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
-    if (event.right || (!event.clicked && !event.was_clicked)) {
-        building_.reset();
-    } else if (!event.any_modifiers() && event.pressed()) {
+    if (event.any_modifiers() || event.right) return;
+
+    if (event.pressed()) {
         Eigen::Vector2f offset;
         if (auto ptr = get_active_port(event.mouse_position, offset)) {
-            building_.emplace(BuildingCableObject{ptr->parent_block, offset, event.mouse_position});
+            CatenaryObject object;
+            object.parent_start = &ptr->parent_block;
+            object.offset_start = offset;
+            object.offset_end = event.mouse_position;
+            spawn_object(std::move(object));
         }
-    } else if (building_ && event.released()) {
+    } else if (selected_ && event.released()) {
         // Check for ports, if we're on one finalize current building object
         Eigen::Vector2f offset;
         if (auto ptr = get_active_port(event.mouse_position, offset)) {
-            spawn_object(
-                CableObject{{}, {}, building_->parent_start, building_->offset_start, ptr->parent_block, offset});
+            selected_->parent_end = &ptr->parent_block;
+            selected_->offset_end = offset;
         }
-
-        // Either it finished or wasn't connected, either way we reset
-        building_.reset();
-    } else if (building_ && event.held()) {
-        building_->end = event.mouse_position;
+        selected_ = nullptr;
+    } else if (selected_ && event.held()) {
+        selected_->offset_end = event.mouse_position;
     }
 }
 
@@ -158,21 +198,32 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 // #############################################################################
 //
 
-void CableObjectManager::spawn_object(CableObject object_) {
+void CableObjectManager::spawn_object(CatenaryObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.object_id = id;
-    object.vertex_index = buffer_.elements();
+    object.vertex_index = vbo_.elements();
+    object.element_index = ebo_.elements();
 
-    auto buffer = buffer_.batched_updater();
-    buffer.element(object.vertex_index) = object.start();
-    buffer.element(object.vertex_index + 1) = object.end();
+    vbo_.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
+
+    // Now add in the elements needed to render this object
+    auto elements = ebo_.batched_updater();
+    for (size_t i = 0; i < CatenaryObject::kNumSteps - 2; ++i) {
+        elements.push_back(object.vertex_index + i);
+        elements.push_back(object.vertex_index + i + 1);
+        elements.push_back(object.vertex_index + i + 2);
+    }
+    // Add the last element in, this one needs to be special so we don't duplicate points in the vbo
+    elements.push_back(object.vertex_index + CatenaryObject::kNumSteps - 2);
+    elements.push_back(object.vertex_index + CatenaryObject::kNumSteps - 1);
+    elements.push_back(object.vertex_index + CatenaryObject::kNumSteps - 1);
+
+    selected_ = &object;
 }
 
 //
 // #############################################################################
 //
 
-// no-ops
-void CableObjectManager::update(float) {}
 void CableObjectManager::handle_keyboard_event(const engine::KeyboardEvent&) {}
 }  // namespace objects
