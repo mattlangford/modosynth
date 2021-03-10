@@ -58,7 +58,7 @@ private:
 
     int object_position_loc_;
 
-    engine::Buffer<float> buffer_;
+    engine::Buffer<float, 2> buffer_;
 
     engine::Texture texture_;
 };

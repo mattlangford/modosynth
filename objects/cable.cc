@@ -54,7 +54,7 @@ CableObjectManager::CableObjectManager(std::shared_ptr<PortsObjectManager> ports
 // #############################################################################
 //
 
-void CableObjectManager::init_with_vao() { buffer_.init(GL_ARRAY_BUFFER, 0, 2, vao()); }
+void CableObjectManager::init_with_vao() { buffer_.init(GL_ARRAY_BUFFER, 0, vao()); }
 
 //
 // #############################################################################
@@ -73,7 +73,7 @@ void CableObjectManager::render_with_vao() {
 // #############################################################################
 //
 
-void CableObjectManager::render_from_buffer(engine::Buffer<float>& buffer) const {
+void CableObjectManager::render_from_buffer(engine::Buffer<float, 2>& buffer) const {
     const auto objects = pool_->iterate();
 
     {

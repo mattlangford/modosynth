@@ -125,7 +125,7 @@ PortsObjectManager::PortsObjectManager()
 void PortsObjectManager::init_with_vao() {
     texture_.init();
 
-    buffer_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "port_offset"), 2, vao());
+    buffer_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "port_offset"), vao());
     object_position_loc_ = glGetUniformLocation(shader().get_program_id(), "object_position");
 
     shader().activate();

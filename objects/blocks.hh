@@ -42,6 +42,8 @@ struct Config {
 struct BlockObject {
     engine::ObjectId id;
     size_t element_index;
+    size_t vertex_index;
+    bool needs_update = true;
 
     // This is a reference to the BlockObjectManager owned configuration
     const Config::BlockConfig& config;
@@ -77,8 +79,8 @@ public:
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
-    engine::Quad3Df coords(const BlockObject& block) const;
-    engine::Quad2Df uv(const BlockObject& block) const;
+    Eigen::Matrix<float, 3, 4> coords(const BlockObject& block) const;
+    Eigen::Matrix<float, 2, 4> uv(const BlockObject& block) const;
 
     void spawn_object(BlockObject object_);
 
@@ -100,7 +102,7 @@ private:
     std::unique_ptr<engine::AbstractObjectPool<BlockObject>> pool_;
 
     engine::Buffer<unsigned int> elements_;
-    engine::Buffer<float> vertex_;
-    engine::Buffer<float> uv_;
+    engine::Buffer<float, 3> vertex_;
+    engine::Buffer<float, 2> uv_;
 };
 }  // namespace objects

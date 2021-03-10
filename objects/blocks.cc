@@ -82,8 +82,8 @@ void BlockObjectManager::init_with_vao() {
     texture_.init();
 
     elements_.init(GL_ELEMENT_ARRAY_BUFFER, vao());
-    vertex_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "world_position"), 3, vao());
-    uv_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "vertex_uv"), 2, vao());
+    vertex_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "world_position"), vao());
+    uv_.init(GL_ARRAY_BUFFER, glGetAttribLocation(shader().get_program_id(), "vertex_uv"), vao());
 }
 
 //
@@ -98,25 +98,9 @@ void BlockObjectManager::render_with_vao() {
     auto objects = pool_->iterate();
 
     {
-        size_t index = 0;
         auto vertices = vertex_.batched_updater();
         for (const auto* object : objects) {
-            auto c = coords(*object);
-            vertices[index++] = c.top_left.x();
-            vertices[index++] = c.top_left.y();
-            vertices[index++] = c.top_left.z();
-
-            vertices[index++] = c.top_right.x();
-            vertices[index++] = c.top_right.y();
-            vertices[index++] = c.top_right.z();
-
-            vertices[index++] = c.bottom_left.x();
-            vertices[index++] = c.bottom_left.y();
-            vertices[index++] = c.bottom_left.z();
-
-            vertices[index++] = c.bottom_right.x();
-            vertices[index++] = c.bottom_right.y();
-            vertices[index++] = c.bottom_right.z();
+            vertices.elements<4>(object->vertex_index) = coords(*object);
         }
     }
 
@@ -175,7 +159,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
 
     static size_t id = 0;
     spawn_object(
-        BlockObject{{}, {}, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
+        BlockObject{{}, {}, {}, true, config_.blocks[id++ % config_.blocks.size()], Eigen::Vector2f{100, 200}, next_z()});
 }
 
 //
@@ -204,15 +188,15 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 // #############################################################################
 //
 
-engine::Quad3Df BlockObjectManager::coords(const BlockObject& block) const {
-    engine::Quad3Df quad;
+Eigen::Matrix<float, 3, 4> BlockObjectManager::coords(const BlockObject& block) const {
     const Eigen::Vector2f bottom_left = block.bottom_left();
     const Eigen::Vector2f top_right = bottom_left + block.config.px_dim.cast<float>();
 
-    quad.top_left = Eigen::Vector3f(bottom_left.x(), top_right.y(), block.z);
-    quad.top_right = Eigen::Vector3f{top_right.x(), top_right.y(), block.z};
-    quad.bottom_left = Eigen::Vector3f{bottom_left.x(), bottom_left.y(), block.z};
-    quad.bottom_right = Eigen::Vector3f{top_right.x(), bottom_left.y(), block.z};
+    Eigen::Matrix<float, 3, 4> quad;
+    quad.col(0) = Eigen::Vector3f(bottom_left.x(), top_right.y(), block.z);
+    quad.col(1) = Eigen::Vector3f{top_right.x(), top_right.y(), block.z};
+    quad.col(2) = Eigen::Vector3f{bottom_left.x(), bottom_left.y(), block.z};
+    quad.col(3) = Eigen::Vector3f{top_right.x(), bottom_left.y(), block.z};
     return quad;
 }
 
@@ -220,18 +204,18 @@ engine::Quad3Df BlockObjectManager::coords(const BlockObject& block) const {
 // #############################################################################
 //
 
-engine::Quad2Df BlockObjectManager::uv(const BlockObject& block) const {
-    engine::Quad2Df quad;
+Eigen::Matrix<float, 2, 4> BlockObjectManager::uv(const BlockObject& block) const {
     const Eigen::Vector2f texture_dim{texture_.bitmap().get_width(), texture_.bitmap().get_height()};
 
     const Eigen::Vector2f top_left = block.config.px_start.cast<float>().cwiseQuotient(texture_dim);
     const Eigen::Vector2f bottom_right =
         (block.config.px_start + block.config.px_dim).cast<float>().cwiseQuotient(texture_dim);
 
-    quad.top_left = top_left;
-    quad.top_right = Eigen::Vector2f{bottom_right.x(), top_left.y()};
-    quad.bottom_left = Eigen::Vector2f{top_left.x(), bottom_right.y()};
-    quad.bottom_right = bottom_right;
+    Eigen::Matrix<float, 2, 4> quad;
+    quad.col(0) = top_left;
+    quad.col(1) = Eigen::Vector2f{bottom_right.x(), top_left.y()};
+    quad.col(2) = Eigen::Vector2f{top_left.x(), bottom_right.y()};
+    quad.col(3) = bottom_right;
     return quad;
 }
 
@@ -243,44 +227,25 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
     object.element_index = elements_.size();
+    object.vertex_index = vertex_.elements();
 
-    size_t vertex_index = vertex_.elements();
     {
         auto elements = elements_.batched_updater();
         auto vertices = vertex_.batched_updater();
         auto uv_batch = uv_.batched_updater();
 
-        auto c = coords(object);
-        vertices.push_back(c.top_left.x());
-        vertices.push_back(c.top_left.y());
-        vertices.push_back(c.top_left.z());
-        vertices.push_back(c.top_right.x());
-        vertices.push_back(c.top_right.y());
-        vertices.push_back(c.top_right.z());
-        vertices.push_back(c.bottom_left.x());
-        vertices.push_back(c.bottom_left.y());
-        vertices.push_back(c.bottom_left.z());
-        vertices.push_back(c.bottom_right.x());
-        vertices.push_back(c.bottom_right.y());
-        vertices.push_back(c.bottom_right.z());
+        vertices.elements<4>(object.vertex_index) = coords(object);
+        uv_batch.elements<4>(object.vertex_index) = uv(object);
 
-        elements_.push_back(vertex_index + 0);
-        elements_.push_back(vertex_index + 1);
-        elements_.push_back(vertex_index + 2);
+        // First triangle
+        elements_.push_back(object.vertex_index + 0);
+        elements_.push_back(object.vertex_index + 1);
+        elements_.push_back(object.vertex_index + 2);
 
-        elements_.push_back(vertex_index + 3);
-        elements_.push_back(vertex_index + 2);
-        elements_.push_back(vertex_index + 1);
-
-        auto u = uv(object);
-        uv_batch.push_back(u.top_left.x());
-        uv_batch.push_back(u.top_left.y());
-        uv_batch.push_back(u.top_right.x());
-        uv_batch.push_back(u.top_right.y());
-        uv_batch.push_back(u.bottom_left.x());
-        uv_batch.push_back(u.bottom_left.y());
-        uv_batch.push_back(u.bottom_right.x());
-        uv_batch.push_back(u.bottom_right.y());
+        // Second triangle
+        elements_.push_back(object.vertex_index + 3);
+        elements_.push_back(object.vertex_index + 2);
+        elements_.push_back(object.vertex_index + 1);
     }
 
     ports_manager_->spawn_object(PortsObject::from_block(object));

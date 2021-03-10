@@ -47,7 +47,7 @@ protected:
     void render_with_vao() override;
 
 private:
-    void render_from_buffer(engine::Buffer<float>& buffer) const;
+    void render_from_buffer(engine::Buffer<float, 2>& buffer) const;
     const PortsObject* get_active_port(const Eigen::Vector2f& position, Eigen::Vector2f& offset) const;
     void spawn_object(CableObject object);
 
@@ -63,6 +63,6 @@ private:
     std::shared_ptr<PortsObjectManager> ports_manager_;
 
     std::unique_ptr<engine::AbstractObjectPool<CableObject>> pool_;
-    engine::Buffer<float> buffer_;
+    engine::Buffer<float, 2> buffer_;
 };
 }  // namespace objects

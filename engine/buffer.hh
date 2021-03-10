@@ -63,9 +63,10 @@ define_for(float, f, 3);
 ///
 /// @brief Handles getting data to the GPU
 ///
-template <typename T>
+template <typename T, size_t Stride = 1>
 class Buffer {
     static_assert(std::is_arithmetic_v<T>);
+    static_assert(Stride >= 1);
 
 public:
     Buffer() = default;
@@ -81,15 +82,14 @@ public:
         target_ = target;
     }
 
-    void init(GLenum target, unsigned int index, size_t size, const VertexArrayObject& vao) {
+    void init(GLenum target, unsigned int index, const VertexArrayObject& vao) {
         init(target, vao);
-        stride_ = size;
 
         // Enable this index, only needs to be done once per index
         gl_check_with_vao(this->vao(), glEnableVertexAttribArray, index);
 
-        set_vertex_attribute_ = [index, size, this]() {
-            gl_check_with_vao(this->vao(), glVertexAttribPointer, index, size, enum_type<T>, GL_FALSE, 0, nullptr);
+        set_vertex_attribute_ = [index, this]() {
+            gl_check_with_vao(this->vao(), glVertexAttribPointer, index, Stride, enum_type<T>, GL_FALSE, 0, nullptr);
         };
     }
 
@@ -131,7 +131,7 @@ private:
 
     class BatchedUpdateBuffer {
     public:
-        BatchedUpdateBuffer(Buffer<T>& parent) : parent_(parent), initial_start_(parent_.data_.data()) {}
+        BatchedUpdateBuffer(Buffer<T, Stride>& parent) : parent_(parent), initial_start_(parent_.data_.data()) {}
         ~BatchedUpdateBuffer() { finish(); }
 
         void finish() {
@@ -160,12 +160,23 @@ private:
             modified_ = true;
             return parent_.data_.at(index);
         }
-        T& element(size_t index) { return this->operator[](parent_.stride_* index); }
+        template <size_t Rows>
+        Eigen::Map<Eigen::Matrix<T, Stride, static_cast<int>(Rows)>> elements(size_t index) {
+            modified_ = true;
+
+            // Since the map doesn't handle resizing, we'll do that here. Could use resize() but I want to make sure the
+            // size doubling happens automatically.
+            size_t required_size = Stride * (index + Rows);
+            while (parent_.size() < required_size) push_back({});
+
+            return Eigen::Map<Eigen::Matrix<T, Stride, static_cast<int>(Rows)>>{&parent_.data_.at(Stride * index)};
+        }
+        Eigen::Map<Eigen::Matrix<T, Stride, 1>>& element(size_t index) { return elements<1>(index); }
 
     private:
         // modified but not reallocated
         bool modified_ = false;
-        Buffer<T>& parent_;
+        Buffer<T, Stride>& parent_;
         T* initial_start_;
     };
 
@@ -186,10 +197,10 @@ public:
     void push_back(const T& t) { batched_updater().push_back(t); }
     T& operator[](size_t index) { return batched_updater()[index]; }
     const T& operator[](size_t index) const { return data_[index]; }
-    T& element(size_t index) { return batched_updater()[stride_ * index]; }
-    const T& element(size_t index) const { return data_[stride_ * index]; }
+    T& element(size_t index) { return batched_updater()[Stride * index]; }
+    const T& element(size_t index) const { return data_[Stride * index]; }
     size_t size() const { return data_.size(); }
-    size_t elements() const { return data_.size() / stride_; }
+    size_t elements() const { return data_.size() / Stride; }
 
     BatchedUpdateBuffer batched_updater() { return {*this}; }
 
@@ -201,7 +212,6 @@ private:
     std::optional<unsigned int> handle_;
     std::vector<T> data_;
     bool dynamic_ = false;  // assume it's static, this will change after the first sync()
-    size_t stride_ = 0;
 };
 
 }  // namespace engine

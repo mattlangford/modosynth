@@ -38,6 +38,6 @@ private:
 
     engine::Shader shader_;
     engine::VertexArrayObject vao_;
-    engine::Buffer<float> buffer_;
+    engine::Buffer<float, 2> buffer_;
 };
 }  // namespace objects

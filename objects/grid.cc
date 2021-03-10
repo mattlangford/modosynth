@@ -118,7 +118,7 @@ GridObjectManager::GridObjectManager(const size_t grid_width, const size_t grid_
 void GridObjectManager::init() {
     shader_.init();
     vao_.init();
-    buffer_.init(GL_ARRAY_BUFFER, 0, 2, vao_);
+    buffer_.init(GL_ARRAY_BUFFER, 0, vao_);
     auto buffer = buffer_.batched_updater();
     buffer.push_back(0);        // x0
     buffer.push_back(0);        // y0
