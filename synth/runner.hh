@@ -31,16 +31,16 @@ public:
             auto to_name = wrappers_.at(to_id).node->name();
             std::cerr << "Runner::connect(from=" << from_name << " (" << from_id
                       << "), from_output_index=" << from_output_index << " to=" << to_name << " (" << to_id
-                      << "), to_input_index: " << to_input_index << "\n";
+                      << "), to_input_index: " << to_input_index << ")\n";
         }
 
         std::lock_guard lock{wrappers_lock_};
-        auto& output_wrapper = wrappers_.at(from_id);
-        const auto& input_wrapper = wrappers_.at(to_input_index);
+        auto& from_wrapper = wrappers_.at(from_id);
+        const auto& to_wrapper = wrappers_.at(to_id);
 
-        output_wrapper.outputs.at(from_output_index)
-            .push_back(std::make_pair(to_input_index, input_wrapper.node.get()));
-        input_wrapper.node->add_input(to_input_index);
+        auto id = std::make_pair(to_input_index, to_wrapper.node.get());
+        from_wrapper.outputs.at(from_output_index).push_back(std::move(id));
+        to_wrapper.node->add_input(to_input_index);
     }
 
     void next() {
@@ -85,10 +85,12 @@ public:
                 total_num_ran++;
             }
 
+            // This can be hit if there are no input nodes
             if (starting_num_ran == total_num_ran) {
                 if (kDebug) {
                     std::cerr << "Stall detected...\n";
                 }
+                break;
             }
         }
     }

@@ -71,8 +71,8 @@ public:
 
     void add_input(size_t input_index) final {
         if (kDebug) std::cerr << name() << "::add_input(input_index=" << input_index << ")\n";
-        default_counters_[input_index]++;
-        counters_ = default_counters_;
+        default_counters_.at(input_index)++;
+        counters_.at(input_index)++;
     }
 
     bool ready() const final {

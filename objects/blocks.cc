@@ -186,8 +186,12 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     };
 
     if (event.space) {
-        static size_t id = 0;
-        spawn_impl(id++);
+        spawn_impl(4);
+        spawn_impl(4);
+        spawn_impl(5);
+        spawn_impl(1);
+        // static size_t id = 0;
+        // spawn_impl(id++);
         return;
     }
 
