@@ -186,12 +186,8 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     };
 
     if (event.space) {
-        spawn_impl(4);
-        spawn_impl(4);
-        spawn_impl(5);
-        spawn_impl(1);
-        // static size_t id = 0;
-        // spawn_impl(id++);
+        static size_t id = 0;
+        spawn_impl(id++);
         return;
     }
 
@@ -200,6 +196,12 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
         spawn_impl(index);
     }
 }
+
+//
+// #############################################################################
+//
+
+const Config& BlockObjectManager::config() const { return config_; }
 
 //
 // #############################################################################

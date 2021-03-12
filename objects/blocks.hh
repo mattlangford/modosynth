@@ -85,13 +85,16 @@ public:
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override;
 
+public:
+    const Config& config() const;
+
+    void spawn_object(BlockObject object_);
+
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
     Eigen::Matrix<float, 3, 4> coords(const BlockObject& block) const;
     Eigen::Matrix<float, 4, 4> uv(const BlockObject& block) const;
-
-    void spawn_object(BlockObject object_);
 
     float next_z();
 
