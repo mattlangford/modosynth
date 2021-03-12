@@ -101,7 +101,15 @@ public:
     }
 
     void accept(size_t input_index, const Samples& incoming_samples) final {
-        if (kDebug) std::cerr << name() << "::accept(input_index=" << input_index << ")\n";
+        if (kDebug)
+            std::cerr << name() << "::accept(input_index=" << input_index << ") counter: " << counters_[input_index]
+                      << "\n";
+
+        if (counters_[input_index] == 0) {
+            std::cerr << name() << " is dropping new data.\n";
+            return;
+        }
+
         auto& next_input = next_inputs_[input_index];
         for (size_t i = 0; i < next_input.samples.size(); ++i) {
             // Sum new inputs with the current inputs
