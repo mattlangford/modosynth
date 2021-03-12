@@ -6,29 +6,33 @@ blocks:
       foreground_start: [32, 64] # Empty part of the texture map
       background_start: [0, 0]
       px_dim: [32, 16]
-      inputs: 1
-      outputs: 1
-    - name: "vco_mega"
-      description: "Voltage Controlled Oscillator, but MEGA"
-      foreground_start: [32, 64] # Empty part of the texture map
-      background_start: [0, 16]
-      px_dim: [32, 32]
-      inputs: 2
-      outputs: 5
+      inputs: 2 # voltage | shape
+      outputs: 1 # oscillating signal
     - name: "lpf"
       description: "Low Pass Filter"
       foreground_start: [32, 64] # Empty part of the texture map
       background_start: [0, 48]
       px_dim: [32, 16]
-      inputs: 3
-      outputs: 1
+      inputs: 2 # signal | cutoff
+      outputs: 1 # signal
+    - name: "hpf"
+      description: "High Pass Filter"
+      foreground_start: [32, 64] # Empty part of the texture map
+      background_start: [0, 96]
+      px_dim: [32, 16]
+      inputs: 2 # signal | cutoff
+      outputs: 1 # signal
     - name: "knob"
       description: "Voltage Control Knob"
-      foreground_start: [42, 4]
-      background_start: [42, 11]
-      px_dim: [5, 5]
-      # foreground_start: [50, 30]
-      # background_start: [0, 64]
-      # px_dim: [31, 31]
+      foreground_start: [52, 18]
+      background_start: [32, 0]
+      px_dim: [15, 15]
       inputs: 0
-      outputs: 1
+      outputs: 1 # signal
+    - name: "speaker"
+      description: "Output Speaker"
+      foreground_start: [32, 64] # Empty part of the texture map
+      background_start: [32, 15]
+      px_dim: [16, 32]
+      inputs: 2 # signal | volume
+      outputs: 0

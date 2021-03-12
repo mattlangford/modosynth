@@ -155,7 +155,7 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 
         // Rotate the foreground
         if (event.shift) {
-            selected_->rotation += event.delta_position.y();
+            selected_->rotation += 0.1 * event.delta_position.y();
         } else {
             selected_->offset.head(2) += event.delta_position;
         }
@@ -184,7 +184,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
         return;
     }
 
-    size_t index = event.key - '0';
+    size_t index = event.key - '1';
     if (index < config_.blocks.size()) {
         spawn_impl(index);
     }
