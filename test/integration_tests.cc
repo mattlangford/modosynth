@@ -43,7 +43,11 @@ struct IntegrationTests : public ::testing::Test {
     objects::BlockObjectManager* blocks;
 };
 
-void click_and_move(Eigen::Vector2i click, Eigen::Vector2i move, engine::GlobalObjectManager& manager) {
+//
+// #############################################################################
+//
+
+void click_and_move(Eigen::Vector2f click, Eigen::Vector2f move, engine::GlobalObjectManager& manager) {
     engine::MouseEvent event;
 
     // Click on the spot
@@ -63,6 +67,41 @@ void click_and_move(Eigen::Vector2i click, Eigen::Vector2i move, engine::GlobalO
     manager.handle_mouse_event(event);
 }
 
-TEST_F(IntegrationTests, amplifer) {
-    blocks->span
+//
+// #############################################################################
+//
+
+const objects::Config::BlockConfig* get_block_config(const std::string& name,
+                                                     const objects::BlockObjectManager& manager) {
+    for (const auto& config : manager.config().blocks) {
+        if (config.name == name) return &config;
+    }
+    return nullptr;
+}
+
+//
+// #############################################################################
+//
+
+TEST_F(IntegrationTests, amplifier) {
+    return;
+    objects::BlockObject knob0;
+    knob0.offset = Eigen::Vector2f(100, 100);
+    knob0.config = get_block_config("Knob", *blocks);
+    // knob0 = blocks->spawn_object(knob0);
+
+    objects::BlockObject knob1;
+    knob1.offset = Eigen::Vector2f(200, 200);
+    knob1.config = get_block_config("Knob", *blocks);
+    // knob1 = blocks->spawn_object(knob1);
+
+    objects::BlockObject amplifier;
+    amplifier.offset = Eigen::Vector2f(300, 150);
+    amplifier.config = get_block_config("Amplifier", *blocks);
+    // amplifier = blocks->spawn_object(amplifier);
+
+    objects::BlockObject speaker;
+    speaker.offset = Eigen::Vector2f(400, 150);
+    speaker.config = get_block_config("Speaker", *blocks);
+    // speaker = blocks->spawn_object(speaker);
 }

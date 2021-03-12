@@ -23,6 +23,7 @@ T read(std::istream& stream) {
 //
 
 Bitmap::Bitmap(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path)) throw std::runtime_error("Bitmap file doesn't exist");
     std::ifstream stream(path, std::ios::binary);
 
     file_header_ = parse_file_header(stream);

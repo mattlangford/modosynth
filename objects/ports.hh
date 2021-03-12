@@ -52,6 +52,9 @@ public:
     void handle_keyboard_event(const engine::KeyboardEvent& event) override;
 
 public:
+    Eigen::Vector2f position_of(const BlockObject& block_object, size_t index, bool input) const;
+
+public:
     void spawn_object(PortsObject object_);
 
     const engine::AbstractObjectPool<PortsObject>& pool() const;

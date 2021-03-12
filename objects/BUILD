@@ -1,9 +1,21 @@
+filegroup(
+    name="config",
+    srcs = glob(["*.yml"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name="textures",
+    srcs = glob(["*.bmp"]),
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "objects",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.hh"]),
-    data = glob(["*.yml", "*.bmp"]),
     visibility = ["//visibility:public"],
+    data = [":config", ":textures"],
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",

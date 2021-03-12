@@ -1,11 +1,12 @@
 #pragma once
+#include <iostream>
 #include <memory>
 #include <vector>
 
 #include "engine/object_manager.hh"
 
 namespace engine {
-class GlobalObjectManager : AbstractObjectManager {
+class GlobalObjectManager final : AbstractObjectManager {
 public:
     GlobalObjectManager() = default;
     ~GlobalObjectManager() override = default;

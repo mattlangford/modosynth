@@ -71,7 +71,7 @@ class BlockObjectManager final : public engine::AbstractSingleShaderObjectManage
 public:
     BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager,
                        synth::Bridge& bridge);
-    virtual ~BlockObjectManager() = default;
+    ~BlockObjectManager() override = default;
 
 protected:
     void init_with_vao() override;
@@ -88,7 +88,7 @@ public:
 public:
     const Config& config() const;
 
-    void spawn_object(BlockObject object_);
+    BlockObject& spawn_object(BlockObject object_);
 
 private:
     BlockObject* select(const Eigen::Vector2f& position) const;

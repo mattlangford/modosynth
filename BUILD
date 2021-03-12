@@ -20,6 +20,7 @@ cc_test(
     name = "test",
     srcs = glob(["test/*.cc"]),
     size = "small",
+    data = ["//objects:config", "//objects:textures"],
     deps = [
         "//engine",
         "//synth",

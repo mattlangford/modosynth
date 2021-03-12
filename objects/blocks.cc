@@ -291,8 +291,9 @@ Eigen::Matrix<float, 4, 4> BlockObjectManager::uv(const BlockObject& block) cons
 // #############################################################################
 //
 
-void BlockObjectManager::spawn_object(BlockObject object_) {
-    if (object_.config == nullptr) throw std::runtime_error("BlockObjectManager::spawn_object() Can't have nullptr config.");
+BlockObject& BlockObjectManager::spawn_object(BlockObject object_) {
+    if (object_.config == nullptr)
+        throw std::runtime_error("BlockObjectManager::spawn_object() Can't have nullptr config.");
 
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
@@ -320,6 +321,7 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
 
     ports_manager_.spawn_object(PortsObject::from_block(object));
     object.synth_id = bridge_.spawn(object.config->name);
+    return object;
 }
 
 //

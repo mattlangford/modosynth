@@ -21,7 +21,9 @@ VertexArrayObject::ScopedBinder::~ScopedBinder() { parent_.unbind(); }
 //
 
 VertexArrayObject::~VertexArrayObject() {
-    if (handle_) glDeleteVertexArrays(1, &*handle_);
+    if (handle_) {
+        glDeleteVertexArrays(1, &*handle_);
+    }
 }
 
 //

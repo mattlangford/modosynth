@@ -158,6 +158,19 @@ void PortsObjectManager::render_with_vao() {
 // #############################################################################
 //
 
+Eigen::Vector2f PortsObjectManager::position_of(const BlockObject& block_object, size_t index, bool input) const {
+    for (auto* object : pool_->iterate()) {
+        if (object->parent_block.offset == block_object.offset) {
+            return (input ? object->input_offsets : object->output_offsets).at(index);
+        }
+    }
+    throw std::runtime_error("Unable to find ports for given block.");
+}
+
+//
+// #############################################################################
+//
+
 void PortsObjectManager::spawn_object(PortsObject object_) {
     if (object_.num_offsets() == 0) throw std::runtime_error("Trying to spawn PortsObject with no ports!");
 

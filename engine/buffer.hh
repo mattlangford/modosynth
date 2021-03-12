@@ -72,7 +72,9 @@ public:
     Buffer() = default;
 
     ~Buffer() {
-        if (handle_) gl_check(glDeleteBuffers, 1, &handle());
+        if (handle_) {
+            gl_check(glDeleteBuffers, 1, &handle());
+        }
     }
 
 public:
@@ -213,7 +215,7 @@ private:
     const VertexArrayObject* vao_ = nullptr;  // we don't own this
     std::function<void()> set_vertex_attribute_;
 
-    std::optional<unsigned int> handle_;
+    std::optional<unsigned int> handle_ = std::nullopt;
     std::vector<T> data_;
     bool dynamic_ = false;  // assume it's static, this will change after the first sync()
 };
