@@ -43,6 +43,7 @@ public:
     virtual void invoke(const Context& context) = 0;
     virtual void accept(size_t index, const Samples& incoming_samples) = 0;
     virtual void send(size_t output_index, size_t input_index, GenericNode& to) const = 0;
+    virtual void set_value(float) = 0;
 
     const std::string& name() const { return name_; }
 
@@ -107,7 +108,8 @@ public:
         to.accept(input_index, outputs_[output_index]);
     }
 
-    virtual void set_value(float) {}
+    // default to a no-op
+    void set_value(float) override {}
 
 protected:
     virtual void invoke(const Context&, const Inputs& inputs, Outputs& outputs) const {

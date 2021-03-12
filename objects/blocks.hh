@@ -9,6 +9,10 @@
 #include "engine/shader.hh"
 #include "engine/texture.hh"
 
+namespace synth {
+class Bridge;
+}
+
 namespace objects {
 
 class PortsObjectManager;
@@ -53,6 +57,8 @@ struct BlockObject {
     float z;
     float rotation;  // only the foreground though
 
+    size_t synth_id;
+
     // To get it more pixel-y, this will only move in single pixel increments.
     inline Eigen::Vector2f bottom_left() const { return offset.cast<int>().cast<float>(); };
 };
@@ -63,7 +69,7 @@ struct BlockObject {
 
 class BlockObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
-    BlockObjectManager(const std::filesystem::path& path_config, std::shared_ptr<PortsObjectManager> ports_manager);
+    BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager, synth::Bridge& bridge);
     virtual ~BlockObjectManager() = default;
 
 protected:
@@ -91,7 +97,8 @@ private:
 private:
     const Config config_;
 
-    std::shared_ptr<PortsObjectManager> ports_manager_;
+    PortsObjectManager& ports_manager_;
+    synth::Bridge& bridge_;
 
     BlockObject* selected_ = nullptr;
 

@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "synth/bridge.hh"
 #include "engine/gl.hh"
 #include "engine/utils.hh"
 #include "objects/ports.hh"
@@ -76,11 +77,11 @@ Config::Config(const std::filesystem::path& path) {
 // #############################################################################
 //
 
-BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path,
-                                       std::shared_ptr<PortsObjectManager> ports_manager)
+BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager, synth::Bridge& bridge)
     : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
       config_(config_path),
-      ports_manager_(std::move(ports_manager)),
+      ports_manager_(ports_manager),
+      bridge_(bridge),
       texture_(config_.texture_path),
       pool_(std::make_unique<engine::ListObjectPool<BlockObject>>()) {}
 
@@ -179,7 +180,7 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     auto spawn_impl = [this](size_t index) {
-        spawn_object(BlockObject{{}, {}, {}, true, config_.blocks[index], Eigen::Vector2f{100, 200}, next_z(), 0});
+        spawn_object(BlockObject{{}, {}, {}, true, config_.blocks[index], Eigen::Vector2f{100, 200}, next_z(), 0, {}});
     };
 
     if (event.space) {
@@ -303,7 +304,9 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
         elements_.push_back(object.vertex_index + 1);
     }
 
-    ports_manager_->spawn_object(PortsObject::from_block(object));
+    ports_manager_.spawn_object(PortsObject::from_block(object));
+    object.synth_id = bridge_.spawn(object.config.name);
+
 }
 
 //

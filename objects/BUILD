@@ -8,7 +8,8 @@ cc_library(
         "@glfw//:glfw",
         "@eigen//:eigen",
         "@yaml-cpp",
-        "//engine"
+        "//engine",
+        "//synth"
     ]
 )
 

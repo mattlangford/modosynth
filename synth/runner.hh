@@ -11,15 +11,20 @@ namespace synth {
 class Runner {
 public:
     template <typename Node, typename... Args>
-    size_t spawn(Args... args) {
+    size_t spawn(Args... args){return spawn(std::make_unique<Node>(std::forward<Args>(args)...)); }
+
+    size_t spawn(std::unique_ptr<GenericNode> node) {
+        std::lock_guard lock{wrappers_lock_};
+
         size_t id = wrappers_.size();
         auto& wrapper = wrappers_.emplace_back();
-        wrapper.node = std::make_unique<Node>(std::forward<Args>(args)...);
+        wrapper.node = std::move(node);
         wrapper.outputs.resize(wrapper.node->num_outputs());
         return id;
     }
 
     void connect(size_t from_id, size_t from_output, size_t to_id, size_t to_input) {
+        std::lock_guard lock{wrappers_lock_};
         auto& output_wrapper = wrappers_.at(from_id);
         const auto& input_wrapper = wrappers_.at(to_id);
 
@@ -28,6 +33,8 @@ public:
     }
 
     void next() {
+        std::lock_guard lock{wrappers_lock_};
+
         size_t total_num_ran = 0;
         std::vector<bool> ran(wrappers_.size(), false);
         while (total_num_ran < wrappers_.size()) {
@@ -73,6 +80,11 @@ public:
         }
     }
 
+    void set_value(size_t from_id, float value) {
+        std::lock_guard lock{wrappers_lock_};
+        wrappers_.at(from_id).node->set_value(value);
+    }
+
 private:
     struct NodeWrapper {
         std::unique_ptr<GenericNode> node;
@@ -80,6 +92,7 @@ private:
         using InputAndNode = std::pair<size_t, GenericNode*>;
         std::vector<std::vector<InputAndNode>> outputs;
     };
+    std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
 };
 }  // namespace synth
