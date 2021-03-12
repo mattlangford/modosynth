@@ -1,6 +1,9 @@
+#include <thread>
+
 #include "engine/object_global.hh"
 #include "engine/window.hh"
 #include "objects/blocks.hh"
+#include "objects/blocks/speaker.hh"
 #include "objects/cable.hh"
 #include "objects/grid.hh"
 #include "objects/ports.hh"
@@ -9,9 +12,26 @@
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
 
+void populate(synth::Bridge& bridge) {
+    using namespace object::blocks;
+    int i = 0;
+    bridge.add_factory(Speaker::kName, [i]() mutable { return std::make_unique<Speaker>(i++); });
+}
+
+void synth_loop(synth::Runner& runner, bool& shutdown) {
+    while (!shutdown) {
+        runner.next();
+    }
+}
+
 int main() {
     synth::Runner runner;
     synth::Bridge bridge{runner};
+
+    populate(bridge);
+
+    bool shutdown = false;
+    std::thread synth_loop_thread{[&]() { synth_loop(runner, shutdown); }};
 
     engine::GlobalObjectManager object_manager;
     auto ports_manager = std::make_shared<objects::PortsObjectManager>();
@@ -28,6 +48,9 @@ int main() {
 
     while (window.render_loop()) {
     }
+
+    shutdown = true;
+    synth_loop_thread.join();
 
     exit(EXIT_SUCCESS);
 }

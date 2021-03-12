@@ -36,7 +36,7 @@ blocks:
       px_dim: [15, 15]
       inputs: 0
       outputs: 1 # signal
-    - name: "Output Speaker"
+    - name: "Speaker"
       foreground_start: [32, 64] # Empty part of the texture map
       background_start: [32, 15]
       px_dim: [16, 32]
