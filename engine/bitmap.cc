@@ -136,6 +136,12 @@ auto Bitmap::parse_pixels(std::istream& stream, const InfoHeader& header) const 
             pixel.green = pixel_bytes[index++];
             pixel.red = pixel_bytes[index++];
             pixel.alpha = header.bits_per_pixel == 32 ? pixel_bytes[index++] : 0xFF;
+            if (pixel.alpha == 0)
+            {
+                pixel.blue = 0;
+                pixel.green = 0;
+                pixel.red = 0;
+            }
         }
     }
 

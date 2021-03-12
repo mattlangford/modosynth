@@ -256,8 +256,7 @@ Eigen::Matrix<float, 4, 4> BlockObjectManager::uv(const BlockObject& block) cons
         float c = std::cos(block.rotation);
         rotation << c, -s, s, c;
 
-        Eigen::Matrix<float, 2, 1> single_px_offset = 0.5f * Eigen::Vector2f::Ones().cwiseQuotient(texture_dim);
-        Eigen::Matrix<float, 2, 1> center = foreground.rowwise().mean() + single_px_offset;
+        Eigen::Matrix<float, 2, 1> center = foreground.rowwise().mean();
         for (int i = 0; i < foreground.cols(); ++i) foreground.col(i) -= center;
         foreground = (rotation * foreground).eval();
         for (int i = 0; i < foreground.cols(); ++i) foreground.col(i) += center;

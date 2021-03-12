@@ -24,7 +24,7 @@ blocks:
       outputs: 1
     - name: "knob"
       description: "Voltage Control Knob"
-      foreground_start: [42, 2]
+      foreground_start: [42, 4]
       background_start: [42, 11]
       px_dim: [5, 5]
       # foreground_start: [50, 30]
