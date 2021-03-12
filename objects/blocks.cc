@@ -59,7 +59,6 @@ Config::Config(const std::filesystem::path& path) {
     for (const auto& block : root["blocks"]) {
         BlockConfig block_config;
         block_config.name = block["name"].as<std::string>();
-        block_config.description = block["description"].as<std::string>();
         block_config.foreground_start.x() = block["foreground_start"][0].as<int>();
         block_config.foreground_start.y() = block["foreground_start"][1].as<int>();
         block_config.background_start.x() = block["background_start"][0].as<int>();
@@ -90,6 +89,11 @@ BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path,
 //
 
 void BlockObjectManager::init_with_vao() {
+    for (size_t i = 0; i < config_.blocks.size(); ++i) {
+        // starting at 1 so that it's easy to spawn the first thing
+        std::cout << "Press '" << (i + 1) << "' to spawn '" << config_.blocks[i].name << "'\n";
+    }
+
     texture_.init();
 
     elements_.init(GL_ELEMENT_ARRAY_BUFFER, vao());
@@ -153,9 +157,9 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         selected_->z = 0.0;
         selected_->needs_update = true;
 
-        // Rotate the foreground
         if (event.shift) {
-            selected_->rotation += 0.1 * event.delta_position.y();
+            // Rotate the foreground
+            selected_->rotation -= 0.1 * event.delta_position.y();
         } else {
             selected_->offset.head(2) += event.delta_position;
         }

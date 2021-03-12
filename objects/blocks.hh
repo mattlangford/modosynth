@@ -24,7 +24,7 @@ struct Config {
 
     struct BlockConfig {
         std::string name;
-        std::string description;
+        std::string full_name;
         // Where the texture in the texture path, used for UV mapping
         Eigen::Vector2i foreground_start;
         Eigen::Vector2i background_start;

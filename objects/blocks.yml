@@ -1,38 +1,44 @@
 ---
 texture_path: "/Users/mlangford/Downloads/test.bmp"
 blocks:
-    - name: "vco"
-      description: "Voltage Controlled Oscillator"
+    # Outputs a signal who's frequency is proportional to the input signal. By changing the shape, you can switch
+    # between different voltage shapes (smooth, triangle, square, random).
+    - name: "Voltage Controlled Oscillator"
       foreground_start: [32, 64] # Empty part of the texture map
       background_start: [0, 0]
       px_dim: [32, 16]
       inputs: 2 # voltage | shape
       outputs: 1 # oscillating signal
-    - name: "lpf"
-      description: "Low Pass Filter"
+    # Scales the input signal by the value of the input gain voltage
+    - name: "Amplifier"
+      foreground_start: [32, 64] # Empty part of the texture map
+      background_start: [0, 16]
+      px_dim: [32, 16]
+      inputs: 2 # signal | gain
+      outputs: 1 # signal
+    - name: "High Pass Filter"
+      foreground_start: [32, 64] # Empty part of the texture map
+      background_start: [0, 32]
+      px_dim: [32, 16]
+      inputs: 2 # signal | cutoff
+      outputs: 1 # signal
+    # Only passes through the lower frequencies of the input signal.
+    - name: "Low Pass Filter"
       foreground_start: [32, 64] # Empty part of the texture map
       background_start: [0, 48]
       px_dim: [32, 16]
       inputs: 2 # signal | cutoff
       outputs: 1 # signal
-    - name: "hpf"
-      description: "High Pass Filter"
-      foreground_start: [32, 64] # Empty part of the texture map
-      background_start: [0, 96]
-      px_dim: [32, 16]
-      inputs: 2 # signal | cutoff
-      outputs: 1 # signal
-    - name: "knob"
-      description: "Voltage Control Knob"
+    # Only passes through the higher frequencies of the input signal.
+    - name: "Voltage Control Knob"
       foreground_start: [52, 18]
       background_start: [32, 0]
       px_dim: [15, 15]
       inputs: 0
       outputs: 1 # signal
-    - name: "speaker"
-      description: "Output Speaker"
+    - name: "Output Speaker"
       foreground_start: [32, 64] # Empty part of the texture map
       background_start: [32, 15]
       px_dim: [16, 32]
-      inputs: 2 # signal | volume
+      inputs: 1 # signal
       outputs: 0
