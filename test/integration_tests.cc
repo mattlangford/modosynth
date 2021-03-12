@@ -132,11 +132,11 @@ TEST_F(IntegrationTests, amplifier) {
     speaker.config = get_block_config("Speaker", *blocks);
     auto& speaker_handle = blocks->spawn_object(speaker);
 
-    auto knob0_output = ports->position_of(knob0, 0, false);
-    auto knob1_output = ports->position_of(knob1, 0, false);
-    auto amplifier_input = ports->position_of(amplifier, 0, true);
-    auto amplifier_gain = ports->position_of(amplifier, 1, true);
-    auto amplifier_output = ports->position_of(amplifier, 0, false);
+    auto knob0_output = ports->position_of(knob0_handle, 0, false);
+    auto knob1_output = ports->position_of(knob1_handle, 0, false);
+    auto amplifier_input = ports->position_of(amplifier_handle, 0, true);
+    auto amplifier_gain = ports->position_of(amplifier_handle, 1, true);
+    auto amplifier_output = ports->position_of(amplifier_handle, 0, false);
     auto speaker_input = ports->position_of(speaker_handle, 0, true);
 
     runner.next();
