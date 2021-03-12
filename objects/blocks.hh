@@ -45,19 +45,19 @@ struct Config {
 //
 
 struct BlockObject {
-    engine::ObjectId id;
-    size_t element_index;
-    size_t vertex_index;
+    engine::ObjectId id = {};
+    size_t element_index = -1;
+    size_t vertex_index = -1;
     bool needs_update = true;
 
     // This is a reference to the BlockObjectManager owned configuration
-    const Config::BlockConfig& config;
+    const Config::BlockConfig* config;
 
-    Eigen::Vector2f offset;
-    float z;
-    float rotation;  // only the foreground though
+    Eigen::Vector2f offset = Eigen::Vector2f::Zero();
+    float z = 0.0;
+    float rotation = 0.0;  // only the foreground though
 
-    size_t synth_id;
+    size_t synth_id = -1;
 
     // To get it more pixel-y, this will only move in single pixel increments.
     inline Eigen::Vector2f bottom_left() const { return offset.cast<int>().cast<float>(); };

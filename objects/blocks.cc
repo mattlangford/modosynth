@@ -182,7 +182,11 @@ void BlockObjectManager::handle_keyboard_event(const engine::KeyboardEvent& even
     }
 
     auto spawn_impl = [this](size_t index) {
-        spawn_object(BlockObject{{}, {}, {}, true, config_.blocks[index], Eigen::Vector2f{100, 200}, next_z(), 0, {}});
+        BlockObject object;
+        object.offset = Eigen::Vector2f{100, 200};
+        object.config = &config_.blocks[index];
+        object.z = next_z();
+        spawn_object(std::move(object));
     };
 
     if (event.space) {
@@ -212,7 +216,7 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 
     auto is_in_object = [&position](const BlockObject& object) {
         Eigen::Vector2f bottom_left = object.bottom_left();
-        Eigen::Vector2f top_right = bottom_left + object.config.px_dim.cast<float>();
+        Eigen::Vector2f top_right = bottom_left + object.config->px_dim.cast<float>();
         return engine::is_in_rectangle(position, bottom_left, top_right);
     };
 
@@ -231,7 +235,7 @@ BlockObject* BlockObjectManager::select(const Eigen::Vector2f& position) const {
 
 Eigen::Matrix<float, 3, 4> BlockObjectManager::coords(const BlockObject& block) const {
     const Eigen::Vector2f bottom_left = block.bottom_left();
-    const Eigen::Vector2f top_right = bottom_left + block.config.px_dim.cast<float>();
+    const Eigen::Vector2f top_right = bottom_left + block.config->px_dim.cast<float>();
 
     Eigen::Matrix<float, 3, 4> quad;
     quad.col(0) = Eigen::Vector3f(bottom_left.x(), top_right.y(), block.z);
@@ -250,7 +254,7 @@ Eigen::Matrix<float, 4, 4> BlockObjectManager::uv(const BlockObject& block) cons
 
     auto compute = [&](const Eigen::Vector2i& start) -> Eigen::Matrix<float, 2, 4> {
         const Eigen::Vector2f top_left = start.cast<float>().cwiseQuotient(texture_dim);
-        const Eigen::Vector2f bottom_right = (start + block.config.px_dim).cast<float>().cwiseQuotient(texture_dim);
+        const Eigen::Vector2f bottom_right = (start + block.config->px_dim).cast<float>().cwiseQuotient(texture_dim);
 
         Eigen::Matrix<float, 2, 4> quad;
         quad.col(0) = top_left;
@@ -260,8 +264,8 @@ Eigen::Matrix<float, 4, 4> BlockObjectManager::uv(const BlockObject& block) cons
         return quad;
     };
 
-    Eigen::Matrix<float, 2, 4> foreground = compute(block.config.foreground_start);
-    Eigen::Matrix<float, 2, 4> background = compute(block.config.background_start);
+    Eigen::Matrix<float, 2, 4> foreground = compute(block.config->foreground_start);
+    Eigen::Matrix<float, 2, 4> background = compute(block.config->background_start);
 
     if (block.rotation != 0.f) {
         Eigen::Matrix2f rotation = Eigen::Matrix2f::Identity();
@@ -288,6 +292,8 @@ Eigen::Matrix<float, 4, 4> BlockObjectManager::uv(const BlockObject& block) cons
 //
 
 void BlockObjectManager::spawn_object(BlockObject object_) {
+    if (object_.config == nullptr) throw std::runtime_error("BlockObjectManager::spawn_object() Can't have nullptr config.");
+
     auto [id, object] = pool_->add(std::move(object_));
     object.id = id;
     object.element_index = elements_.size();
@@ -313,7 +319,7 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
     }
 
     ports_manager_.spawn_object(PortsObject::from_block(object));
-    object.synth_id = bridge_.spawn(object.config.name);
+    object.synth_id = bridge_.spawn(object.config->name);
 }
 
 //

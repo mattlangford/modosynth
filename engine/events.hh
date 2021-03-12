@@ -10,24 +10,24 @@ namespace engine {
 
 struct MouseEvent {
     // Mouse state information
-    bool clicked;
-    bool was_clicked;
+    bool clicked = false;
+    bool was_clicked = false;
     inline bool pressed() const { return clicked && !was_clicked; }
     inline bool released() const { return !clicked && was_clicked; }
     inline bool held() const { return clicked && was_clicked; }
 
     // Absolute position/scroll of the mouse
-    Eigen::Vector2f mouse_position;
-    float scroll;
+    Eigen::Vector2f mouse_position = Eigen::Vector2f::Zero();
+    float scroll = 0.0;
 
     // Relative position/scroll of the mouse since the last event
-    Eigen::Vector2f delta_position;
-    float delta_scroll;
+    Eigen::Vector2f delta_position = Eigen::Vector2f::Zero();
+    float delta_scroll = 0.0;
 
     // Special modifier keys
-    bool control;
-    bool shift;
-    bool right;
+    bool control = false;
+    bool shift = false;
+    bool right = false;
     inline bool any_modifiers() const { return control || shift || right; }
 };
 
@@ -61,25 +61,25 @@ private:
 
 struct KeyboardEvent {
     // Keyboard state information
-    char key;
-    bool clicked;
-    bool was_clicked;
+    char key = '\0';
+    bool clicked = false;
+    bool was_clicked = false;
     inline bool pressed() const { return clicked && !was_clicked; }
     inline bool released() const { return !clicked && was_clicked; }
     inline bool held() const { return clicked && was_clicked; }
 
     // Special modifier keys
-    bool control;
-    bool shift;
-    bool enter;
-    bool space;
-    bool tab;
-    bool backspace;
-    bool right_arrow;
-    bool left_arrow;
-    bool up_arrow;
-    bool down_arrow;
-    bool escape;
+    bool control = false;
+    bool shift = false;
+    bool enter = false;
+    bool space = false;
+    bool tab = false;
+    bool backspace = false;
+    bool right_arrow = false;
+    bool left_arrow = false;
+    bool up_arrow = false;
+    bool down_arrow = false;
+    bool escape = false;
 };
 
 class KeyboardEventManager {
