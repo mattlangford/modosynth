@@ -3,8 +3,8 @@
 #include "engine/object_global.hh"
 #include "engine/window.hh"
 #include "objects/blocks.hh"
-#include "objects/blocks/speaker.hh"
 #include "objects/blocks/knob.hh"
+#include "objects/blocks/speaker.hh"
 #include "objects/cable.hh"
 #include "objects/grid.hh"
 #include "objects/ports.hh"
@@ -43,7 +43,7 @@ int main() {
     object_manager.add_manager(ports_manager);
     object_manager.add_manager(
         std::make_shared<objects::BlockObjectManager>("objects/blocks.yml", *ports_manager, bridge));
-    object_manager.add_manager(std::make_shared<objects::CableObjectManager>(ports_manager));
+    object_manager.add_manager(std::make_shared<objects::CableObjectManager>(*ports_manager, bridge));
 
     engine::Window window{kWidth, kHeight, std::move(object_manager)};
 

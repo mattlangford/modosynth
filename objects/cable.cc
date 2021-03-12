@@ -8,6 +8,7 @@
 #include "engine/utils.hh"
 #include "objects/blocks.hh"
 #include "objects/ports.hh"
+#include "synth/bridge.hh"
 
 namespace objects {
 namespace {
@@ -202,9 +203,10 @@ Eigen::Vector2f CatenaryObject::end() const {
 // #############################################################################
 //
 
-CableObjectManager::CableObjectManager(std::shared_ptr<PortsObjectManager> ports_manager)
+CableObjectManager::CableObjectManager(PortsObjectManager& ports_manager, synth::Bridge& bridge)
     : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text, geometry_shader_text),
-      ports_manager_(std::move(ports_manager)),
+      ports_manager_(ports_manager),
+      bridge_(bridge),
       pool_(std::make_unique<engine::ListObjectPool<CatenaryObject>>()) {}
 
 //
@@ -237,20 +239,24 @@ void CableObjectManager::render_with_vao() {
 // #############################################################################
 //
 
-const PortsObject* CableObjectManager::get_active_port(const Eigen::Vector2f& position, Eigen::Vector2f& offset) const {
+const PortsObject* CableObjectManager::get_active_port(const Eigen::Vector2f& position, size_t& offset,
+                                                       bool& input) const {
     const Eigen::Vector2f half_dim{kHalfPortWidth, kHalfPortHeight};
 
     // TODO Iterating backwards so we select the most recently added object easier
     const PortsObject* selected_object = nullptr;
-    for (const auto* object : ports_manager_->pool().iterate()) {
+    for (const auto* object : ports_manager_.pool().iterate()) {
         for (size_t this_offset = 0; this_offset < object->offsets.size(); ++this_offset) {
             const Eigen::Vector2f center = object->parent_block.bottom_left() + object->offsets[this_offset];
             const Eigen::Vector2f bottom_left = center - half_dim;
             const Eigen::Vector2f bottom_right = center + half_dim;
 
             if (engine::is_in_rectangle(position, bottom_left, bottom_right)) {
-                offset = object->offsets[this_offset];
+                offset = this_offset;
                 selected_object = object;
+
+                // TODO: This assumes all inputs are on the left, maybe that's okay?
+                input = object->offsets[this_offset].x() <= 0;
             }
         }
     }
@@ -285,20 +291,30 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.any_modifiers() || event.right) return;
 
     if (event.pressed()) {
-        Eigen::Vector2f offset;
-        if (auto ptr = get_active_port(event.mouse_position, offset)) {
+        size_t offset_start_index = 0;
+        bool input;  // unused
+        if (auto ptr = get_active_port(event.mouse_position, offset_start_index, input)) {
             CatenaryObject object;
             object.parent_start = &ptr->parent_block;
-            object.offset_start = offset;
+            object.offset_start = ptr->offsets[offset_start_index];
+            object.offset_start_index = offset_start_index;
             object.offset_end = event.mouse_position;
             spawn_object(std::move(object));
         }
     } else if (selected_ && event.released()) {
         // Check for ports, if we're on one finalize current building object
-        Eigen::Vector2f offset;
-        if (auto ptr = get_active_port(event.mouse_position, offset)) {
+        size_t offset_end_index = 0;
+        bool end_is_input = false;
+        if (auto ptr = get_active_port(event.mouse_position, offset_end_index, end_is_input)) {
             selected_->parent_end = &ptr->parent_block;
-            selected_->offset_end = offset;
+            selected_->offset_end = ptr->offsets[offset_end_index];
+
+            synth::Identifier input{selected_->parent_start->synth_id, selected_->offset_start_index};
+            synth::Identifier output{ptr->parent_block.synth_id, offset_end_index};
+
+            // if this port was an input, that means we need to swap the start and end before connecting
+            if (end_is_input) std::swap(input, output);
+            bridge_.connect(output, input);
         } else {
             despawn_object(*selected_);
         }

@@ -13,7 +13,7 @@ public:
 public:
     void invoke(const Inputs& inputs, Outputs&) const override {
         for (auto& sample : inputs[0].samples) std::cout << sample << ", ";
-        std::cout << "\n"<< std::endl;
+        std::cout << "\n" << std::endl;
     }
 };
 }  // namespace object::blocks

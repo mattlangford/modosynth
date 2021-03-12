@@ -8,6 +8,10 @@
 #include "engine/pool.hh"
 #include "objects/ports.hh"
 
+namespace synth {
+class Bridge;
+}
+
 namespace objects {
 
 class CatenarySolver {
@@ -43,6 +47,7 @@ struct CatenaryObject {
 
     const BlockObject* parent_start = nullptr;
     const BlockObject* parent_end = nullptr;
+    size_t offset_start_index;
     Eigen::Vector2f offset_start;
     Eigen::Vector2f offset_end;
 
@@ -68,7 +73,7 @@ struct CatenaryObject {
 
 class CableObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
-    CableObjectManager(std::shared_ptr<PortsObjectManager> ports_manager);
+    CableObjectManager(PortsObjectManager& ports_manager, synth::Bridge& bridge);
     virtual ~CableObjectManager() = default;
 
 protected:
@@ -77,7 +82,7 @@ protected:
     void render_with_vao() override;
 
 private:
-    const PortsObject* get_active_port(const Eigen::Vector2f& position, Eigen::Vector2f& offset) const;
+    const PortsObject* get_active_port(const Eigen::Vector2f& position, size_t& offset, bool& input) const;
     void spawn_object(CatenaryObject object);
     void despawn_object(CatenaryObject& object);
 
@@ -91,7 +96,8 @@ public:
     void handle_keyboard_event(const engine::KeyboardEvent& event) override;
 
 private:
-    std::shared_ptr<PortsObjectManager> ports_manager_;
+    PortsObjectManager& ports_manager_;
+    synth::Bridge& bridge_;
 
     std::unique_ptr<engine::AbstractObjectPool<CatenaryObject>> pool_;
 
