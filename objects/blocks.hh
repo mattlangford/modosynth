@@ -26,7 +26,8 @@ struct Config {
         std::string name;
         std::string description;
         // Where the texture in the texture path, used for UV mapping
-        Eigen::Vector2i px_start;
+        Eigen::Vector2i foreground_start;
+        Eigen::Vector2i background_start;
         Eigen::Vector2i px_dim;
         size_t inputs;
         size_t outputs;
@@ -50,6 +51,7 @@ struct BlockObject {
 
     Eigen::Vector2f offset;
     float z;
+    float rotation;  // only the foreground though
 
     // To get it more pixel-y, this will only move in single pixel increments.
     inline Eigen::Vector2f bottom_left() const { return offset.cast<int>().cast<float>(); };
@@ -80,7 +82,7 @@ private:
     BlockObject* select(const Eigen::Vector2f& position) const;
 
     Eigen::Matrix<float, 3, 4> coords(const BlockObject& block) const;
-    Eigen::Matrix<float, 2, 4> uv(const BlockObject& block) const;
+    Eigen::Matrix<float, 4, 4> uv(const BlockObject& block) const;
 
     void spawn_object(BlockObject object_);
 
@@ -103,6 +105,6 @@ private:
 
     engine::Buffer<unsigned int> elements_;
     engine::Buffer<float, 3> vertex_;
-    engine::Buffer<float, 2> uv_;
+    engine::Buffer<float, 4> uv_;
 };
 }  // namespace objects
