@@ -7,10 +7,10 @@
 namespace synth {
 
 constexpr uint64_t kSampleRate = 44000;
-constexpr bool kDebug = true;
+constexpr bool kDebug = false;
 
 struct Samples {
-    static constexpr size_t kBatchSize = 100;
+    static constexpr size_t kBatchSize = 5;
     std::array<float, kBatchSize> samples;
 
     ///

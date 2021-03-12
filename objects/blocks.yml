@@ -29,8 +29,7 @@ blocks:
       px_dim: [32, 16]
       inputs: 2 # signal | cutoff
       outputs: 1 # signal
-    # Only passes through the higher frequencies of the input signal.
-    - name: "Voltage Control Knob"
+    - name: "Knob"
       foreground_start: [52, 18]
       background_start: [32, 0]
       px_dim: [15, 15]
