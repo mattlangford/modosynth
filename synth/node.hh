@@ -7,7 +7,7 @@
 namespace synth {
 
 constexpr uint64_t kSampleRate = 44000;
-constexpr bool kDebug = false;
+constexpr bool kDebug = true;
 
 struct Samples {
     static constexpr size_t kBatchSize = 5;
@@ -58,7 +58,10 @@ public:
     using Outputs = std::array<Samples, kOutputs>;
 
 public:
-    AbstractNode(std::string name) : GenericNode(std::move(name)) {}
+    AbstractNode(std::string name) : GenericNode(std::move(name)) {
+        std::fill(default_counters_.begin(), default_counters_.end(), 0);
+        counters_ = default_counters_;
+    }
     ~AbstractNode() override = default;
 
 public:
@@ -118,7 +121,7 @@ protected:
     virtual void invoke(const Inputs&, Outputs&) const {};
 
 private:
-    std::array<int, kInputs> default_counters_ = {0};
+    std::array<int, kInputs> default_counters_;
     std::array<int, kInputs> counters_;
     Inputs next_inputs_;
     Outputs outputs_;
