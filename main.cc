@@ -21,6 +21,7 @@ void populate(synth::Bridge& bridge) {
 void synth_loop(synth::Runner& runner, bool& shutdown) {
     while (!shutdown) {
         runner.next();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -32,6 +33,13 @@ int main() {
 
     bool shutdown = false;
     std::thread synth_loop_thread{[&]() { synth_loop(runner, shutdown); }};
+
+    bridge.spawn("Speaker");
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    shutdown = true;
+    synth_loop_thread.join();
+    return 0;
 
     engine::GlobalObjectManager object_manager;
     auto ports_manager = std::make_shared<objects::PortsObjectManager>();

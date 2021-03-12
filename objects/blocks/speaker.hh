@@ -3,7 +3,7 @@
 #include "synth/node.hh"
 
 namespace object::blocks {
-class Speaker final : public synth::AbstractNode<0, 1> {
+class Speaker final : public synth::AbstractNode<1, 0> {
 public:
     inline static const std::string kName = "Speaker";
 
