@@ -8,6 +8,18 @@ cc_library(
         "@glfw//:glfw",
         "@eigen//:eigen",
         "@yaml-cpp",
+        ":blocks",
+        "//engine",
+        "//synth"
+    ]
+)
+
+cc_library(
+    name = "blocks",
+    srcs = glob(["blocks/*.cc"]),
+    hdrs = glob(["blocks/*.hh"]),
+    deps = [
+        "@eigen//:eigen",
         "//engine",
         "//synth"
     ]

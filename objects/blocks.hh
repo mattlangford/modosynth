@@ -69,7 +69,8 @@ struct BlockObject {
 
 class BlockObjectManager final : public engine::AbstractSingleShaderObjectManager {
 public:
-    BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager, synth::Bridge& bridge);
+    BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager,
+                       synth::Bridge& bridge);
     virtual ~BlockObjectManager() = default;
 
 protected:

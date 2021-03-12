@@ -23,17 +23,21 @@ public:
     void add_factory(const std::string& name, NodeFactory factory) { factories_[name] = std::move(factory); }
 
 public:
-    size_t spawn(const std::string& name) { return runner_.spawn(generate(name)); }
+    size_t spawn(const std::string& name) {
+        if (auto* f_ptr = factory(name)) {
+            auto& f = *f_ptr;
+            return runner_.spawn(f());
+        }
+        throw std::runtime_error(name + " factory not found!");
+    }
 
     void connect(const Identifier& from, const Identifier& to) { runner_.connect(from.id, from.port, to.id, to.port); }
 
     void set_value(const Identifier& from, float value) { runner_.set_value(from.id, value); }
 
-private:
-    std::unique_ptr<GenericNode> generate(const std::string& name) const {
+    NodeFactory* factory(const std::string& name) {
         auto it = factories_.find(name);
-        if (it == factories_.end()) throw std::runtime_error(name + " factory not found!");
-        return it->second();
+        return it == factories_.end() ? nullptr : &it->second;
     }
 
 private:

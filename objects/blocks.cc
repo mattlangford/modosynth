@@ -4,10 +4,10 @@
 
 #include <iostream>
 
-#include "synth/bridge.hh"
 #include "engine/gl.hh"
 #include "engine/utils.hh"
 #include "objects/ports.hh"
+#include "synth/bridge.hh"
 #include "yaml-cpp/yaml.h"
 
 namespace objects {
@@ -77,7 +77,8 @@ Config::Config(const std::filesystem::path& path) {
 // #############################################################################
 //
 
-BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager, synth::Bridge& bridge)
+BlockObjectManager::BlockObjectManager(const std::filesystem::path& config_path, PortsObjectManager& ports_manager,
+                                       synth::Bridge& bridge)
     : engine::AbstractSingleShaderObjectManager(vertex_shader_text, fragment_shader_text),
       config_(config_path),
       ports_manager_(ports_manager),
@@ -306,7 +307,6 @@ void BlockObjectManager::spawn_object(BlockObject object_) {
 
     ports_manager_.spawn_object(PortsObject::from_block(object));
     object.synth_id = bridge_.spawn(object.config.name);
-
 }
 
 //

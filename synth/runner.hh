@@ -11,7 +11,9 @@ namespace synth {
 class Runner {
 public:
     template <typename Node, typename... Args>
-    size_t spawn(Args... args){return spawn(std::make_unique<Node>(std::forward<Args>(args)...)); }
+    size_t spawn(Args... args) {
+        return spawn(std::make_unique<Node>(std::forward<Args>(args)...));
+    }
 
     size_t spawn(std::unique_ptr<GenericNode> node) {
         std::lock_guard lock{wrappers_lock_};
