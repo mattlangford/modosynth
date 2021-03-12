@@ -83,6 +83,12 @@ void main() {
 // #############################################################################
 //
 
+size_t PortsObject::num_offsets() const { return input_offsets.size() + output_offsets.size(); }
+
+//
+// #############################################################################
+//
+
 PortsObject PortsObject::from_block(const BlockObject& parent) {
     const float width = parent.config.px_dim.x();
     const float height = parent.config.px_dim.y();
@@ -100,13 +106,14 @@ PortsObject PortsObject::from_block(const BlockObject& parent) {
     const size_t input_spacing = effective_height / (inputs + 1);
     const size_t output_spacing = effective_height / (outputs + 1);
 
-    std::vector<Eigen::Vector2f> offsets;
+    std::vector<Eigen::Vector2f> input_offsets;
     for (size_t i = 0; i < inputs; ++i)
-        offsets.push_back(Eigen::Vector2f{-kHalfPortWidth, effective_height - (i + 1) * input_spacing});
+        input_offsets.push_back(Eigen::Vector2f{-kHalfPortWidth, effective_height - (i + 1) * input_spacing});
+    std::vector<Eigen::Vector2f> output_offsets;
     for (size_t i = 0; i < outputs; ++i)
-        offsets.push_back(Eigen::Vector2f{width + kHalfPortWidth, effective_height - (i + 1) * output_spacing});
+        output_offsets.push_back(Eigen::Vector2f{width + kHalfPortWidth, effective_height - (i + 1) * output_spacing});
 
-    return PortsObject{{}, {}, std::move(offsets), parent};
+    return PortsObject{{}, {}, std::move(input_offsets), std::move(output_offsets), parent};
 }
 
 //
@@ -143,7 +150,7 @@ void PortsObjectManager::render_with_vao() {
     for (auto object : pool_->iterate()) {
         Eigen::Vector2f object_position = object->parent_block.bottom_left();
         gl_check(glUniform3f, object_position_loc_, object_position.x(), object_position.y(), object->parent_block.z);
-        gl_check_with_vao(vao(), glDrawArrays, GL_POINTS, object->vertex_index, object->offsets.size());
+        gl_check_with_vao(vao(), glDrawArrays, GL_POINTS, object->vertex_index, object->num_offsets());
     }
 }
 
@@ -152,14 +159,18 @@ void PortsObjectManager::render_with_vao() {
 //
 
 void PortsObjectManager::spawn_object(PortsObject object_) {
-    if (object_.offsets.empty()) throw std::runtime_error("Trying to spawn PortsObject with no ports!");
+    if (object_.num_offsets() == 0) throw std::runtime_error("Trying to spawn PortsObject with no ports!");
 
     auto [id, object] = pool_->add(std::move(object_));
     object.pool_id = id;
     object.vertex_index = buffer_.elements();
 
     auto points = buffer_.batched_updater();
-    for (const Eigen::Vector2f& offset : object.offsets) {
+    for (const Eigen::Vector2f& offset : object.input_offsets) {
+        points.push_back(offset.x());
+        points.push_back(offset.y());
+    }
+    for (const Eigen::Vector2f& offset : object.output_offsets) {
         points.push_back(offset.x());
         points.push_back(offset.y());
     }

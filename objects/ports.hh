@@ -17,7 +17,10 @@ struct PortsObject {
     size_t vertex_index;
 
     // The offsets from the parent object to each port represented by this object
-    const std::vector<Eigen::Vector2f> offsets;
+    const std::vector<Eigen::Vector2f> input_offsets;
+    const std::vector<Eigen::Vector2f> output_offsets;
+
+    size_t num_offsets() const;
 
     // The parent block object this belongs to
     const BlockObject& parent_block;

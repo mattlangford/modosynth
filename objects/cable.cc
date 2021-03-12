@@ -246,17 +246,26 @@ const PortsObject* CableObjectManager::get_active_port(const Eigen::Vector2f& po
     // TODO Iterating backwards so we select the most recently added object easier
     const PortsObject* selected_object = nullptr;
     for (const auto* object : ports_manager_.pool().iterate()) {
-        for (size_t this_offset = 0; this_offset < object->offsets.size(); ++this_offset) {
-            const Eigen::Vector2f center = object->parent_block.bottom_left() + object->offsets[this_offset];
+        auto is_clicked = [&](size_t this_offset, const std::vector<Eigen::Vector2f>& offsets) {
+            const Eigen::Vector2f center = object->parent_block.bottom_left() + offsets[this_offset];
             const Eigen::Vector2f bottom_left = center - half_dim;
             const Eigen::Vector2f bottom_right = center + half_dim;
 
-            if (engine::is_in_rectangle(position, bottom_left, bottom_right)) {
+            return engine::is_in_rectangle(position, bottom_left, bottom_right);
+        };
+
+        for (size_t this_offset = 0; this_offset < object->input_offsets.size(); ++this_offset) {
+            if (is_clicked(this_offset, object->input_offsets)) {
                 offset = this_offset;
                 selected_object = object;
-
-                // TODO: This assumes all inputs are on the left, maybe that's okay?
-                input = object->offsets[this_offset].x() <= 0;
+                input = true;
+            }
+        }
+        for (size_t this_offset = 0; this_offset < object->output_offsets.size(); ++this_offset) {
+            if (is_clicked(this_offset, object->output_offsets)) {
+                offset = this_offset;
+                selected_object = object;
+                input = false;
             }
         }
     }
@@ -296,7 +305,7 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         if (auto ptr = get_active_port(event.mouse_position, offset_start_index, input)) {
             CatenaryObject object;
             object.parent_start = &ptr->parent_block;
-            object.offset_start = ptr->offsets[offset_start_index];
+            object.offset_start = (input ? ptr->input_offsets : ptr->output_offsets)[offset_start_index];
             object.offset_start_index = offset_start_index;
             object.offset_end = event.mouse_position;
             spawn_object(std::move(object));
@@ -307,8 +316,9 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
         bool end_is_input = false;
         if (auto ptr = get_active_port(event.mouse_position, offset_end_index, end_is_input)) {
             selected_->parent_end = &ptr->parent_block;
-            selected_->offset_end = ptr->offsets[offset_end_index];
+            selected_->offset_end = (end_is_input ? ptr->input_offsets : ptr->output_offsets)[offset_end_index];
 
+            std::cout << "start_index: " << selected_->offset_start_index << " end_index: " << offset_end_index << "\n";
             synth::Identifier input{selected_->parent_start->synth_id, selected_->offset_start_index};
             synth::Identifier output{ptr->parent_block.synth_id, offset_end_index};
 

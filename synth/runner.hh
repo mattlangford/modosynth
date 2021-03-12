@@ -25,13 +25,22 @@ public:
         return id;
     }
 
-    void connect(size_t from_id, size_t from_output, size_t to_id, size_t to_input) {
+    void connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index) {
+        if (kDebug) {
+            auto from_name = wrappers_.at(from_id).node->name();
+            auto to_name = wrappers_.at(to_id).node->name();
+            std::cerr << "Runner::connect(from=" << from_name << " (" << from_id
+                      << "), from_output_index=" << from_output_index << " to=" << to_name << " (" << to_id
+                      << "), to_input_index: " << to_input_index << "\n";
+        }
+
         std::lock_guard lock{wrappers_lock_};
         auto& output_wrapper = wrappers_.at(from_id);
-        const auto& input_wrapper = wrappers_.at(to_id);
+        const auto& input_wrapper = wrappers_.at(to_input_index);
 
-        output_wrapper.outputs[from_output].push_back(std::make_pair(to_input, input_wrapper.node.get()));
-        input_wrapper.node->add_input(to_input);
+        output_wrapper.outputs.at(from_output_index)
+            .push_back(std::make_pair(to_input_index, input_wrapper.node.get()));
+        input_wrapper.node->add_input(to_input_index);
     }
 
     void next() {
@@ -77,12 +86,18 @@ public:
             }
 
             if (starting_num_ran == total_num_ran) {
-                throw std::runtime_error("Stall detected.");
+                if (kDebug) {
+                    std::cerr << "Stall detected...\n";
+                }
             }
         }
     }
 
     void set_value(size_t from_id, float value) {
+        if (kDebug) {
+            std::cerr << "Runner::set_value(from_id=" << wrappers_.at(from_id).node->name() << ", value=" << value
+                      << ")\n";
+        }
         std::lock_guard lock{wrappers_lock_};
         wrappers_.at(from_id).node->set_value(value);
     }

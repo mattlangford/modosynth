@@ -3,6 +3,7 @@
 #include "engine/object_global.hh"
 #include "engine/window.hh"
 #include "objects/blocks.hh"
+#include "objects/blocks/amplifier.hh"
 #include "objects/blocks/knob.hh"
 #include "objects/blocks/speaker.hh"
 #include "objects/cable.hh"
@@ -18,6 +19,7 @@ void populate(synth::Bridge& bridge) {
     int i = 0;
     bridge.add_factory(Speaker::kName, [i]() mutable { return std::make_unique<Speaker>(i++); });
     bridge.add_factory(Knob::kName, [i]() mutable { return std::make_unique<Knob>(i++); });
+    bridge.add_factory(Amplifier::kName, [i]() mutable { return std::make_unique<Amplifier>(i++); });
 }
 
 void synth_loop(synth::Runner& runner, bool& shutdown) {
