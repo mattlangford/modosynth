@@ -191,6 +191,12 @@ void Window::reset() {
 // #############################################################################
 //
 
+GlobalObjectManager& Window::manager() { return object_manager_; }
+
+//
+// #############################################################################
+//
+
 double Window::scale() const { return (half_dim_).norm() / kInitialHalfDim_.norm(); }
 
 //

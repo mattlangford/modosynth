@@ -20,6 +20,7 @@ cc_test(
     name = "test",
     srcs = glob(["test/*.cc"]),
     size = "small",
+    linkstatic = 1, # important so GLFW can find it's functions
     data = ["//objects:config", "//objects:textures"],
     deps = [
         "//engine",

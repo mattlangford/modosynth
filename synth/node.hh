@@ -60,8 +60,8 @@ public:
 
 public:
     AbstractNode(std::string name) : GenericNode(std::move(name)) {
-        std::fill(default_counters_.begin(), default_counters_.end(), 0);
-        counters_ = default_counters_;
+        std::fill(initial_counters_.begin(), initial_counters_.end(), 0);
+        counters_ = initial_counters_;
     }
     ~AbstractNode() override = default;
 
@@ -71,15 +71,21 @@ public:
 
     void add_input(size_t input_index) final {
         if (kDebug) std::cerr << name() << "::add_input(input_index=" << input_index << ")\n";
-        default_counters_.at(input_index)++;
+        initial_counters_.at(input_index)++;
         counters_.at(input_index)++;
     }
 
     bool ready() const final {
-        for (const auto& count : counters_) {
+        for (size_t i = 0; i < counters_.size(); ++i) {
+            auto count = counters_[i];
             if (kDebug) std::cerr << name() << "::ready() count:" << count << "\n";
+
             if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
+
             if (count != 0) return false;
+
+            auto init_count = initial_counters_[i];
+            if (count == 0 && init_count == 0) return false;  // there is an unconnected port
         }
         return true;
     }
@@ -90,7 +96,7 @@ public:
         invoke(context, next_inputs_, outputs_);
 
         // Reset the internal state
-        counters_ = default_counters_;
+        counters_ = initial_counters_;
         next_inputs_ = {};
     }
 
@@ -122,7 +128,7 @@ protected:
     virtual void invoke(const Inputs&, Outputs&) const {};
 
 private:
-    std::array<int, kInputs> default_counters_;
+    std::array<int, kInputs> initial_counters_;
     std::array<int, kInputs> counters_;
     Inputs next_inputs_;
     Outputs outputs_;

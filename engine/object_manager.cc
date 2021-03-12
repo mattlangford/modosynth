@@ -1,5 +1,7 @@
 #include "engine/object_manager.hh"
 
+#include <iostream>
+
 #include "engine/gl.hh"
 
 namespace engine {

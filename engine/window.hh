@@ -21,6 +21,8 @@ public:
     bool render_loop();
     void reset();
 
+    GlobalObjectManager& manager();
+
 public:
     void update_mouse_position_incremental(Eigen::Vector2f increment);
 
