@@ -161,7 +161,8 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 
         if (event.shift) {
             // Rotate the foreground
-            selected_->rotation -= 0.1 * event.delta_position.y();
+            selected_->rotation += 0.1 * event.delta_position.y();
+            bridge_.set_value(selected_->synth_id, selected_->rotation);
         } else {
             selected_->offset.head(2) += event.delta_position;
         }
@@ -258,8 +259,8 @@ Eigen::Matrix<float, 4, 4> BlockObjectManager::uv(const BlockObject& block) cons
 
     if (block.rotation != 0.f) {
         Eigen::Matrix2f rotation = Eigen::Matrix2f::Identity();
-        float s = std::sin(block.rotation);
-        float c = std::cos(block.rotation);
+        float s = std::sin(-block.rotation);  // Invert so that positive rotations go CW
+        float c = std::cos(-block.rotation);
         rotation << c, -s, s, c;
 
         Eigen::Matrix<float, 2, 1> center = foreground.rowwise().mean();

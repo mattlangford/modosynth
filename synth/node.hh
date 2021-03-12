@@ -10,6 +10,7 @@ constexpr uint64_t kSampleRate = 44000;
 constexpr bool kDebug = true;
 
 struct Samples {
+    Samples() { std::fill(samples.begin(), samples.end(), 0.f); }
     static constexpr size_t kBatchSize = 5;
     std::array<float, kBatchSize> samples;
 

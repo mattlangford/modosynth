@@ -23,7 +23,7 @@ void populate(synth::Bridge& bridge) {
 void synth_loop(synth::Runner& runner, bool& shutdown) {
     while (!shutdown) {
         runner.next();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
@@ -52,6 +52,7 @@ int main() {
     while (window.render_loop()) {
     }
 
+    std::cout << "Shutting down Synth Loop...\n";
     shutdown = true;
     synth_loop_thread.join();
 
