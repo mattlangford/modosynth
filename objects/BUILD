@@ -39,7 +39,7 @@ cc_library(
 
 cc_test(
     name = "objects_test",
-    srcs = glob(["test/*.cc"]),
+    srcs = glob(["test/*.cc", "blocks/test/*.cc"]),
     size = "small",
     deps = [
         ":objects",

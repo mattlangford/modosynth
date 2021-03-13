@@ -45,7 +45,7 @@ public:
 
     void next() {
         Context context;
-        context.timestamp = (counter_ += std::chrono::nanoseconds(Samples::kBatchNsIncrement));
+        context.timestamp = counter_;
         if (kDebug) {
             std::cerr << "Runner::next(): timestamp=" << context.timestamp.count() << "ns\n";
         }
@@ -97,6 +97,8 @@ public:
                 break;
             }
         }
+
+        counter_ += Samples::kBatchIncrement;
     }
 
     void set_value(size_t from_id, float value) {
