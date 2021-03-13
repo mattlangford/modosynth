@@ -101,13 +101,25 @@ public:
         counter_ += Samples::kBatchIncrement;
     }
 
-    void set_value(size_t from_id, float value) {
+    void set_value(size_t index, float value) {
         if (kDebug) {
-            std::cerr << "Runner::set_value(from_id=" << wrappers_.at(from_id).node->name() << ", value=" << value
-                      << ")\n";
+            std::lock_guard lock{wrappers_lock_};
+            const auto& node = wrappers_.at(index).node;
+            std::cerr << "Runner::set_value(index=" << node->name() << " ( " << index << "), value=" << value << ")\n";
         }
         std::lock_guard lock{wrappers_lock_};
-        wrappers_.at(from_id).node->set_value(value);
+        wrappers_.at(index).node->set_value(value);
+    }
+
+    float get_value(size_t index) const {
+        if (kDebug) {
+            std::lock_guard lock{wrappers_lock_};
+            const auto& node = wrappers_.at(index).node;
+            std::cerr << "Runner::get_value(index=" << node->name() << " ( " << index
+                      << "), value=" << node->get_value() << ")\n";
+        }
+        std::lock_guard lock{wrappers_lock_};
+        return wrappers_.at(index).node->get_value();
     }
 
 private:
@@ -117,7 +129,7 @@ private:
         using InputAndNode = std::pair<size_t, GenericNode*>;
         std::vector<std::vector<InputAndNode>> outputs;
     };
-    std::mutex wrappers_lock_;
+    mutable std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
     std::chrono::nanoseconds counter_;
 };

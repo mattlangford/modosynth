@@ -6,6 +6,7 @@
 #include "objects/blocks/amplifier.hh"
 #include "objects/blocks/knob.hh"
 #include "objects/blocks/speaker.hh"
+#include "objects/blocks/vco.hh"
 #include "objects/cable.hh"
 #include "objects/grid.hh"
 #include "objects/ports.hh"
@@ -20,6 +21,8 @@ void populate(synth::Bridge& bridge) {
     bridge.add_factory(Speaker::kName, [i]() mutable { return std::make_unique<Speaker>(i++); });
     bridge.add_factory(Knob::kName, [i]() mutable { return std::make_unique<Knob>(i++); });
     bridge.add_factory(Amplifier::kName, [i]() mutable { return std::make_unique<Amplifier>(i++); });
+    bridge.add_factory(VoltageControlledOscillator::kName,
+                       [i]() mutable { return std::make_unique<VoltageControlledOscillator>(i++); });
 }
 
 void synth_loop(synth::Runner& runner, bool& shutdown) {

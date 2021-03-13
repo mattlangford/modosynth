@@ -150,8 +150,8 @@ TEST_F(IntegrationTests, amplifier) {
         }
     };
 
-    // Even if things aren't connected it'll be outputting
-    check_filled(0.0);
+    // Even if things aren't connected it'll be outputting (negative ones though)
+    check_filled(0.f);
 
     // Connect the amplifier up!
     click_and_move(knob0_output, amplifier_input, window->manager());

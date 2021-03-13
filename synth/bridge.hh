@@ -33,7 +33,8 @@ public:
 
     void connect(const Identifier& from, const Identifier& to) { runner_.connect(from.id, from.port, to.id, to.port); }
 
-    void set_value(size_t from_id, float value) { runner_.set_value(from_id, value); }
+    void set_value(size_t index, float value) { runner_.set_value(index, value); }
+    float get_value(size_t index) const { return runner_.get_value(index); }
 
     NodeFactory* factory(const std::string& name) {
         auto it = factories_.find(name);

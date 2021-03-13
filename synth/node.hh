@@ -47,12 +47,15 @@ public:
     virtual void invoke(const Context& context) = 0;
     virtual void accept(size_t index, const Samples& incoming_samples) = 0;
     virtual void send(size_t output_index, size_t input_index, GenericNode& to) const = 0;
-    virtual void set_value(float) = 0;
+
+    void set_value(float value) { value_ = value; };
+    float get_value() const { return value_; }
 
     const std::string& name() const { return name_; }
 
 private:
     std::string name_;
+    float value_ = 0.0;
 };
 
 template <size_t kInputs, size_t kOutputs>
@@ -119,9 +122,6 @@ public:
                       << ", to=" << to.name() << ")\n";
         to.accept(input_index, outputs_[output_index]);
     }
-
-    // default to a no-op
-    void set_value(float) override {}
 
 protected:
     virtual void invoke(const Context&, const Inputs& inputs, Outputs& outputs) const {

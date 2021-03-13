@@ -13,12 +13,7 @@ public:
 public:
     void invoke(const Inputs&, Outputs& outputs) const override {
         auto& samples = outputs[0].samples;
-        std::fill(samples.begin(), samples.end(), value_);
+        std::fill(samples.begin(), samples.end(), get_value());
     }
-
-    void set_value(float value) override { value_ = value; }
-
-private:
-    float value_ = 0.0;
 };
 }  // namespace object::blocks
