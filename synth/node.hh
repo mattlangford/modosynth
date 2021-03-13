@@ -7,11 +7,13 @@
 namespace synth {
 
 constexpr uint64_t kSampleRate = 44000;
-constexpr bool kDebug = true;
+constexpr bool kDebug = false;
 
 struct Samples {
     Samples() { std::fill(samples.begin(), samples.end(), 0.f); }
+
     static constexpr size_t kBatchSize = 5;
+    static constexpr size_t kBatchNsIncrement = kBatchSize * 1'000'000'000 / (kSampleRate);
     std::array<float, kBatchSize> samples;
 
     ///
@@ -106,7 +108,7 @@ public:
                       << "\n";
 
         if (counters_[input_index] == 0) {
-            std::cerr << name() << " is dropping new data.\n";
+            if (kDebug) std::cerr << name() << " is dropping new data.\n";
             return;
         }
 

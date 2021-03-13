@@ -44,9 +44,14 @@ public:
     }
 
     void next() {
-        std::lock_guard lock{wrappers_lock_};
+        Context context;
+        context.timestamp = (counter_ += std::chrono::nanoseconds(Samples::kBatchNsIncrement));
+        if (kDebug) {
+            std::cerr << "Runner::next(): timestamp=" << context.timestamp.count() << "ns\n";
+        }
 
         size_t total_num_ran = 0;
+        std::lock_guard lock{wrappers_lock_};
         std::vector<bool> ran(wrappers_.size(), false);
         while (total_num_ran < wrappers_.size()) {
             size_t starting_num_ran = total_num_ran;
@@ -72,8 +77,7 @@ public:
                     continue;
                 }
 
-                // TODO: Context
-                node->invoke({});
+                node->invoke(context);
 
                 for (size_t output_index = 0; output_index < outputs.size(); output_index++) {
                     for (auto& [input_index, next_node] : outputs[output_index]) {
@@ -113,5 +117,6 @@ private:
     };
     std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
+    std::chrono::nanoseconds counter_;
 };
 }  // namespace synth
