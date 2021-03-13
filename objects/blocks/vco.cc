@@ -5,7 +5,20 @@
 #include <iomanip>
 #include <iostream>
 
+#include "objects/blocks/knob.hh"
+
 namespace object::blocks {
+namespace {
+float compute_freq(float raw) {
+    constexpr float kMinFreq = 10;
+    constexpr float kMaxFreq = 10'000;
+    constexpr float kRange = kMaxFreq - kMinFreq;
+
+    float percent = (raw - Knob::kMin) / Knob::kRange;
+    return percent * kRange + kMinFreq;
+}
+}  // namespace
+
 //
 // #############################################################################
 //
@@ -18,7 +31,7 @@ VoltageControlledOscillator::VoltageControlledOscillator(size_t count) : Abstrac
 
 void VoltageControlledOscillator::invoke(const synth::Context& context, const Inputs& inputs, Outputs& outputs) const {
     // Both of these are assumed to be constant during these samples
-    const float frequency = inputs[0].samples[0];
+    const float frequency = compute_freq(inputs[0].samples[0]);
     const float shape = inputs[1].samples[0];
     auto& output = outputs[0].samples;
 

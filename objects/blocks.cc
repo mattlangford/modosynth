@@ -161,8 +161,17 @@ void BlockObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 
         if (event.shift) {
             // Rotate the foreground
-            selected_->rotation += 0.1 * event.delta_position.y();
-            bridge_.set_value(selected_->synth_id, selected_->rotation);
+            constexpr float kMax = M_PI - 0.5;
+            constexpr float kMin = -kMax;
+            constexpr float kRange = kMax - kMin;
+
+            float& rotation = selected_->rotation;
+            rotation += 0.1 * event.delta_position.y();
+            rotation = std::clamp(rotation, kMin, kMax);  // only rotate about 360 degrees
+
+            // between -1 and 1
+            float normalized = 2 * (rotation - kMin) / kRange - 1;
+            bridge_.set_value(selected_->synth_id, normalized);
         } else {
             selected_->offset.head(2) += event.delta_position;
         }

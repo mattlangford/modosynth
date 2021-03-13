@@ -143,9 +143,9 @@ TEST_F(IntegrationTests, amplifier) {
 
     auto check_filled = [this](const float fill) {
         ASSERT_FALSE(speaker_output.empty());
-        EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize);
+        EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize) << fill;
         while (!speaker_output.empty()) {
-            EXPECT_EQ(speaker_output.front(), fill) << " fill: " << fill;
+            ASSERT_EQ(speaker_output.front(), fill) << " fill: " << fill;
             speaker_output.pop();
         }
     };
@@ -161,14 +161,15 @@ TEST_F(IntegrationTests, amplifier) {
     runner.next();
     check_filled(0.f);
 
-    runner.set_value(knob0_handle.synth_id, 10.0);  // 10.0 signal
-    runner.set_value(knob1_handle.synth_id, 1.0);   // 1.0 gain
+    std::cout << "Set value\n";
+    runner.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
+    runner.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
 
     runner.next();
-    check_filled(10.f);
+    check_filled(10 * 0.5 * 0.1);  // multiplied by 10 since the amplifier does this internally
 
-    runner.set_value(knob1_handle.synth_id, 10.0);  // 10.0 gain
+    runner.set_value(knob1_handle.synth_id, 0.1);  // 0.1 gain
 
     runner.next();
-    check_filled(100.f);
+    check_filled(10 * 0.1 * 0.1);
 }

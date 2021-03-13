@@ -15,7 +15,7 @@ public:
         auto& input = inputs[0];
         auto& level = inputs[1];
 
-        outputs[0].populate_samples([&](size_t i) { return level.samples[i] * input.samples[i]; });
+        outputs[0].populate_samples([&](size_t i) { return 10 * level.samples[i] * input.samples[i]; });
     }
 };
 }  // namespace object::blocks

@@ -131,6 +131,6 @@ private:
     };
     mutable std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
-    std::chrono::nanoseconds counter_;
+    std::chrono::nanoseconds counter_{0};
 };
 }  // namespace synth

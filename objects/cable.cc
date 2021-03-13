@@ -318,7 +318,6 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
             selected_->parent_end = &ptr->parent_block;
             selected_->offset_end = (end_is_input ? ptr->input_offsets : ptr->output_offsets)[offset_end_index];
 
-            std::cout << "start_index: " << selected_->offset_start_index << " end_index: " << offset_end_index << "\n";
             synth::Identifier input{selected_->parent_start->synth_id, selected_->offset_start_index};
             synth::Identifier output{ptr->parent_block.synth_id, offset_end_index};
 
