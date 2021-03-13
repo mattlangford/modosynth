@@ -13,9 +13,7 @@ float compute_freq(float raw) {
     constexpr float kMinFreq = 10;
     constexpr float kMaxFreq = 10'000;
     constexpr float kRange = kMaxFreq - kMinFreq;
-
-    float percent = (raw - Knob::kMin) / Knob::kRange;
-    return percent * kRange + kMinFreq;
+    return raw * kRange + kMinFreq;
 }
 }  // namespace
 

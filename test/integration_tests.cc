@@ -161,7 +161,6 @@ TEST_F(IntegrationTests, amplifier) {
     runner.next();
     check_filled(0.f);
 
-    std::cout << "Set value\n";
     runner.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
     runner.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
 

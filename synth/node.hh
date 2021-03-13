@@ -12,7 +12,7 @@ constexpr bool kDebug = true;
 struct Samples {
     Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
 
-    static constexpr size_t kBatchSize = 5;
+    static constexpr size_t kBatchSize = 32;
     static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
     static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
     std::array<float, kBatchSize> samples;
