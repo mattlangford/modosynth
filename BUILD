@@ -8,11 +8,10 @@ cc_binary(
 )
 
 cc_binary(
-    name = "tester",
+    name = "test_main",
     srcs = ["test.cc"],
     deps = [
-        "//engine",
-        "//objects",
+        "@libsoundio//:soundio"
     ]
 )
 

@@ -1,356 +1,282 @@
-#include <cmath>
-#include <random>
+/*
+ * Copyright (c) 2015 Andrew Kelley
+ *
+ * This file is part of libsoundio, which is MIT licensed.
+ * See http://opensource.org/licenses/MIT
+ */
 
-#include "engine/buffer.hh"
-#include "engine/object_manager.hh"
-#include "engine/shader.hh"
-#include "engine/vao.hh"
-#include "engine/window.hh"
+#include <math.h>
+#include <soundio/soundio.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-namespace {
-constexpr size_t kWidth = 1280;
-constexpr size_t kHeight = 720;
-
-static std::string vertex_shader_text = R"(
-#version 330
-layout (location = 0) in vec2 world_position;
-
-void main()
-{
-    gl_Position = vec4(world_position.x, world_position.y, 0.0, 1.0);
-}
-)";
-
-static std::string fragment_shader_text = R"(
-#version 330
-out vec4 fragment;
-
-void main()
-{
-    fragment = vec4(1.0, 1.0, 1.0, 1.0);
-}
-)";
-
-static std::string geometry_shader_text = R"(
-#version 330
-layout(triangles) in;
-layout(triangle_strip, max_vertices = 10) out;
-
-uniform mat3 screen_from_world;
-
-vec4 to_screen(vec2 world)
-{
-    vec3 screen = screen_from_world * vec3(world.x, world.y, 1.0);
-    return vec4(screen.x, screen.y, 0.0, 1.0);
+static int usage(char *exe) {
+    fprintf(stderr,
+            "Usage: %s [options]\n"
+            "Options:\n"
+            "  [--backend dummy|alsa|pulseaudio|jack|coreaudio|wasapi]\n"
+            "  [--device id]\n"
+            "  [--raw]\n"
+            "  [--name stream_name]\n"
+            "  [--latency seconds]\n"
+            "  [--sample-rate hz]\n",
+            exe);
+    return 1;
 }
 
-void main()
-{
-    float thickness = 2;
-    vec2 start = gl_in[0].gl_Position.xy;
-    vec2 end = gl_in[1].gl_Position.xy;
-
-    vec2 normal = thickness * normalize(vec2(-(end.y - start.y), end.x - start.x));
-
-    // Draw the main section
-    gl_Position = to_screen(start - normal);
-    EmitVertex();
-    gl_Position = to_screen(end - normal);
-    EmitVertex();
-    gl_Position = to_screen(start + normal);
-    EmitVertex();
-    gl_Position = to_screen(end + normal);
-    EmitVertex();
-    EndPrimitive();
-
-    // Then the end cap (which connects to the next line)
-    vec2 next = gl_in[2].gl_Position.xy;
-    vec2 next_normal = thickness * normalize(vec2(-(next.y - end.y), next.x - end.x));
-
-    gl_Position = to_screen(end - normal);
-    EmitVertex();
-    gl_Position = to_screen(end - next_normal);
-    EmitVertex();
-    gl_Position = to_screen(end);
-    EmitVertex();
-    EndPrimitive();
-
-    gl_Position = to_screen(end + normal);
-    EmitVertex();
-    gl_Position = to_screen(end + next_normal);
-    EmitVertex();
-    gl_Position = to_screen(end);
-    EmitVertex();
-    EndPrimitive();
-}
-)";
-
-static std::string point_geometry_shader_text = R"(
-#version 330
-layout(points) in;
-layout(triangle_strip, max_vertices = 10) out;
-
-uniform mat3 screen_from_world;
-
-vec4 to_screen(vec2 world)
-{
-    vec3 screen = screen_from_world * vec3(world.x, world.y, 1.0);
-    return vec4(screen.x, screen.y, 0.0, 1.0);
+static void write_sample_s16ne(char *ptr, double sample) {
+    int16_t *buf = (int16_t *)ptr;
+    double range = (double)INT16_MAX - (double)INT16_MIN;
+    double val = sample * range / 2.0;
+    *buf = val;
 }
 
-void main()
-{
-    float size = 5;
-
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(-size, size));
-    EmitVertex();
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(size, size));
-    EmitVertex();
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(-size, -size));
-    EmitVertex();
-    gl_Position = to_screen(gl_in[0].gl_Position.xy + vec2(size, -size));
-    EmitVertex();
-    EndPrimitive();
+static void write_sample_s32ne(char *ptr, double sample) {
+    int32_t *buf = (int32_t *)ptr;
+    double range = (double)INT32_MAX - (double)INT32_MIN;
+    double val = sample * range / 2.0;
+    *buf = val;
 }
-)";
 
-template <typename Data>
-size_t size_in_bytes(const std::vector<Data>& vec) {
-    return vec.size() * sizeof(Data);
+static void write_sample_float32ne(char *ptr, double sample) {
+    float *buf = (float *)ptr;
+    *buf = sample;
 }
-}  // namespace
 
-class CatenarySolver {
-public:
-    CatenarySolver() {}
+static void write_sample_float64ne(char *ptr, double sample) {
+    double *buf = (double *)ptr;
+    *buf = sample;
+}
 
-    void reset(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
-        if (start.x() > end.x()) std::swap(start, end);
-        start_ = start;
-        diff_.x() = end.x() - start.x();
-        diff_.y() = end.y() - start.y();
-        beta_ = 10.0;
-        length_ = length;
-        x_offset_ = 0;
-        y_offset_ = 0;
-    }
+static void (*write_sample)(char *ptr, double sample);
+static const double PI = 3.14159265358979323846264338328;
+static double seconds_offset = 0.0;
+static volatile bool want_pause = false;
+static void write_callback(struct SoundIoOutStream *outstream, int frame_count_min, int frame_count_max) {
+    double float_sample_rate = outstream->sample_rate;
+    double seconds_per_frame = 1.0 / float_sample_rate;
+    struct SoundIoChannelArea *areas;
+    int err;
 
-    bool solve(double tol = 1E-3, size_t max_iter = 100) {
-        size_t iter = 0;
+    int frames_left = frame_count_max;
 
-        // Function we're optimizing which relates the free parameter (b) to the size of the opening we need.
-        // [1] https://foggyhazel.wordpress.com/2018/02/12/catenary-passing-through-2-points/
-        auto y = [this](double b) {
-            return 1.0 / std::sqrt(2 * sq(b) * std::sinh(1 / (2 * sq(b))) - 1) -
-                   1.0 / std::sqrt(std::sqrt(sq(length_) - sq(diff_.y())) / diff_.x() - 1);
-        };
-        // Derivative according to sympy
-        auto dy = [](double b) {
-            return (-2 * b * sinh(1 / (2 * sq(b))) + cosh(1.0 / (2.0 * sq(b))) / b) /
-                   std::pow(2.0 * sq(b) * std::sinh(1.0 / (2.0 * sq(b))) - 1.0, 3.0 / 2.0);
-        };
-
-        // Newton iteration
-        for (; iter < max_iter; ++iter) {
-            float y_val = y(beta_);
-            if (abs(y_val) < tol) break;
-            beta_ -= y_val / dy(beta_);
+    for (;;) {
+        int frame_count = frames_left;
+        if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
+            fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
+            exit(1);
         }
 
-        // Since b = sqrt(h / a), we can solve easily for a
-        alpha_ = diff_.x() * sq(beta_);
-        x_offset_ = 0.5 * (diff_.x() + alpha_ * std::log((length_ - diff_.y()) / (length_ + diff_.y())));
-        y_offset_ = -f(0);
-        return iter < max_iter;
-    }
+        if (!frame_count) break;
 
-    std::vector<Eigen::Vector2f> trace(size_t points) {
-        if (points <= 1) throw std::runtime_error("Calling CatenarySolver::trace() with too few point steps");
-        std::vector<Eigen::Vector2f> result;
-        result.reserve(points);
+        const struct SoundIoChannelLayout *layout = &outstream->layout;
 
-        double step_size = diff_.x() / (points - 1);
-        double x = 0;
-        for (size_t point = 0; point < points; ++point, x += step_size) {
-            result.push_back({x + start_.x(), f(x) + start_.y()});
-        }
-        return result;
-    }
-
-    double& length() { return length_; }
-
-private:
-    double f(double x) const { return alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
-    constexpr static double sq(double in) { return in * in; }
-
-    Eigen::Vector2f start_;
-    Eigen::Vector2d diff_;
-    double length_;
-    float beta_;
-    float alpha_;
-    float y_offset_ = 0;
-    float x_offset_ = 0;
-};
-
-struct CatenaryObject {
-    static constexpr size_t kNumSteps = 32;
-    std::vector<Eigen::Vector2f> calculate_points() {
-        solver.reset(start, end, std::max(solver.length(), min_length()));
-        if (!solver.solve()) throw std::runtime_error("Unable to update CatenaryObject, did not converge.");
-
-        auto points = solver.trace(kNumSteps);
-        return points;
-    }
-
-    double min_length() const { return 1.01 * (end - start).norm(); }
-    size_t start_point_index() const { return start_vertex_index / 2; }
-
-    void draw_lines(engine::VertexArrayObject& vao) const {
-        const void* indices = reinterpret_cast<void*>(sizeof(unsigned int) * start_element_index);
-
-        // Each step will generate a triangle, so render 3 times as many
-        gl_check_with_vao(vao, glDrawElements, GL_TRIANGLES, 3 * kNumSteps, GL_UNSIGNED_INT, indices);
-    }
-
-    void draw_points(engine::VertexArrayObject& vao) const {
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_point_index(), 1);
-        gl_check_with_vao(vao, glDrawArrays, GL_POINTS, start_point_index() + kNumSteps - 1, 1);
-    }
-
-    Eigen::Vector2f start;
-    Eigen::Vector2f end;
-    CatenarySolver solver;
-    size_t start_vertex_index;
-    size_t start_element_index;
-    bool needs_update;
-    size_t id;
-};
-
-class TestObjectManager final : public engine::AbstractObjectManager {
-public:
-    TestObjectManager()
-        : shader_(vertex_shader_text, fragment_shader_text, geometry_shader_text),
-          point_shader_(vertex_shader_text, fragment_shader_text, point_geometry_shader_text) {}
-    virtual ~TestObjectManager() = default;
-
-    void spawn_object(Eigen::Vector2f start, Eigen::Vector2f end) {
-        static size_t id = 0;
-        objects_.emplace_back(CatenaryObject{start, end, {}, vbo_.size(), ebo_.size(), true, id++});
-
-        // The element index is the starting vertex. The VBO starts x,y, so to get points we have to divide by 2
-        size_t vertex_index = vbo_.size() / 2;
-        vbo_.resize(vbo_.size() + 2 * CatenaryObject::kNumSteps);
-
-        // Now add in the elements needed to render this object
-        auto elements = ebo_.batched_updater();
-        for (size_t i = 0; i < CatenaryObject::kNumSteps - 2; ++i) {
-            elements.push_back(vertex_index + i);
-            elements.push_back(vertex_index + i + 1);
-            elements.push_back(vertex_index + i + 2);
-        }
-        // Add the last element in, this one needs to be special so we don't duplicate points in the vbo
-        elements.push_back(vertex_index + CatenaryObject::kNumSteps - 2);
-        elements.push_back(vertex_index + CatenaryObject::kNumSteps - 1);
-        elements.push_back(vertex_index + CatenaryObject::kNumSteps - 1);
-    }
-
-    void spawn_random_object() {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
-        static std::uniform_real_distribution<float> dis(-1000, 1000);
-        spawn_object({dis(gen), dis(gen)}, {dis(gen), dis(gen)});
-    }
-
-    void init() override {
-        shader_.init();
-        point_shader_.init();
-
-        sfw_ = glGetUniformLocation(shader_.get_program_id(), "screen_from_world");
-        engine::throw_on_gl_error("glGetUniformLocation");
-
-        vao_.init();
-        vbo_.init(GL_ARRAY_BUFFER, 0, vao_);
-        ebo_.init(GL_ELEMENT_ARRAY_BUFFER, vao_);
-    }
-
-    void render(const Eigen::Matrix3f& screen_from_world) override {
-        if (ebo_.size() == 0) return;
-
-        shader_.activate();
-        gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
-
-        for (const auto& object : objects_) object.draw_lines(vao_);
-
-        point_shader_.activate();
-        gl_check(glUniformMatrix3fv, sfw_, 1, GL_FALSE, screen_from_world.data());
-
-        for (const auto& object : objects_) object.draw_points(vao_);
-    }
-
-    void update(float) override {
-        auto vertices = vbo_.batched_updater();
-
-        for (auto& object : objects_) {
-            if (!object.needs_update) continue;
-
-            object.needs_update = false;
-            size_t index = object.start_vertex_index;
-            for (auto point : object.calculate_points()) {
-                vertices[index++] = point.x();
-                vertices[index++] = point.y();
+        double pitch = 440.0;
+        double radians_per_second = pitch * 2.0 * PI;
+        for (int frame = 0; frame < frame_count; frame += 1) {
+            double sample = sin((seconds_offset + frame * seconds_per_frame) * radians_per_second);
+            for (int channel = 0; channel < layout->channel_count; channel += 1) {
+                write_sample(areas[channel].ptr, sample);
+                areas[channel].ptr += areas[channel].step;
             }
         }
+        seconds_offset = fmod(seconds_offset + seconds_per_frame * frame_count, 1.0);
+
+        if ((err = soundio_outstream_end_write(outstream))) {
+            if (err == SoundIoErrorUnderflow) return;
+            fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
+            exit(1);
+        }
+
+        frames_left -= frame_count;
+        if (frames_left <= 0) break;
     }
 
-    void handle_mouse_event(const engine::MouseEvent& event) override {
-        if (selected_ && point_ && event.held()) {
-            *point_ = event.mouse_position;
-            selected_->needs_update = true;
-        } else if (event.pressed()) {
-            for (auto& object : objects_) {
-                constexpr float kClickRadius = 100;
-                if ((event.mouse_position - object.start).squaredNorm() < kClickRadius * kClickRadius) {
-                    point_ = &object.start;
-                    selected_ = &object;
-                } else if ((event.mouse_position - object.end).squaredNorm() < kClickRadius * kClickRadius) {
-                    point_ = &object.end;
-                    selected_ = &object;
+    soundio_outstream_pause(outstream, want_pause);
+}
+
+static void underflow_callback(struct SoundIoOutStream *outstream) {
+    static int count = 0;
+    fprintf(stderr, "underflow %d\n", count++);
+}
+
+int main(int argc, char **argv) {
+    char *exe = argv[0];
+    enum SoundIoBackend backend = SoundIoBackendNone;
+    char *device_id = NULL;
+    bool raw = false;
+    char *stream_name = NULL;
+    double latency = 0.0;
+    int sample_rate = 0;
+    for (int i = 1; i < argc; i += 1) {
+        char *arg = argv[i];
+        if (arg[0] == '-' && arg[1] == '-') {
+            if (strcmp(arg, "--raw") == 0) {
+                raw = true;
+            } else {
+                i += 1;
+                if (i >= argc) {
+                    return usage(exe);
+                } else if (strcmp(arg, "--backend") == 0) {
+                    if (strcmp(argv[i], "dummy") == 0) {
+                        backend = SoundIoBackendDummy;
+                    } else if (strcmp(argv[i], "alsa") == 0) {
+                        backend = SoundIoBackendAlsa;
+                    } else if (strcmp(argv[i], "pulseaudio") == 0) {
+                        backend = SoundIoBackendPulseAudio;
+                    } else if (strcmp(argv[i], "jack") == 0) {
+                        backend = SoundIoBackendJack;
+                    } else if (strcmp(argv[i], "coreaudio") == 0) {
+                        backend = SoundIoBackendCoreAudio;
+                    } else if (strcmp(argv[i], "wasapi") == 0) {
+                        backend = SoundIoBackendWasapi;
+                    } else {
+                        fprintf(stderr, "Invalid backend: %s\n", argv[i]);
+                        return 1;
+                    }
+                } else if (strcmp(arg, "--device") == 0) {
+                    device_id = argv[i];
+                } else if (strcmp(arg, "--name") == 0) {
+                    stream_name = argv[i];
+                } else if (strcmp(arg, "--latency") == 0) {
+                    latency = atof(argv[i]);
+                } else if (strcmp(arg, "--sample-rate") == 0) {
+                    sample_rate = atoi(argv[i]);
+                } else {
+                    return usage(exe);
                 }
             }
         } else {
-            point_ = nullptr;
-            selected_ = nullptr;
+            return usage(exe);
         }
     }
 
-    void handle_keyboard_event(const engine::KeyboardEvent& event) override {
-        if (event.space && event.pressed()) {
-            spawn_random_object();
+    struct SoundIo *soundio = soundio_create();
+    if (!soundio) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+
+    int err = (backend == SoundIoBackendNone) ? soundio_connect(soundio) : soundio_connect_backend(soundio, backend);
+
+    if (err) {
+        fprintf(stderr, "Unable to connect to backend: %s\n", soundio_strerror(err));
+        return 1;
+    }
+
+    fprintf(stderr, "Backend: %s\n", soundio_backend_name(soundio->current_backend));
+
+    soundio_flush_events(soundio);
+
+    int selected_device_index = -1;
+    if (device_id) {
+        int device_count = soundio_output_device_count(soundio);
+        for (int i = 0; i < device_count; i += 1) {
+            struct SoundIoDevice *device = soundio_get_output_device(soundio, i);
+            bool select_this_one = strcmp(device->id, device_id) == 0 && device->is_raw == raw;
+            soundio_device_unref(device);
+            if (select_this_one) {
+                selected_device_index = i;
+                break;
+            }
+        }
+    } else {
+        selected_device_index = soundio_default_output_device_index(soundio);
+    }
+
+    if (selected_device_index < 0) {
+        fprintf(stderr, "Output device not found\n");
+        return 1;
+    }
+
+    struct SoundIoDevice *device = soundio_get_output_device(soundio, selected_device_index);
+    if (!device) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+
+    fprintf(stderr, "Output device: %s\n", device->name);
+
+    if (device->probe_error) {
+        fprintf(stderr, "Cannot probe device: %s\n", soundio_strerror(device->probe_error));
+        return 1;
+    }
+
+    struct SoundIoOutStream *outstream = soundio_outstream_create(device);
+    if (!outstream) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+
+    outstream->write_callback = write_callback;
+    outstream->underflow_callback = underflow_callback;
+    outstream->name = stream_name;
+    outstream->software_latency = latency;
+    outstream->sample_rate = sample_rate;
+
+    if (soundio_device_supports_format(device, SoundIoFormatFloat32NE)) {
+        outstream->format = SoundIoFormatFloat32NE;
+        write_sample = write_sample_float32ne;
+    } else if (soundio_device_supports_format(device, SoundIoFormatFloat64NE)) {
+        outstream->format = SoundIoFormatFloat64NE;
+        write_sample = write_sample_float64ne;
+    } else if (soundio_device_supports_format(device, SoundIoFormatS32NE)) {
+        outstream->format = SoundIoFormatS32NE;
+        write_sample = write_sample_s32ne;
+    } else if (soundio_device_supports_format(device, SoundIoFormatS16NE)) {
+        outstream->format = SoundIoFormatS16NE;
+        write_sample = write_sample_s16ne;
+    } else {
+        fprintf(stderr, "No suitable device format available.\n");
+        return 1;
+    }
+
+    if ((err = soundio_outstream_open(outstream))) {
+        fprintf(stderr, "unable to open device: %s", soundio_strerror(err));
+        return 1;
+    }
+
+    fprintf(stderr, "Software latency: %f\n", outstream->software_latency);
+    fprintf(stderr,
+            "'p\\n' - pause\n"
+            "'u\\n' - unpause\n"
+            "'P\\n' - pause from within callback\n"
+            "'c\\n' - clear buffer\n"
+            "'q\\n' - quit\n");
+
+    if (outstream->layout_error)
+        fprintf(stderr, "unable to set channel layout: %s\n", soundio_strerror(outstream->layout_error));
+
+    if ((err = soundio_outstream_start(outstream))) {
+        fprintf(stderr, "unable to start device: %s\n", soundio_strerror(err));
+        return 1;
+    }
+
+    for (;;) {
+        soundio_flush_events(soundio);
+        int c = getc(stdin);
+        if (c == 'p') {
+            fprintf(stderr, "pausing result: %s\n", soundio_strerror(soundio_outstream_pause(outstream, true)));
+        } else if (c == 'P') {
+            want_pause = true;
+        } else if (c == 'u') {
+            want_pause = false;
+            fprintf(stderr, "unpausing result: %s\n", soundio_strerror(soundio_outstream_pause(outstream, false)));
+        } else if (c == 'c') {
+            fprintf(stderr, "clear buffer result: %s\n", soundio_strerror(soundio_outstream_clear_buffer(outstream)));
+        } else if (c == 'q') {
+            break;
+        } else if (c == '\r' || c == '\n') {
+            // ignore
+        } else {
+            fprintf(stderr, "Unrecognized command: %c\n", c);
         }
     }
 
-    CatenaryObject* selected_;
-    Eigen::Vector2f* point_;
-
-    std::vector<CatenaryObject> objects_;
-
-    engine::Shader shader_;
-    engine::Shader point_shader_;
-    int sfw_;
-    engine::VertexArrayObject vao_;
-    engine::Buffer<float, 2> vbo_;
-    engine::Buffer<unsigned int> ebo_;
-};
-
-int main() {
-    engine::GlobalObjectManager object_manager;
-    object_manager.add_manager(std::make_shared<TestObjectManager>());
-    engine::Window window{kWidth, kHeight, std::move(object_manager)};
-
-    window.init();
-
-    while (window.render_loop()) {
-    }
-
-    exit(EXIT_SUCCESS);
+    soundio_outstream_destroy(outstream);
+    soundio_device_unref(device);
+    soundio_destroy(soundio);
+    return 0;
 }
