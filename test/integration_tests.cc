@@ -140,7 +140,18 @@ TEST_F(IntegrationTests, amplifier) {
     auto speaker_input = ports->position_of(speaker_handle, 0, true);
 
     runner.next();
-    ASSERT_TRUE(speaker_output.empty());
+
+    auto check_filled = [this](const float fill) {
+        ASSERT_FALSE(speaker_output.empty());
+        EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize);
+        while (!speaker_output.empty()) {
+            EXPECT_EQ(speaker_output.front(), fill) << " fill: " << fill;
+            speaker_output.pop();
+        }
+    };
+
+    // Even if things aren't connected it'll be outputting
+    check_filled(0.0);
 
     // Connect the amplifier up!
     click_and_move(knob0_output, amplifier_input, window->manager());
@@ -148,33 +159,16 @@ TEST_F(IntegrationTests, amplifier) {
     click_and_move(amplifier_output, speaker_input, window->manager());
 
     runner.next();
-    ASSERT_FALSE(speaker_output.empty());
-    EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize);
-    while (!speaker_output.empty()) {
-        EXPECT_EQ(speaker_output.front(), 0.f);
-        speaker_output.pop();
-    }
+    check_filled(0.f);
 
     runner.set_value(knob0_handle.synth_id, 10.0);  // 10.0 signal
     runner.set_value(knob1_handle.synth_id, 1.0);   // 1.0 gain
 
     runner.next();
-    ASSERT_FALSE(speaker_output.empty());
-    EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize);
-    while (!speaker_output.empty()) {
-        EXPECT_EQ(speaker_output.front(), 10.f);
-        speaker_output.pop();
-    }
+    check_filled(10.f);
 
     runner.set_value(knob1_handle.synth_id, 10.0);  // 10.0 gain
 
     runner.next();
-    ASSERT_FALSE(speaker_output.empty());
-    EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize);
-    while (!speaker_output.empty()) {
-        EXPECT_EQ(speaker_output.front(), 100.f);
-        speaker_output.pop();
-    }
-
-    std::cerr << "done\n";
+    check_filled(100.f);
 }

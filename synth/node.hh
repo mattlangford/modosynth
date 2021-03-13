@@ -79,16 +79,12 @@ public:
     }
 
     bool ready() const final {
-        for (size_t i = 0; i < counters_.size(); ++i) {
-            auto count = counters_[i];
+        for (auto& count : counters_) {
             if (kDebug) std::cerr << name() << "::ready() count:" << count << "\n";
 
             if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
 
             if (count != 0) return false;
-
-            auto init_count = initial_counters_[i];
-            if (count == 0 && init_count == 0) return false;  // there is an unconnected port
         }
         return true;
     }
@@ -107,11 +103,6 @@ public:
         if (kDebug)
             std::cerr << name() << "::accept(input_index=" << input_index << ") counter: " << counters_[input_index]
                       << "\n";
-
-        if (counters_[input_index] == 0) {
-            if (kDebug) std::cerr << name() << " is dropping new data.\n";
-            return;
-        }
 
         auto& next_input = next_inputs_[input_index];
         for (size_t i = 0; i < next_input.samples.size(); ++i) {

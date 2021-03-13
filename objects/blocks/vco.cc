@@ -31,13 +31,9 @@ void VoltageControlledOscillator::invoke(const synth::Context& context, const In
     const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % max);
     const float mult1 = 1.0 - percent;
 
-    std::cout << static_cast<int>(shape0) << ", " << static_cast<int>(shape1) << "\n";
-
     output = compute_batch(shape0, frequency, context.timestamp);
     auto batch1 = compute_batch(shape1, frequency, context.timestamp);
     for (size_t i = 0; i < batch1.size(); ++i) {
-        std::cout << mult0 << " * " << output[i] << " + " << mult1 << " * " << batch1[i] << " = "
-                  << (mult0 * output[i] + mult1 * batch1[i]) << "\n";
         output[i] = mult0 * output[i] + mult1 * batch1[i];
     }
 }
