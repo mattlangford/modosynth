@@ -25,6 +25,14 @@ new_git_repository(
     shallow_since = "1551813720 +0100",
 )
 
+new_git_repository(
+    name = "libsoundio",
+    remote = "https://github.com/andrewrk/libsoundio.git",
+    build_file = "//third_party:libsoundio.BUILD",
+    # tag = "2.0.0",
+    commit = "dc4f84339039ac518b6cd1c0e7683e88e25be470", shallow_since = "1550669144 -0500"
+)
+
 http_archive(
     name = "eigen",
     url = "https://gitlab.com/libeigen/eigen/-/archive/3.3.9/eigen-3.3.9.tar.gz",
