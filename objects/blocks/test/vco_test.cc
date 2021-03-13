@@ -3,11 +3,42 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cmath>
 
 namespace object::blocks {
 
 using Shape = VoltageControlledOscillator::Shape;
 constexpr auto compute = VoltageControlledOscillator::compute_batch;
+
+//
+// #############################################################################
+//
+
+TEST(VoltageControlledOscillatorTest, invoke) {
+    constexpr std::chrono::nanoseconds k1000HzToNs{static_cast<int>(1E9 / 1000)};
+    auto start = k1000HzToNs - synth::Samples::kSampleIncrement;  // just before one period
+    synth::Context context{start};
+
+    VoltageControlledOscillator vco;
+
+    synth::Samples frequency(1000.0);
+    synth::Samples shape(5.2);  // should become 20% Square, 80% Sin
+
+    typename VoltageControlledOscillator::Outputs outputs;
+    vco.invoke(context, {frequency, shape}, outputs);
+    auto& output = outputs[0].samples;
+
+    EXPECT_EQ(frequency.samples.size(), output.size());
+
+    const std::chrono::duration<float> t0 = start;
+    const std::chrono::duration<float> t2 = start + 2 * synth::Samples::kSampleIncrement;
+    EXPECT_NEAR(output[0], 0.2 * 1 + 0.8 * std::sin(2 * M_PI * 1000 * t0.count()), 1E-5);
+    EXPECT_NEAR(output[2], 0.2 * 0 + 0.8 * std::sin(2 * M_PI * 1000 * t2.count()), 1E-5);
+}
+
+//
+// #############################################################################
+//
 
 TEST(VoltageControlledOscillatorTest, sin_batch) {
     std::chrono::nanoseconds start{0};

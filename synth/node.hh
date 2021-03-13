@@ -10,7 +10,7 @@ constexpr uint64_t kSampleRate = 44000;
 constexpr bool kDebug = false;
 
 struct Samples {
-    Samples() { std::fill(samples.begin(), samples.end(), 0.f); }
+    Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
 
     static constexpr size_t kBatchSize = 5;
     static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
