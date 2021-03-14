@@ -15,6 +15,7 @@ struct Samples {
     static constexpr size_t kBatchSize = 256;
     static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
     static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
+    static_assert(kSampleIncrement.count() > 1);
     std::array<float, kBatchSize> samples;
 
     ///

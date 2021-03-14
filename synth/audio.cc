@@ -126,7 +126,7 @@ void AudioDriver::write_inputs(const float *input, size_t size) {
 
 void AudioDriver::underflow_callback(SoundIoOutStream *) {
     static int count = 0;
-    std::cerr << "Underflow: " << (count++);
+    std::cerr << "Underflow: " << (count++) << "\n";
 }
 
 //
