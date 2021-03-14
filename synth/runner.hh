@@ -44,6 +44,7 @@ public:
     }
 
     void next() {
+        auto start = ScopedPrinter{std::chrono::steady_clock::now()};
         Context context;
         context.timestamp = counter_;
         if (kDebug) {
@@ -123,6 +124,18 @@ public:
     }
 
 private:
+    struct ScopedPrinter {
+        std::chrono::steady_clock::time_point start;
+        ~ScopedPrinter() {
+            std::cout << "Runner::next() "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(Samples::kBatchIncrement).count()
+                      << " us simulated in "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start)
+                             .count()
+                      << " us\n";
+        }
+    };
+
     struct NodeWrapper {
         std::unique_ptr<GenericNode> node;
 

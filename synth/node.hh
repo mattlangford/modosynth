@@ -7,12 +7,12 @@
 namespace synth {
 
 constexpr uint64_t kSampleRate = 44000;
-constexpr bool kDebug = true;
+constexpr bool kDebug = false;
 
 struct Samples {
     Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
 
-    static constexpr size_t kBatchSize = 32;
+    static constexpr size_t kBatchSize = 256;
     static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
     static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
     std::array<float, kBatchSize> samples;
