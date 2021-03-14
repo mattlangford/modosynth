@@ -23,14 +23,21 @@ void Buffer::push(float entry) { entries_[(write_++) % entries_.size()] = entry;
 
 bool Buffer::pop(float& to) {
     // Get the current write state. Note that writes may happen after we load this, but we'll ignore them for this pop
-    if (read_ == write_.load()) {
+    if (size() == 0) {
         return false;
     }
+    to = blind_pop();
+    return true;
+}
 
+//
+// #############################################################################
+//
+
+float Buffer::blind_pop() {
     // NOTE: Here is where problems arise if the read and write heads are too close and accessed concurrently (since it
     // could overwrite this entry).
-    to = entries_[read_++ % entries_.size()];
-    return true;
+    return entries_[read_++ % entries_.size()];
 }
 
 //
@@ -44,4 +51,10 @@ std::string Buffer::print() const {
     }
     return ss.str();
 }
+
+//
+// #############################################################################
+//
+
+size_t Buffer::size() const { return write_.load() - read_; }
 }  // namespace synth

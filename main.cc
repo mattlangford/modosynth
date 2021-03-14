@@ -10,35 +10,41 @@
 #include "objects/cable.hh"
 #include "objects/grid.hh"
 #include "objects/ports.hh"
+#include "synth/audio.hh"
 #include "synth/bridge.hh"
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
 
-void populate(synth::Bridge& bridge) {
+void populate(synth::Bridge& bridge, synth::AudioDriver& driver) {
     using namespace object::blocks;
     int i = 0;
-    bridge.add_factory(Speaker::kName, [i]() mutable { return std::make_unique<Speaker>(i++); });
+    bridge.add_factory(Speaker::kName, [i, &driver]() mutable { return std::make_unique<Speaker>(driver, i++); });
     bridge.add_factory(Knob::kName, [i]() mutable { return std::make_unique<Knob>(i++); });
     bridge.add_factory(Amplifier::kName, [i]() mutable { return std::make_unique<Amplifier>(i++); });
     bridge.add_factory(VoltageControlledOscillator::kName,
                        [i]() mutable { return std::make_unique<VoltageControlledOscillator>(i++); });
 }
 
-void synth_loop(synth::Runner& runner, bool& shutdown) {
+void synth_loop(synth::Runner& runner, synth::AudioDriver& driver, bool& shutdown) {
     while (!shutdown) {
-        runner.next();
+        if (driver.buffer().size() < 1000) {
+            runner.next();
+        } else {
+            driver.flush_events();
+        }
     }
 }
 
 int main() {
     synth::Runner runner;
     synth::Bridge bridge{runner};
+    synth::AudioDriver driver;
 
-    populate(bridge);
+    populate(bridge, driver);
 
     bool shutdown = false;
-    std::thread synth_loop_thread{[&]() { synth_loop(runner, shutdown); }};
+    std::thread synth_loop_thread{[&]() { synth_loop(runner, driver, shutdown); }};
 
     engine::GlobalObjectManager object_manager;
     auto ports_manager = std::make_shared<objects::PortsObjectManager>();

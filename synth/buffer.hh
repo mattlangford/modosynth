@@ -31,10 +31,14 @@ public:
     ///
     void push(float from);
     bool pop(float& to);
+    float blind_pop();
 
 public:
     // Not thread safe
     std::string print() const;
+
+    // Okay if called from the reading thread
+    size_t size() const;
 
 private:
     /// Main data store, this vector isn't resized after construction so it's safe to keep pointers

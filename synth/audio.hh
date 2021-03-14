@@ -21,6 +21,8 @@ public:
 
     void write_inputs(const float *input, size_t size);
 
+    Buffer &buffer();
+
 private:
     static void underflow_callback(SoundIoOutStream *);
     static void write_callback(SoundIoOutStream *outstream, int frame_count_min, int frame_count_max);

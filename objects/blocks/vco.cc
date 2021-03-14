@@ -34,7 +34,6 @@ void VoltageControlledOscillator::invoke(const synth::Context& context, const In
     auto& output = outputs[0].samples;
 
     output = compute_batch(Shape::kSin, frequency, context.timestamp);
-
     return;
 
     int discrete_shape = static_cast<int>(shape);

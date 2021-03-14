@@ -9,7 +9,7 @@ public:
     inline static const std::string kName = "Speaker";
 
 public:
-    Speaker(size_t count) : AbstractNode{kName + std::to_string(count)} { driver_.start_thread(); }
+    Speaker(synth::AudioDriver& driver, size_t count) : AbstractNode{kName + std::to_string(count)}, driver_(driver) {}
 
 public:
     void invoke(const Inputs& inputs, Outputs&) const override {
@@ -17,6 +17,6 @@ public:
     }
 
 private:
-    mutable synth::AudioDriver driver_;
+    synth::AudioDriver& driver_;
 };
 }  // namespace object::blocks
