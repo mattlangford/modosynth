@@ -42,7 +42,7 @@ private:
 struct BlockObject;
 
 struct CatenaryObject {
-    static constexpr size_t kNumSteps = 2;
+    static constexpr size_t kNumSteps = 16;
     std::vector<Eigen::Vector2f> calculate_points();
 
     const BlockObject* parent_output = nullptr;

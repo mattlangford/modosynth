@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <queue>
 #include <utility>
 #include <vector>
 
@@ -22,6 +23,7 @@ public:
         auto& wrapper = wrappers_.emplace_back();
         wrapper.node = std::move(node);
         wrapper.outputs.resize(wrapper.node->num_outputs());
+        order_.push_back(id);
         return id;
     }
 
@@ -44,58 +46,45 @@ public:
     }
 
     void next() {
-        // auto timer = ScopedPrinter{std::chrono::steady_clock::now()};
+        auto timer = ScopedPrinter{std::chrono::steady_clock::now()};
         Context context;
         context.timestamp = counter_;
         if (kDebug) {
             std::cerr << "Runner::next(): timestamp=" << context.timestamp.count() << "ns\n";
         }
 
-        size_t total_num_ran = 0;
+        std::queue<size_t> order;
+        for (size_t o : order_) order.push(o);
+        order_.clear();  // we will repopulate this
+
         std::lock_guard lock{wrappers_lock_};
-        std::vector<bool> ran(wrappers_.size(), false);
-        while (total_num_ran < wrappers_.size()) {
-            size_t starting_num_ran = total_num_ran;
-            for (size_t i = 0; i < wrappers_.size(); ++i) {
-                auto& wrapper = wrappers_[i];
+        while (!order.empty()) {
+            const size_t index = order.front();
+            order.pop();
 
-                // Already ran this node, don't need to do it again
-                if (ran[i]) {
-                    if (kDebug) {
-                        std::cerr << "Runner::next(): " << wrapper.node->name() << " already ran.\n";
-                    }
-                    continue;
+            NodeWrapper& wrapper = wrappers_[index];
+            GenericNode& node = *wrapper.node;
+            const auto& outputs = wrapper.outputs;
+
+            // Node is waiting on input data
+            if (!node.ready()) {
+                if (kDebug) {
+                    std::cerr << "Runner::next(): " << node.name() << " not ready.\n";
                 }
 
-                auto& node = wrapper.node;
-                const auto& outputs = wrapper.outputs;
-
-                // Node is waiting on input data
-                if (!node->ready()) {
-                    if (kDebug) {
-                        std::cerr << "Runner::next(): " << wrapper.node->name() << " not ready.\n";
-                    }
-                    continue;
-                }
-
-                node->invoke(context);
-
-                for (size_t output_index = 0; output_index < outputs.size(); output_index++) {
-                    for (auto& [input_index, next_node] : outputs[output_index]) {
-                        node->send(output_index, input_index, *next_node);
-                    }
-                }
-
-                ran[i] = true;
-                total_num_ran++;
+                // We'll check again later
+                order.push(index);
+                continue;
             }
 
-            // This can be hit if there are no input nodes
-            if (starting_num_ran == total_num_ran) {
-                if (kDebug) {
-                    std::cerr << "Stall detected...\n";
+            // Invoke this node and store the order in which we ran it
+            node.invoke(context);
+            order_.push_back(index);
+
+            for (size_t output_index = 0; output_index < outputs.size(); output_index++) {
+                for (auto& [input_index, next_node] : outputs[output_index]) {
+                    node.send(output_index, input_index, *next_node);
                 }
-                break;
             }
         }
 
@@ -144,6 +133,7 @@ private:
     };
     mutable std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
+    std::vector<size_t> order_;
     std::chrono::nanoseconds counter_{0};
 };
 }  // namespace synth
