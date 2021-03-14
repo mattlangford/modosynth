@@ -45,11 +45,11 @@ struct CatenaryObject {
     static constexpr size_t kNumSteps = 2;
     std::vector<Eigen::Vector2f> calculate_points();
 
-    const BlockObject* parent_start = nullptr;
-    const BlockObject* parent_end = nullptr;
+    const BlockObject* parent_output = nullptr;
+    const BlockObject* parent_input = nullptr;
     size_t first_port_index;
-    Eigen::Vector2f offset_start;
-    Eigen::Vector2f offset_end;
+    Eigen::Vector2f offset_output;
+    Eigen::Vector2f offset_input;
 
     // Used to determine if we need to rerender
     Eigen::Vector2f previous_start;

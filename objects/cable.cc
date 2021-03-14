@@ -193,10 +193,10 @@ std::vector<Eigen::Vector2f> CatenaryObject::calculate_points() {
 //
 
 Eigen::Vector2f CatenaryObject::start() const {
-    return offset_start + (parent_start ? parent_start->bottom_left() : Eigen::Vector2f::Zero());
+    return offset_output + (parent_output ? parent_output->bottom_left() : Eigen::Vector2f::Zero());
 }
 Eigen::Vector2f CatenaryObject::end() const {
-    return offset_end + (parent_end ? parent_end->bottom_left() : Eigen::Vector2f::Zero());
+    return offset_input + (parent_input ? parent_input->bottom_left() : Eigen::Vector2f::Zero());
 }
 
 //
@@ -300,14 +300,13 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.any_modifiers() || event.right) return;
 
     if (event.pressed()) {
-        std::cerr << "Pressed\n";
         size_t offset_first_index = 0;
         bool input = false;
         if (auto ptr = get_active_port(event.mouse_position, offset_first_index, input)) {
             CatenaryObject object;
-            auto& this_parent = input ? object.parent_start : object.parent_end;
-            auto& this_offset = input ? object.offset_start : object.offset_end;
-            auto& other_offset = input ? object.offset_end : object.offset_start;
+            auto& this_parent = input ? object.parent_input : object.parent_output;
+            auto& this_offset = input ? object.offset_input : object.offset_output;
+            auto& other_offset = !input ? object.offset_input : object.offset_output;
 
             this_parent = &ptr->parent_block;
             this_offset = (input ? ptr->input_offsets : ptr->output_offsets)[offset_first_index];
@@ -318,15 +317,14 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
             spawn_object(std::move(object));
         }
     } else if (selected_ && event.released()) {
-        std::cerr << "Released\n";
         // Check for ports, if we're on one finalize current building object
         size_t offset_second_index = 0;
         bool input = false;
         if (auto ptr = get_active_port(event.mouse_position, offset_second_index, input)) {
             CatenaryObject& object = *selected_;
 
-            auto& this_parent = input ? object.parent_start : object.parent_end;
-            auto& this_offset = input ? object.offset_start : object.offset_end;
+            auto& this_parent = input ? object.parent_input : object.parent_output;
+            auto& this_offset = input ? object.offset_input : object.offset_output;
 
             // This can happen if the user connects two inputs or two outputs
             if (this_parent != nullptr) {
@@ -340,19 +338,17 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
 
             size_t output_index = !input ? offset_second_index : object.first_port_index;
             size_t input_index = input ? offset_second_index : object.first_port_index;
-            synth::Identifier output{object.parent_start->synth_id, output_index};
-            synth::Identifier input{object.parent_end->synth_id, input_index};
+            synth::Identifier output{object.parent_output->synth_id, output_index};
+            synth::Identifier input{object.parent_input->synth_id, input_index};
 
-            std::cerr << "Connect from object: " << output.id << " port: " << output.port << " to object: " << input.id
-                      << " port: " << input.port << "\n";
-            // bridge_.connect(output, input);
+            bridge_.connect(output, input);
         } else {
             despawn_object(*selected_);
         }
         selected_ = nullptr;
 
     } else if (selected_ && event.held()) {
-        (selected_->parent_start ? selected_->offset_end : selected_->offset_start) = event.mouse_position;
+        (selected_->parent_output ? selected_->offset_input : selected_->offset_output) = event.mouse_position;
     }
 }
 
@@ -387,9 +383,8 @@ void CableObjectManager::despawn_object(CatenaryObject& object) {
     // object is now invalid
     pool_->remove(object.object_id);
 
-    size_t vertex_index = 0;
     for (auto* this_object : pool_->iterate()) {
-        this_object->vertex_index = vertex_index;
+        this_object->vertex_index = vbo_.size();
         this_object->element_index = ebo_.elements();
         this_object->needs_rendering = true;
         populate_ebo(this_object->vertex_index);
