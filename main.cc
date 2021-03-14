@@ -28,7 +28,6 @@ void populate(synth::Bridge& bridge) {
 void synth_loop(synth::Runner& runner, bool& shutdown) {
     while (!shutdown) {
         runner.next();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 

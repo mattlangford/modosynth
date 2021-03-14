@@ -115,13 +115,20 @@ public:
 private:
     struct ScopedPrinter {
         std::chrono::steady_clock::time_point start;
+
+        inline static constexpr std::chrono::seconds kInc{1};
+        inline static std::chrono::steady_clock::time_point next_;
+
         ~ScopedPrinter() {
+            if (start < next_) return;
             std::cout << "Runner::next() "
                       << std::chrono::duration_cast<std::chrono::microseconds>(Samples::kBatchIncrement).count()
                       << " us simulated in "
                       << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start)
                              .count()
                       << " us\n";
+
+            next_ = start + kInc;
         }
     };
 

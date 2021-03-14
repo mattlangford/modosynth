@@ -7,7 +7,7 @@
 namespace synth {
 
 constexpr uint64_t kSampleRate = 44000;
-constexpr bool kDebug = true;
+constexpr bool kDebug = false;
 
 struct Samples {
     Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
