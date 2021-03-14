@@ -42,12 +42,12 @@ private:
 struct BlockObject;
 
 struct CatenaryObject {
-    static constexpr size_t kNumSteps = 16;
+    static constexpr size_t kNumSteps = 2;
     std::vector<Eigen::Vector2f> calculate_points();
 
     const BlockObject* parent_start = nullptr;
     const BlockObject* parent_end = nullptr;
-    size_t offset_start_index;
+    size_t first_port_index;
     Eigen::Vector2f offset_start;
     Eigen::Vector2f offset_end;
 

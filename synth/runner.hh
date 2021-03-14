@@ -44,7 +44,7 @@ public:
     }
 
     void next() {
-        auto start = ScopedPrinter{std::chrono::steady_clock::now()};
+        // auto timer = ScopedPrinter{std::chrono::steady_clock::now()};
         Context context;
         context.timestamp = counter_;
         if (kDebug) {

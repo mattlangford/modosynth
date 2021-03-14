@@ -300,37 +300,59 @@ void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
     if (event.any_modifiers() || event.right) return;
 
     if (event.pressed()) {
-        size_t offset_start_index = 0;
-        bool input;  // unused
-        if (auto ptr = get_active_port(event.mouse_position, offset_start_index, input)) {
+        std::cerr << "Pressed\n";
+        size_t offset_first_index = 0;
+        bool input = false;
+        if (auto ptr = get_active_port(event.mouse_position, offset_first_index, input)) {
             CatenaryObject object;
-            object.parent_start = &ptr->parent_block;
-            object.offset_start = (input ? ptr->input_offsets : ptr->output_offsets)[offset_start_index];
-            object.offset_start_index = offset_start_index;
-            object.offset_end = event.mouse_position;
+            auto& this_parent = input ? object.parent_start : object.parent_end;
+            auto& this_offset = input ? object.offset_start : object.offset_end;
+            auto& other_offset = input ? object.offset_end : object.offset_start;
+
+            this_parent = &ptr->parent_block;
+            this_offset = (input ? ptr->input_offsets : ptr->output_offsets)[offset_first_index];
+            other_offset = event.mouse_position;
+
+            object.first_port_index = offset_first_index;
+
             spawn_object(std::move(object));
         }
     } else if (selected_ && event.released()) {
+        std::cerr << "Released\n";
         // Check for ports, if we're on one finalize current building object
-        size_t offset_end_index = 0;
-        bool end_is_input = false;
-        if (auto ptr = get_active_port(event.mouse_position, offset_end_index, end_is_input)) {
-            selected_->parent_end = &ptr->parent_block;
-            selected_->offset_end = (end_is_input ? ptr->input_offsets : ptr->output_offsets)[offset_end_index];
+        size_t offset_second_index = 0;
+        bool input = false;
+        if (auto ptr = get_active_port(event.mouse_position, offset_second_index, input)) {
+            CatenaryObject& object = *selected_;
 
-            synth::Identifier input{selected_->parent_start->synth_id, selected_->offset_start_index};
-            synth::Identifier output{ptr->parent_block.synth_id, offset_end_index};
+            auto& this_parent = input ? object.parent_start : object.parent_end;
+            auto& this_offset = input ? object.offset_start : object.offset_end;
 
-            // if this port was an input, that means we need to swap the start and end before connecting
-            if (end_is_input) std::swap(input, output);
-            bridge_.connect(output, input);
+            // This can happen if the user connects two inputs or two outputs
+            if (this_parent != nullptr) {
+                despawn_object(*selected_);
+                selected_ = nullptr;
+                return;
+            }
+
+            this_parent = &ptr->parent_block;
+            this_offset = (input ? ptr->input_offsets : ptr->output_offsets)[offset_second_index];
+
+            size_t output_index = !input ? offset_second_index : object.first_port_index;
+            size_t input_index = input ? offset_second_index : object.first_port_index;
+            synth::Identifier output{object.parent_start->synth_id, output_index};
+            synth::Identifier input{object.parent_end->synth_id, input_index};
+
+            std::cerr << "Connect from object: " << output.id << " port: " << output.port << " to object: " << input.id
+                      << " port: " << input.port << "\n";
+            // bridge_.connect(output, input);
         } else {
             despawn_object(*selected_);
         }
         selected_ = nullptr;
 
     } else if (selected_ && event.held()) {
-        selected_->offset_end = event.mouse_position;
+        (selected_->parent_start ? selected_->offset_end : selected_->offset_start) = event.mouse_position;
     }
 }
 
