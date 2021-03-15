@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <chrono>
 
 namespace synth {
 struct Samples {
