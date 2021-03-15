@@ -40,6 +40,7 @@ int main() {
     synth::Bridge bridge;
     synth::AudioDriver driver;
 
+    // bridge.start_thread();
     populate(bridge, driver);
 
     bool shutdown = false;

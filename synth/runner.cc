@@ -34,7 +34,7 @@ void Runner::connect(size_t from_id, size_t from_output_index, size_t to_id, siz
                   << " to=" << to.node->name() << " (" << to_id << "), to_input_index: " << to_input_index);
 
     from.outputs.at(from_output_index).push_back(std::make_pair(to_input_index, to.node.get()));
-    to.node->add_input(to_input_index);
+    to.node->connect(to_input_index);
 }
 
 //
@@ -75,7 +75,7 @@ void Runner::next(const std::chrono::nanoseconds& now) {
         for (size_t output_index = 0; output_index < outputs.size(); output_index++) {
             const auto output = node.get_output(output_index);
             for (auto& [input_index, input_node] : outputs[output_index]) {
-                input_node->set_input(input_index, output);
+                input_node->add_input(input_index, output);
             }
         }
     }

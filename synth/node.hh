@@ -28,8 +28,8 @@ public:
     virtual size_t num_inputs() const = 0;
     virtual size_t num_outputs() const = 0;
 
-    virtual void add_input(size_t input_index) = 0;
-    virtual void set_input(size_t index, const Samples& input) = 0;
+    virtual void connect(size_t input_index) = 0;
+    virtual void add_input(size_t index, const Samples& input) = 0;
     virtual Samples get_output(size_t index) const = 0;
 
     // Return if it was ready to run
@@ -53,8 +53,8 @@ public:
     // always ready
     bool invoke(const Context&) final { return true; }
 
-    void add_input(size_t) final { throw std::runtime_error("InjectorNode::add_input()"); }
-    void set_input(size_t, const Samples&) final { throw std::runtime_error("InjectorNode::set_input()"); };
+    void connect(size_t) final { throw std::runtime_error("InjectorNode::add_input()"); }
+    void add_input(size_t, const Samples&) final { throw std::runtime_error("InjectorNode::set_input()"); };
     Samples get_output(size_t) const final { return Samples{value_.load()}; }
 
 public:
@@ -67,40 +67,55 @@ private:
 ///
 /// @brief Node which can output values from the graph
 ///
-// class EjectorNode : GenericNode
-// {
-// public:
-//     using GenericNode::GenericNode;
-//     ~EjectorNode() override = default;
-//
-//     size_t num_inputs() const final { return 1; }
-//     size_t num_outputs() const final { return 0; }
-//
-//     bool invoke(const Context&) final {
-//         if () return;
-//     }
-//
-//     void add_input(size_t) final { default_counter++; }
-//     void set_input(size_t, const Samples& data) final {
-//         input_counter_--;
-//
-//         if (input_)
-//             input_->sum(data);
-//         else
-//             input_ = data;
-//     };
-//     Samples get_output(size_t) final { throw std::runtime_error("EjectorNode::get_output()"); }
-// public:
-//     void flush_buffer();
-//
-// private:
-//     int default_counter_ = 0;
-//     int input_counter_ = 0;
-//     std::optional<Samples> input_ = std::nullopt;
-//
-//     std::chrono::nanoseconds timestamp_;
-//     std::vector<Samples> buffer_;
-// };
+class EjectorNode : public GenericNode {
+public:
+    EjectorNode(std::string node_name, const std::string& stream_name)
+        : GenericNode{node_name}, stream_name_(stream_name) {
+        write_ = &data_0;
+        read_ = &data_1;
+    }
+    using GenericNode::GenericNode;
+    ~EjectorNode() override = default;
+
+public:
+    size_t num_inputs() const final { return 1; }
+    size_t num_outputs() const final { return 0; }
+
+    bool invoke(const Context& context) final {
+        if (input_counter_ > 0) return false;
+        input_counter_ = default_counter_;
+
+        timestamp_ = context.timestamp;
+        std::swap(write_, read_);
+
+        return true;
+    }
+
+    void connect(size_t) final { default_counter_++; }
+    void add_input(size_t, const Samples& data) final {
+        input_counter_--;
+        write_->sum(data.samples);
+    };
+    Samples get_output(size_t) const final { throw std::runtime_error("EjectorNode::get_output()"); }
+
+public:
+    const std::string& stream_name() const { return stream_name_; }
+
+    std::pair<std::chrono::nanoseconds, const Samples*> get() const { return std::make_pair(timestamp_, read_); }
+
+private:
+    int default_counter_ = 0;
+    int input_counter_ = 0;
+
+    Samples* write_;
+    Samples* read_;
+
+    std::string stream_name_;
+    std::chrono::nanoseconds timestamp_;
+
+    Samples data_0;
+    Samples data_1;
+};
 
 template <size_t kInputs, size_t kOutputs>
 class AbstractNode : public GenericNode {
@@ -119,7 +134,7 @@ public:
     size_t num_inputs() const final { return kInputs; }
     size_t num_outputs() const final { return kOutputs; }
 
-    void add_input(size_t input_index) final {
+    void connect(size_t input_index) final {
         debug(name() << "::add_input(input_index=" << input_index << ")");
         initial_counters_.at(input_index)++;
         counters_.at(input_index)++;
@@ -142,7 +157,7 @@ public:
         return true;
     }
 
-    void set_input(size_t input_index, const Samples& incoming_samples) final {
+    void add_input(size_t input_index, const Samples& incoming_samples) final {
         debug(name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]);
 
         auto& next_input = next_inputs_[input_index];

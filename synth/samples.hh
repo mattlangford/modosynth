@@ -5,9 +5,9 @@ namespace synth {
 struct Samples {
     Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
 
-    static constexpr uint64_t kSamplesRate = 44000;
+    static constexpr uint64_t kSampleRate = 44000;
     static constexpr uint64_t kBatchSize = 512;
-    static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSamplesRate};
+    static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
     static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
     static_assert(kSampleIncrement.count() > 1);
     std::array<float, kBatchSize> samples;
