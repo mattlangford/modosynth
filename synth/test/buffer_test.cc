@@ -7,7 +7,7 @@
 
 namespace synth {
 TEST(ThreadSafeBuffer, basic) {
-    ThreadSafeBuffer buffer{ThreadSafeBuffer::Config{2}};
+    ThreadSafeBuffer buffer{2};
 
     float result;
     EXPECT_FALSE(buffer.pop(result));
@@ -34,7 +34,7 @@ TEST(ThreadSafeBuffer, basic) {
 //
 
 TEST(ThreadSafeBuffer, threaded) {
-    ThreadSafeBuffer buffer{ThreadSafeBuffer::Config{1000}};
+    ThreadSafeBuffer buffer{1000};
 
     float result;
     EXPECT_FALSE(buffer.pop(result));
@@ -70,5 +70,67 @@ TEST(ThreadSafeBuffer, threaded) {
         EXPECT_EQ(popped.front(), static_cast<float>(i));
         popped.pop();
     }
+}
+
+//
+// #############################################################################
+//
+
+TEST(Buffer, basic) {
+    Buffer<int> buffer{2, false};
+
+    EXPECT_TRUE(buffer.empty());
+    EXPECT_EQ(buffer.pop(), std::nullopt);
+
+    buffer.push(10);
+    buffer.push(20);
+    buffer.push(30);
+    EXPECT_EQ(buffer.size(), 2);
+    EXPECT_FALSE(buffer.empty());
+
+    {
+        auto result = buffer.pop();
+        ASSERT_TRUE(result);
+        EXPECT_EQ(*result, 20);
+    }
+    {
+        auto result = buffer.pop();
+        ASSERT_TRUE(result);
+        EXPECT_EQ(*result, 30);
+    }
+    EXPECT_TRUE(buffer.empty());
+
+    buffer.push(10);
+    buffer.push(20);
+    buffer.push(30);
+    buffer[0] = 21;
+    buffer[1] = 31;
+    {
+        auto result = buffer.pop();
+        ASSERT_TRUE(result);
+        EXPECT_EQ(*result, 21);
+    }
+    {
+        auto result = buffer.pop();
+        ASSERT_TRUE(result);
+        EXPECT_EQ(*result, 31);
+    }
+}
+
+//
+// #############################################################################
+//
+
+TEST(Buffer, basic_throw) {
+    Buffer<int> buffer{2, true};
+
+    EXPECT_TRUE(buffer.empty());
+    EXPECT_EQ(buffer.pop(), std::nullopt);
+
+    buffer.push(10);
+    buffer.push(20);
+    EXPECT_THROW(buffer.push(30), std::runtime_error);
+    ASSERT_EQ(buffer.size(), 2);
+    EXPECT_EQ(buffer[0], 10);
 }
 }  // namespace synth

@@ -26,7 +26,7 @@ struct Samples {
         for (size_t i = 0; i < kBatchSize; ++i) samples[i] = f(i);
     }
 
-    void sum(const Samples& rhs, float weight) {
+    void sum(const Samples& rhs, float weight = 1.0) {
         for (size_t i = 0; i < kBatchSize; ++i) samples[i] += weight * rhs.samples[i];
     }
     void combine(float weight, const Samples& rhs, float rhs_weight) {
@@ -96,36 +96,40 @@ private:
 ///
 /// @brief Node which can output values from the graph
 ///
-// class OutputNode : GenericNode
+// class EjectorNode : GenericNode
 // {
 // public:
 //     using GenericNode::GenericNode;
-//     ~InputNode() override = default;
+//     ~EjectorNode() override = default;
 //
-//     size_t num_inputs() const final { return 0; }
-//     size_t num_outputs() const final { return kPorts; }
+//     size_t num_inputs() const final { return 1; }
+//     size_t num_outputs() const final { return 0; }
 //
-//     // always ready
 //     bool invoke(const Context&) final {
-//         if (!samples_) return;
+//         if () return;
 //     }
 //
-//     void accept(size_t, const Samples& samples) final {
-//     }
+//     void add_input(size_t) final { default_counter++; }
+//     void set_input(size_t, const Samples& data) final {
+//         input_counter_--;
 //
-//     void send(size_t, AcceptFunction& to) const final {
-//         to(Samples{value_load()});
-//     }
-//
+//         if (input_)
+//             input_->sum(data);
+//         else
+//             input_ = data;
+//     };
+//     Samples get_output(size_t) final { throw std::runtime_error("EjectorNode::get_output()"); }
 // public:
-//     void set_value(float value) {
-//     }
+//     void flush_buffer();
 //
 // private:
+//     int default_counter_ = 0;
+//     int input_counter_ = 0;
+//     std::optional<Samples> input_ = std::nullopt;
+//
 //     std::chrono::nanoseconds timestamp_;
 //     std::vector<Samples> buffer_;
 // };
-//
 
 template <size_t kInputs, size_t kOutputs>
 class AbstractNode : public GenericNode {

@@ -9,7 +9,7 @@ namespace synth {
 // #############################################################################
 //
 
-ThreadSafeBuffer::ThreadSafeBuffer(const Config& config) : entries_(std::vector<float>(config.buffer_size)) {}
+ThreadSafeBuffer::ThreadSafeBuffer(size_t buffer_size) : entries_(std::vector<float>(buffer_size)) {}
 
 //
 // #############################################################################
