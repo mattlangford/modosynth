@@ -15,7 +15,7 @@ struct Identifier {
 
 class Bridge {
 public:
-    Bridge(Runner& runner) : runner_(runner) {}
+    Bridge() = default;
 
 public:
     using NodeFactory = std::function<std::unique_ptr<GenericNode>()>;
@@ -41,6 +41,11 @@ public:
 
     void connect(const Identifier& from, const Identifier& to) { runner_.connect(from.id, from.port, to.id, to.port); }
 
+    void next() {
+        runner_.next(timestamp_);
+        timestamp_ += Samples::kBatchIncrement;
+    }
+
     void set_value(size_t index, float value) {
         if (auto it = injectors_.find(index); it != injectors_.end()) {
             it->second->set_value(value);
@@ -53,8 +58,10 @@ public:
     }
 
 private:
+    Runner runner_;
+    std::chrono::nanoseconds timestamp_{0};
+
     std::unordered_map<std::string, NodeFactory> factories_;
-    Runner& runner_;
 
     std::unordered_map<size_t, InjectorNode*> injectors_;
     // std::vector<EjectorNode*> ejectors_;

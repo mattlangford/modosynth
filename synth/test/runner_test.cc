@@ -62,7 +62,7 @@ TEST(runner, basic) {
     EXPECT_NE(DestinationNode::value0, expected_value0);
     EXPECT_NE(DestinationNode::value1, expected_value1);
 
-    runner.next();  // source writs
+    runner.next({});
 
     EXPECT_EQ(DestinationNode::value0, expected_value0);
     EXPECT_EQ(DestinationNode::value1, expected_value1);

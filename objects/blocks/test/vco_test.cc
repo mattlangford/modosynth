@@ -21,8 +21,8 @@ TEST(VoltageControlledOscillatorTest, invoke) {
 
     VoltageControlledOscillator vco;
 
-    synth::Samples frequency(1000.0);
-    synth::Samples shape(5.2);  // should become 20% Square, 80% Sin
+    synth::Samples frequency(1);  // will be remapped to 10'000
+    synth::Samples shape(5.2);    // should become 20% Square, 80% Sin
 
     typename VoltageControlledOscillator::Outputs outputs;
     vco.invoke(context, {frequency, shape}, outputs);
@@ -32,8 +32,8 @@ TEST(VoltageControlledOscillatorTest, invoke) {
 
     const std::chrono::duration<float> t0 = start;
     const std::chrono::duration<float> t2 = start + 2 * synth::Samples::kSampleIncrement;
-    EXPECT_NEAR(output[0], 0.2 * 1 + 0.8 * std::sin(2 * M_PI * 1000 * t0.count()), 1E-5);
-    EXPECT_NEAR(output[2], 0.2 * 0 + 0.8 * std::sin(2 * M_PI * 1000 * t2.count()), 1E-5);
+    EXPECT_NEAR(output[0], 0.2 * 1 + 0.8 * std::sin(2 * M_PI * 10000 * t0.count()), 1E-5);
+    EXPECT_NEAR(output[2], 0.2 * 0 + 0.8 * std::sin(2 * M_PI * 10000 * t2.count()), 1E-5);
 }
 
 //

@@ -20,11 +20,11 @@ struct Samples {
         for (size_t i = 0; i < kBatchSize; ++i) samples[i] = f(i);
     }
 
-    void sum(const Samples& rhs, float weight = 1.0) {
-        for (size_t i = 0; i < kBatchSize; ++i) samples[i] += weight * rhs.samples[i];
+    void sum(const std::array<float, kBatchSize>& rhs, float weight = 1.0) {
+        for (size_t i = 0; i < kBatchSize; ++i) samples[i] += weight * rhs[i];
     }
-    void combine(float weight, const Samples& rhs, float rhs_weight) {
-        for (size_t i = 0; i < kBatchSize; ++i) samples[i] = weight * samples[i] + rhs_weight * rhs.samples[i];
+    void combine(float weight, const std::array<float, kBatchSize>& rhs, float rhs_weight) {
+        for (size_t i = 0; i < kBatchSize; ++i) samples[i] = weight * samples[i] + rhs_weight * rhs[i];
     }
 };
 }  // namespace synth

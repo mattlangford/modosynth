@@ -31,10 +31,6 @@ void VoltageControlledOscillator::invoke(const synth::Context& context, const In
     // Both of these are assumed to be constant during these samples
     const float frequency = compute_freq(inputs[0].samples[0]);
     const float shape = inputs[1].samples[0];
-    auto& output = outputs[0].samples;
-
-    output = compute_batch(Shape::kSin, frequency, context.timestamp);
-    return;
 
     int discrete_shape = static_cast<int>(shape);
     float percent = shape - discrete_shape;
@@ -45,11 +41,9 @@ void VoltageControlledOscillator::invoke(const synth::Context& context, const In
     const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % max);
     const float mult1 = 1.0 - percent;
 
-    output = compute_batch(shape0, frequency, context.timestamp);
-    auto batch1 = compute_batch(shape1, frequency, context.timestamp);
-    for (size_t i = 0; i < batch1.size(); ++i) {
-        output[i] = mult0 * output[i] + mult1 * batch1[i];
-    }
+    auto& output = outputs[0];
+    output.samples = compute_batch(shape0, frequency, context.timestamp);
+    output.combine(mult0, compute_batch(shape1, frequency, context.timestamp), mult1);
 }
 
 //
@@ -116,11 +110,11 @@ auto VoltageControlledOscillator::square_batch(const float frequency, const std:
 
 auto VoltageControlledOscillator::sin_batch(const float frequency, const std::chrono::nanoseconds& t) -> Batch {
     Batch batch;
-    const double term = 2 * M_PI * frequency;
+    const float term = 2 * M_PI * frequency;
 
     std::chrono::nanoseconds ns = t;
     for (size_t i = 0; i < batch.size(); ++i, ns += synth::Samples::kSampleIncrement) {
-        batch[i] = std::sin(term * std::chrono::duration<double>(ns).count());
+        batch[i] = std::sin(term * std::chrono::duration<float>(ns).count());
     }
     return batch;
 }

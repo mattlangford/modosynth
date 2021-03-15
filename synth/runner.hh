@@ -1,8 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <queue>
-#include <utility>
+#include <mutex>
 #include <vector>
 
 #include "synth/node.hh"
@@ -15,7 +14,7 @@ public:
 
     void connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index);
 
-    void next();
+    void next(const std::chrono::nanoseconds& now);
 
 private:
     struct ScopedPrinter {
@@ -30,9 +29,9 @@ private:
         using InputAndNode = std::pair<size_t, GenericNode*>;
         std::vector<std::vector<InputAndNode>> outputs;
     };
+
     mutable std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
     std::vector<size_t> order_;
-    std::chrono::nanoseconds counter_{0};
 };
 }  // namespace synth

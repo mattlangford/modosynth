@@ -1,9 +1,10 @@
 #include "synth/runner.hh"
 
+#include <queue>
+
+#include "synth/debug.hh"
+
 namespace synth {
-
-constexpr bool kDebug = false;
-
 //
 // #############################################################################
 //
@@ -24,34 +25,27 @@ size_t Runner::spawn(std::unique_ptr<GenericNode> node) {
 //
 
 void Runner::connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index) {
-    if (kDebug) {
-        auto from_name = wrappers_.at(from_id).node->name();
-        auto to_name = wrappers_.at(to_id).node->name();
-        std::cerr << "Runner::connect(from=" << from_name << " (" << from_id
-                  << "), from_output_index=" << from_output_index << " to=" << to_name << " (" << to_id
-                  << "), to_input_index: " << to_input_index << ")\n";
-    }
-
     std::lock_guard lock{wrappers_lock_};
-    auto& from_wrapper = wrappers_.at(from_id);
-    const auto& to_wrapper = wrappers_.at(to_id);
 
-    auto id = std::make_pair(to_input_index, to_wrapper.node.get());
-    from_wrapper.outputs.at(from_output_index).push_back(std::move(id));
-    to_wrapper.node->add_input(to_input_index);
+    auto& from = wrappers_.at(from_id);
+    const auto& to = wrappers_.at(to_id);
+
+    debug("from=" << from.node->name() << " (" << from_id << "), from_output_index=" << from_output_index
+                  << " to=" << to.node->name() << " (" << to_id << "), to_input_index: " << to_input_index);
+
+    from.outputs.at(from_output_index).push_back(std::make_pair(to_input_index, to.node.get()));
+    to.node->add_input(to_input_index);
 }
 
 //
 // #############################################################################
 //
 
-void Runner::next() {
+void Runner::next(const std::chrono::nanoseconds& now) {
     auto timer = ScopedPrinter{std::chrono::steady_clock::now()};
     Context context;
-    context.timestamp = counter_;
-    if (kDebug) {
-        std::cerr << "Runner::next(): timestamp=" << context.timestamp.count() << "ns\n";
-    }
+    context.timestamp = now;
+    debug("timestamp=" << now << "ns");
 
     std::queue<size_t> order;
     for (size_t o : order_) order.push(o);
@@ -68,9 +62,7 @@ void Runner::next() {
 
         // Try to invoke the node if it's ready
         if (!node.invoke(context)) {
-            if (kDebug) {
-                std::cerr << "Runner::next(): " << node.name() << " not ready.\n";
-            }
+            debug("Not ready");
 
             // We'll check again later
             order.push(index);
@@ -87,8 +79,6 @@ void Runner::next() {
             }
         }
     }
-
-    counter_ += Samples::kBatchIncrement;
 }
 
 //

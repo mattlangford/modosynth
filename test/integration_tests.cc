@@ -33,7 +33,7 @@ struct SpeakerShim final : public synth::AbstractNode<1, 0> {
 //
 
 struct IntegrationTests : public ::testing::Test {
-    IntegrationTests() : bridge{runner} {
+    IntegrationTests() {
         using namespace object::blocks;
 
         int i = 0;
@@ -53,7 +53,6 @@ struct IntegrationTests : public ::testing::Test {
         window = std::make_unique<engine::Window>(1000, 1000, std::move(manager));
         window->init();
     }
-    synth::Runner runner;
     synth::Bridge bridge;
 
     std::unique_ptr<engine::Window> window;
@@ -139,13 +138,13 @@ TEST_F(IntegrationTests, amplifier) {
     auto amplifier_output = ports->position_of(amplifier_handle, 0, false);
     auto speaker_input = ports->position_of(speaker_handle, 0, true);
 
-    runner.next();
+    bridge.next();
 
     auto check_filled = [this](const float fill) {
         ASSERT_FALSE(speaker_output.empty());
         EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize) << fill;
         while (!speaker_output.empty()) {
-            ASSERT_EQ(speaker_output.front(), fill) << " fill: " << fill;
+            ASSERT_EQ(speaker_output.front(), fill);
             speaker_output.pop();
         }
     };
@@ -158,17 +157,17 @@ TEST_F(IntegrationTests, amplifier) {
     click_and_move(knob1_output, amplifier_gain, window->manager());
     click_and_move(amplifier_output, speaker_input, window->manager());
 
-    runner.next();
+    bridge.next();
     check_filled(0.f);
 
-    runner.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
-    runner.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
+    bridge.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
+    bridge.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
 
-    runner.next();
+    bridge.next();
     check_filled(10 * 0.5 * 0.1);  // multiplied by 10 since the amplifier does this internally
 
-    runner.set_value(knob1_handle.synth_id, 0.1);  // 0.1 gain
+    bridge.set_value(knob1_handle.synth_id, 0.1);  // 0.1 gain
 
-    runner.next();
+    bridge.next();
     check_filled(10 * 0.1 * 0.1);
 }

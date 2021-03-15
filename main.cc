@@ -26,10 +26,10 @@ void populate(synth::Bridge& bridge, synth::AudioDriver& driver) {
                        [i]() mutable { return std::make_unique<VoltageControlledOscillator>(i++); });
 }
 
-void synth_loop(synth::Runner& runner, synth::AudioDriver& driver, bool& shutdown) {
+void synth_loop(synth::Bridge& bridge, synth::AudioDriver& driver, bool& shutdown) {
     while (!shutdown) {
         if (driver.buffer().size() < 1000) {
-            runner.next();
+            bridge.next();
         } else {
             driver.flush_events();
         }
@@ -37,14 +37,13 @@ void synth_loop(synth::Runner& runner, synth::AudioDriver& driver, bool& shutdow
 }
 
 int main() {
-    synth::Runner runner;
-    synth::Bridge bridge{runner};
+    synth::Bridge bridge;
     synth::AudioDriver driver;
 
     populate(bridge, driver);
 
     bool shutdown = false;
-    std::thread synth_loop_thread{[&]() { synth_loop(runner, driver, shutdown); }};
+    std::thread synth_loop_thread{[&]() { synth_loop(bridge, driver, shutdown); }};
 
     engine::GlobalObjectManager object_manager;
     auto ports_manager = std::make_shared<objects::PortsObjectManager>();
