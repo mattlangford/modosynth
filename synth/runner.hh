@@ -11,20 +11,11 @@ namespace synth {
 
 class Runner {
 public:
-    template <typename Node, typename... Args>
-    size_t spawn(Args... args) {
-        return spawn(std::make_unique<Node>(std::forward<Args>(args)...));
-    }
-
     size_t spawn(std::unique_ptr<GenericNode> node);
 
     void connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index);
 
     void next();
-
-    void set_value(size_t index, float value);
-
-    float get_value(size_t index) const;
 
 private:
     struct ScopedPrinter {

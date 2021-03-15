@@ -2,6 +2,8 @@
 
 namespace synth {
 
+constexpr bool kDebug = false;
+
 //
 // #############################################################################
 //
@@ -87,35 +89,6 @@ void Runner::next() {
     }
 
     counter_ += Samples::kBatchIncrement;
-}
-
-//
-// #############################################################################
-//
-
-void Runner::set_value(size_t index, float value) {
-    if (kDebug) {
-        std::lock_guard lock{wrappers_lock_};
-        const auto& node = wrappers_.at(index).node;
-        std::cerr << "Runner::set_value(index=" << node->name() << " ( " << index << "), value=" << value << ")\n";
-    }
-    std::lock_guard lock{wrappers_lock_};
-    wrappers_.at(index).node->set_value(value);
-}
-
-//
-// #############################################################################
-//
-
-float Runner::get_value(size_t index) const {
-    if (kDebug) {
-        std::lock_guard lock{wrappers_lock_};
-        const auto& node = wrappers_.at(index).node;
-        std::cerr << "Runner::get_value(index=" << node->name() << " ( " << index << "), value=" << node->get_value()
-                  << ")\n";
-    }
-    std::lock_guard lock{wrappers_lock_};
-    return wrappers_.at(index).node->get_value();
 }
 
 //

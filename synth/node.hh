@@ -4,35 +4,10 @@
 #include <iostream>
 #include <string>
 
+#include "synth/debug.hh"
+#include "synth/samples.hh"
+
 namespace synth {
-
-constexpr uint64_t kSamplesRate = 44000;
-constexpr bool kDebug = false;
-
-struct Samples {
-    Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
-
-    static constexpr size_t kBatchSize = 512;
-    static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSamplesRate};
-    static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
-    static_assert(kSampleIncrement.count() > 1);
-    std::array<float, kBatchSize> samples;
-
-    ///
-    /// @brief Populate the samples array with a generator. The function should take the sample number within the batch
-    ///
-    template <typename F>
-    void populate_samples(F f) {
-        for (size_t i = 0; i < kBatchSize; ++i) samples[i] = f(i);
-    }
-
-    void sum(const Samples& rhs, float weight = 1.0) {
-        for (size_t i = 0; i < kBatchSize; ++i) samples[i] += weight * rhs.samples[i];
-    }
-    void combine(float weight, const Samples& rhs, float rhs_weight) {
-        for (size_t i = 0; i < kBatchSize; ++i) samples[i] = weight * samples[i] + rhs_weight * rhs.samples[i];
-    }
-};
 
 struct Context {
     std::chrono::nanoseconds timestamp;
@@ -47,9 +22,6 @@ public:
     virtual ~GenericNode() = default;
 
 public:
-    void set_value(float value) { value_ = value; };
-    float get_value() const { return value_; }
-
     const std::string& name() const { return name_; }
 
 public:
@@ -65,13 +37,12 @@ public:
 
 private:
     std::string name_;
-    float value_ = 0.0;
 };
 
 ///
 /// @brief Node which can inject values into the graph
 ///
-class InjectorNode : GenericNode {
+class InjectorNode : public GenericNode {
 public:
     using GenericNode::GenericNode;
     ~InjectorNode() override = default;
@@ -149,15 +120,16 @@ public:
     size_t num_outputs() const final { return kOutputs; }
 
     void add_input(size_t input_index) final {
-        if (kDebug) std::cerr << name() << "::add_input(input_index=" << input_index << ")\n";
+        debug(name() << "::add_input(input_index=" << input_index << ")");
         initial_counters_.at(input_index)++;
         counters_.at(input_index)++;
     }
 
     bool invoke(const Context& context) final {
-        if (kDebug) std::cerr << name() << "::invoke()\n";
+        debug(name() << "::invoke()");
+
         if (!ready()) {
-            if (kDebug) std::cerr << name() << "::invoke() not ready\n";
+            debug(name() << "::invoke() not ready");
             return false;
         }
 
@@ -171,9 +143,7 @@ public:
     }
 
     void set_input(size_t input_index, const Samples& incoming_samples) final {
-        if (kDebug)
-            std::cerr << name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]
-                      << "\n";
+        debug(name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]);
 
         auto& next_input = next_inputs_[input_index];
         for (size_t i = 0; i < next_input.samples.size(); ++i) {
@@ -195,7 +165,7 @@ protected:
 private:
     bool ready() const {
         for (auto& count : counters_) {
-            if (kDebug) std::cerr << name() << "::ready() count:" << count << "\n";
+            debug(name() << "::ready() count:" << count);
 
             if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
 

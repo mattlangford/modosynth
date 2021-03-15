@@ -6,14 +6,8 @@
 
 namespace synth {
 
-struct SourceNode final : AbstractNode<0, 1> {
-    SourceNode(float value) : AbstractNode("SourceNode"), value(value) {}
-    void invoke(const Inputs&, Outputs& outputs) const {
-        auto& samples = outputs[0].samples;
-        std::fill(samples.begin(), samples.end(), value);
-    };
-
-    float value = 0;
+struct SourceNode final : InjectorNode {
+    SourceNode() : InjectorNode("SourceNode") {}
 };
 
 struct IntermediateNode final : AbstractNode<1, 2> {
@@ -48,9 +42,14 @@ struct DestinationNode final : AbstractNode<2, 0> {
 TEST(runner, basic) {
     Runner runner;
 
-    auto source_id = runner.spawn<SourceNode>(10.0);
-    auto intermediate_id = runner.spawn<IntermediateNode>();
-    auto destination_id = runner.spawn<DestinationNode>();
+    auto source = std::make_unique<SourceNode>();
+    source->set_value(10.0);
+    auto intermediate = std::make_unique<IntermediateNode>();
+    auto destination = std::make_unique<DestinationNode>();
+
+    auto source_id = runner.spawn(std::move(source));
+    auto intermediate_id = runner.spawn(std::move(intermediate));
+    auto destination_id = runner.spawn(std::move(destination));
 
     runner.connect(source_id, 0, destination_id, 0);
     runner.connect(source_id, 0, intermediate_id, 0);
