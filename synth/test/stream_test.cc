@@ -4,7 +4,7 @@
 
 namespace synth {
 TEST(Stream, basic_flush) {
-    Stream s;
+    Stream s(std::chrono::seconds(1));
 
     EXPECT_EQ(s.output().size(), 0);
     EXPECT_THROW(s.index_of_timestamp(std::chrono::seconds(0)), std::runtime_error);
@@ -41,14 +41,55 @@ TEST(Stream, basic_flush) {
         EXPECT_EQ(value, expected);
     }
     EXPECT_EQ(s.output().size(), 0);
+}
 
-    s.add_samples(2 * inc, Samples{2000});  // overwrite the data at t=2*inc
-    s.flush_samples(inc);                   // flush the last sample
-    ASSERT_EQ(s.output().size(), Samples::kBatchSize);
+//
+// #############################################################################
+//
+
+TEST(Stream, add_input) {
+    auto inc = Samples::kBatchIncrement;
+
+    // Create the stream with 3 batches of fade time
+    Stream s(3 * inc);
+
+    s.add_samples(0 * inc, Samples{100});
+    s.add_samples(1 * inc, Samples{200});
+    s.add_samples(2 * inc, Samples{300});
+    s.add_samples(3 * inc, Samples{400});
+
+    // Update each of the batches with +1000
+    s.add_samples(0 * inc, Samples{1000});
+    s.add_samples(1 * inc, Samples{2000});
+    s.add_samples(2 * inc, Samples{3000});
+    s.add_samples(3 * inc, Samples{4000});
+
+    // Since the first batch doesn't change (due to the stream size), we expect the output to look like:
+    //    old    |    new     | result
+    // 1.0 * 100 + 0.0 * 1000 = 100
+    // 0.6 * 200 + 0.3 * 2000 = 800
+    // 0.3 * 300 + 0.6 * 3000 = 2100
+    // 0.0 * 400 + 1.0 * 4000 = 4000
+    //
+
+    s.flush_samples(4 * inc);  // flush everything
+    ASSERT_EQ(s.output().size(), 4 * Samples::kBatchSize);
+    float value;
     for (size_t i = 0; i < Samples::kBatchSize; ++i) {
-        float value;
-        ASSERT_TRUE(s.output().pop(value)) << "i=" << i;
-        EXPECT_EQ(value, 1500.0);  // average of 1000 and 2000
+        ASSERT_TRUE(s.output().pop(value));
+        ASSERT_EQ(value, 100.0);
+    }
+    for (size_t i = 0; i < Samples::kBatchSize; ++i) {
+        ASSERT_TRUE(s.output().pop(value));
+        ASSERT_EQ(value, 800.0);
+    }
+    for (size_t i = 0; i < Samples::kBatchSize; ++i) {
+        ASSERT_TRUE(s.output().pop(value));
+        ASSERT_EQ(value, 2100.0);
+    }
+    for (size_t i = 0; i < Samples::kBatchSize; ++i) {
+        ASSERT_TRUE(s.output().pop(value));
+        ASSERT_EQ(value, 4000.0);
     }
 
     // We can't add samples in the past

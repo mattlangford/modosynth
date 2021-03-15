@@ -8,54 +8,60 @@ namespace synth {
 // #############################################################################
 //
 
-Stream::Stream() : raw_samples_(100, true), output_(std::make_unique<ThreadSafeBuffer>(Samples::kSampleRate)) {}
+Stream::Stream(const std::chrono::nanoseconds& fade_time)
+    : fade_time_(fade_time), batches_(100, true), output_(Samples::kSampleRate) {}
 
 //
 // #############################################################################
 //
 
 void Stream::add_samples(const std::chrono::nanoseconds& timestamp, const Samples& samples) {
-    if (timestamp <= end_time_) {
-        // Update the element instead of adding a new one. Average the current sample with the new one.
-        raw_samples_[index_of_timestamp(timestamp)].combine(0.5, samples.samples, 0.5);
+    if (end_time_ && timestamp <= *end_time_) {
+        // Instead of using push(), we'll update here based on how far back this sample is. This creates a fade effect
+        // if a new sample is added.
+        // TODO: This doesn't work for multiple people publishing on the same stream... but oh well
+        float p = percent(timestamp);
+        batches_[index_of_timestamp(timestamp)].combine(p, samples.samples, 1.0 - p);
         return;
     }
 
     end_time_ = timestamp;  // store the timestamp of the start of this batch
-    raw_samples_.push(samples);
+    batches_.push(samples);
 }
 
 //
 // #############################################################################
 //
 
-void Stream::flush_samples(const std::chrono::nanoseconds& amount_to_flush) {
-    for (size_t i = 0; i < static_cast<size_t>(amount_to_flush / Samples::kBatchIncrement); ++i) {
-        auto element = raw_samples_.pop();
-        std::cout << "Popping : " << i << " value? " << element.has_value() << "\n";
+size_t Stream::flush_samples(const std::chrono::nanoseconds& amount_to_flush) {
+    size_t batches_to_flush = static_cast<size_t>(amount_to_flush / Samples::kBatchIncrement);
+    for (size_t i = 0; i < batches_to_flush; ++i) {
+        auto element = batches_.pop();
         if (!element) {
             default_flush();
             continue;
         }
         for (auto sample : element->samples) {
-            output_->push(sample);
+            output().push(sample);
         }
     }
+
+    return batches_to_flush * Samples::kBatchSize;
 }
 
 //
 // #############################################################################
 //
 
-size_t Stream::index_of_timestamp(const std::chrono::nanoseconds& timestamp) {
-    if (raw_samples_.empty() || !end_time_) throw std::runtime_error("Can't get index without adding samples.");
+size_t Stream::index_of_timestamp(const std::chrono::nanoseconds& timestamp) const {
+    if (batches_.empty() || !end_time_) throw std::runtime_error("Can't get index without adding samples.");
 
     // The start time of the oldest element in the buffer
-    std::chrono::nanoseconds start_time = *end_time_ - Samples::kBatchIncrement * (raw_samples_.size() - 1);
+    std::chrono::nanoseconds start_time = *end_time_ - Samples::kBatchIncrement * (batches_.size() - 1);
 
     if (timestamp < start_time) throw std::runtime_error("Asking for timestamp before start of buffer.");
 
-    // 0 will be the oldest entry, raw_samples_.size() - 1 will be the latest
+    // 0 will be the oldest entry, batches_.size() - 1 will be the latest
     return (timestamp - start_time) / Samples::kBatchIncrement;
 }
 
@@ -63,14 +69,29 @@ size_t Stream::index_of_timestamp(const std::chrono::nanoseconds& timestamp) {
 // #############################################################################
 //
 
-ThreadSafeBuffer& Stream::output() { return *output_; }
+ThreadSafeBuffer& Stream::output() { return output_; }
 
+//
+// #############################################################################
+//
+
+size_t Stream::buffered_batches() const { return batches_.size(); }
 //
 // #############################################################################
 //
 
 void Stream::default_flush() {
     throttled(1.0, "Warning: Stream::flush_samples() with end time past end of buffer. Padding with 0s.");
-    for (size_t el = 0; el < Samples::kBatchSize; ++el) output_->push(0);
+    for (size_t el = 0; el < Samples::kBatchSize; ++el) output().push(0);
 }
+
+//
+// #############################################################################
+//
+
+float Stream::percent(const std::chrono::nanoseconds& timestamp) const {
+    auto dt = std::chrono::duration<float>(*end_time_ - timestamp);
+    return std::clamp(dt / fade_time_, 0.f, 1.f);
+}
+
 }  // namespace synth

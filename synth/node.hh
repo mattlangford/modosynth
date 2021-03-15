@@ -6,6 +6,7 @@
 
 #include "synth/debug.hh"
 #include "synth/samples.hh"
+#include "synth/stream.hh"
 
 namespace synth {
 
@@ -70,10 +71,7 @@ private:
 class EjectorNode : public GenericNode {
 public:
     EjectorNode(std::string node_name, const std::string& stream_name)
-        : GenericNode{node_name}, stream_name_(stream_name) {
-        write_ = &data_0;
-        read_ = &data_1;
-    }
+        : GenericNode{node_name}, stream_name_(stream_name) {}
     using GenericNode::GenericNode;
     ~EjectorNode() override = default;
 
@@ -85,8 +83,12 @@ public:
         if (input_counter_ > 0) return false;
         input_counter_ = default_counter_;
 
-        timestamp_ = context.timestamp;
-        std::swap(write_, read_);
+        if (stream_) {
+            std::cout << "Adding samples at t=" << context.timestamp.count() << "\n";
+            stream_->add_samples(context.timestamp, samples_);
+        }
+
+        samples_ = Samples{0};
 
         return true;
     }
@@ -94,28 +96,27 @@ public:
     void connect(size_t) final { default_counter_++; }
     void add_input(size_t, const Samples& data) final {
         input_counter_--;
-        write_->sum(data.samples);
+        samples_.sum(data.samples);
     };
     Samples get_output(size_t) const final { throw std::runtime_error("EjectorNode::get_output()"); }
 
 public:
     const std::string& stream_name() const { return stream_name_; }
-
-    std::pair<std::chrono::nanoseconds, const Samples*> get() const { return std::make_pair(timestamp_, read_); }
+    void set_stream(Stream& stream) { stream_ = &stream; }
 
 private:
+    const std::string stream_name_;
+
     int default_counter_ = 0;
     int input_counter_ = 0;
 
-    Samples* write_;
-    Samples* read_;
-
-    std::string stream_name_;
-    std::chrono::nanoseconds timestamp_;
-
-    Samples data_0;
-    Samples data_1;
+    Samples samples_;
+    Stream* stream_ = nullptr;
 };
+
+//
+// #############################################################################
+//
 
 template <size_t kInputs, size_t kOutputs>
 class AbstractNode : public GenericNode {

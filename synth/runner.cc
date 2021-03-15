@@ -10,8 +10,6 @@ namespace synth {
 //
 
 size_t Runner::spawn(std::unique_ptr<GenericNode> node) {
-    std::lock_guard lock{wrappers_lock_};
-
     size_t id = wrappers_.size();
     auto& wrapper = wrappers_.emplace_back();
     wrapper.node = std::move(node);
@@ -25,8 +23,6 @@ size_t Runner::spawn(std::unique_ptr<GenericNode> node) {
 //
 
 void Runner::connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index) {
-    std::lock_guard lock{wrappers_lock_};
-
     auto& from = wrappers_.at(from_id);
     const auto& to = wrappers_.at(to_id);
 
@@ -51,7 +47,6 @@ void Runner::next(const std::chrono::nanoseconds& now) {
     for (size_t o : order_) order.push(o);
     order_.clear();  // we will repopulate this
 
-    std::lock_guard lock{wrappers_lock_};
     while (!order.empty()) {
         const size_t index = order.front();
         order.pop();

@@ -30,7 +30,6 @@ private:
         std::vector<std::vector<InputAndNode>> outputs;
     };
 
-    mutable std::mutex wrappers_lock_;
     std::vector<NodeWrapper> wrappers_;
     std::vector<size_t> order_;
 };

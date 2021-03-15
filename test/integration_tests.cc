@@ -138,7 +138,7 @@ TEST_F(IntegrationTests, amplifier) {
     auto amplifier_output = ports->position_of(amplifier_handle, 0, false);
     auto speaker_input = ports->position_of(speaker_handle, 0, true);
 
-    bridge.next();
+    bridge.process();
 
     auto check_filled = [this](const float fill) {
         ASSERT_FALSE(speaker_output.empty());
@@ -149,7 +149,7 @@ TEST_F(IntegrationTests, amplifier) {
         }
     };
 
-    // Even if things aren't connected it'll be outputting (negative ones though)
+    // Even if things aren't connected it'll be outputting
     check_filled(0.f);
 
     // Connect the amplifier up!
@@ -157,17 +157,17 @@ TEST_F(IntegrationTests, amplifier) {
     click_and_move(knob1_output, amplifier_gain, window->manager());
     click_and_move(amplifier_output, speaker_input, window->manager());
 
-    bridge.next();
+    bridge.process();
     check_filled(0.f);
 
     bridge.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
     bridge.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
 
-    bridge.next();
+    bridge.process();
     check_filled(10 * 0.5 * 0.1);  // multiplied by 10 since the amplifier does this internally
 
     bridge.set_value(knob1_handle.synth_id, 0.1);  // 0.1 gain
 
-    bridge.next();
+    bridge.process();
     check_filled(10 * 0.1 * 0.1);
 }

@@ -4,7 +4,7 @@
 
 namespace synth {
 struct Samples {
-    Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
+    Samples(float value = 0.f) { fill(value); }
 
     static constexpr uint64_t kSampleRate = 44000;
     static constexpr uint64_t kBatchSize = 512;
@@ -27,5 +27,6 @@ struct Samples {
     void combine(float weight, const std::array<float, kBatchSize>& rhs, float rhs_weight) {
         for (size_t i = 0; i < kBatchSize; ++i) samples[i] = weight * samples[i] + rhs_weight * rhs[i];
     }
+    void fill(float value) { std::fill(samples.begin(), samples.end(), value); }
 };
 }  // namespace synth

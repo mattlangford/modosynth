@@ -20,13 +20,20 @@ TEST(EjectorNode, basic) {
     EXPECT_TRUE(node.invoke(context));
     EXPECT_FALSE(node.invoke(context));
 
+    Stream stream(std::chrono::seconds(10));
+    node.set_stream(stream);
+
     node.add_input(0, Samples{10.0});
     EXPECT_FALSE(node.invoke(context));
     node.add_input(0, Samples{20.0});
     EXPECT_TRUE(node.invoke(context));
 
-    auto [timestamp, data] = node.get();
-    EXPECT_EQ(timestamp, context.timestamp);
-    for (size_t i = 0; i < data->samples.size(); ++i) EXPECT_EQ(data->samples[i], 30.0) << i;
+    stream.flush_samples(Samples::kBatchIncrement);  // only one sample to flush
+    ASSERT_EQ(stream.output().size(), Samples::kBatchSize);
+    for (size_t i = 0; i < Samples::kBatchSize; ++i) {
+        float value;
+        EXPECT_TRUE(stream.output().pop(value));
+        ASSERT_EQ(value, 30.0);
+    }
 }
 }  // namespace synth
