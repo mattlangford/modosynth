@@ -12,7 +12,7 @@ namespace synth {
 // #############################################################################
 //
 
-AudioDriver::AudioDriver() : buffer_(Buffer::Config{44000}) {
+AudioDriver::AudioDriver() : buffer_(ThreadSafeBuffer::Config{44000}) {
     soundio = soundio_create();
     if (!soundio) {
         throw std::runtime_error("soundio_create() failed, out of memory?");
@@ -120,7 +120,7 @@ void AudioDriver::write_inputs(const float *input, size_t size) {
     }
 }
 
-Buffer &AudioDriver::buffer() { return buffer_; }
+ThreadSafeBuffer &AudioDriver::buffer() { return buffer_; }
 
 //
 // #############################################################################

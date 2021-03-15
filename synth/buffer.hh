@@ -9,20 +9,20 @@ namespace synth {
 /// @brief Simple circular buffer for single producer single consumer type access where writes and reads can happen
 /// concurrently as long as the buffer isn't close to capacity.
 ///
-class Buffer {
+class ThreadSafeBuffer {
 public:
     struct Config {
         size_t buffer_size = 44'000;  // one second
     };
 
 public:
-    explicit Buffer(const Config& config);
+    explicit ThreadSafeBuffer(const Config& config);
 
-    ~Buffer() = default;
-    Buffer(const Buffer& rhs) = delete;
-    Buffer(Buffer&& rhs) = delete;
-    Buffer& operator=(const Buffer& rhs) = delete;
-    Buffer& operator=(Buffer&& rhs) = delete;
+    ~ThreadSafeBuffer() = default;
+    ThreadSafeBuffer(const ThreadSafeBuffer& rhs) = delete;
+    ThreadSafeBuffer(ThreadSafeBuffer&& rhs) = delete;
+    ThreadSafeBuffer& operator=(const ThreadSafeBuffer& rhs) = delete;
+    ThreadSafeBuffer& operator=(ThreadSafeBuffer&& rhs) = delete;
 
 public:
     ///

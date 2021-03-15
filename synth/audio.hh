@@ -21,7 +21,7 @@ public:
 
     void write_inputs(const float *input, size_t size);
 
-    Buffer &buffer();
+    ThreadSafeBuffer &buffer();
 
 private:
     static void underflow_callback(SoundIoOutStream *);
@@ -35,6 +35,6 @@ private:
     SoundIoDevice *device = nullptr;
     SoundIoOutStream *outstream = nullptr;
 
-    Buffer buffer_;
+    ThreadSafeBuffer buffer_;
 };
 }  // namespace synth

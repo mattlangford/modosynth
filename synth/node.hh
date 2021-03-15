@@ -6,14 +6,14 @@
 
 namespace synth {
 
-constexpr uint64_t kSampleRate = 44000;
+constexpr uint64_t kSamplesRate = 44000;
 constexpr bool kDebug = false;
 
 struct Samples {
     Samples(float fill = 0.f) { std::fill(samples.begin(), samples.end(), fill); }
 
     static constexpr size_t kBatchSize = 512;
-    static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
+    static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSamplesRate};
     static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
     static_assert(kSampleIncrement.count() > 1);
     std::array<float, kBatchSize> samples;
@@ -24,6 +24,13 @@ struct Samples {
     template <typename F>
     void populate_samples(F f) {
         for (size_t i = 0; i < kBatchSize; ++i) samples[i] = f(i);
+    }
+
+    void sum(const Samples& rhs, float weight) {
+        for (size_t i = 0; i < kBatchSize; ++i) samples[i] += weight * rhs.samples[i];
+    }
+    void combine(float weight, const Samples& rhs, float rhs_weight) {
+        for (size_t i = 0; i < kBatchSize; ++i) samples[i] = weight * samples[i] + rhs_weight * rhs.samples[i];
     }
 };
 
@@ -40,24 +47,85 @@ public:
     virtual ~GenericNode() = default;
 
 public:
-    virtual size_t num_inputs() const = 0;
-    virtual size_t num_outputs() const = 0;
-
-    virtual void add_input(size_t input_index) = 0;
-    virtual bool ready() const = 0;
-    virtual void invoke(const Context& context) = 0;
-    virtual void accept(size_t index, const Samples& incoming_samples) = 0;
-    virtual void send(size_t output_index, size_t input_index, GenericNode& to) const = 0;
-
     void set_value(float value) { value_ = value; };
     float get_value() const { return value_; }
 
     const std::string& name() const { return name_; }
 
+public:
+    virtual size_t num_inputs() const = 0;
+    virtual size_t num_outputs() const = 0;
+
+    virtual void add_input(size_t input_index) = 0;
+    virtual void set_input(size_t index, const Samples& input) = 0;
+    virtual Samples get_output(size_t index) const = 0;
+
+    // Return if it was ready to run
+    virtual bool invoke(const Context& context) = 0;
+
 private:
     std::string name_;
     float value_ = 0.0;
 };
+
+///
+/// @brief Node which can inject values into the graph
+///
+class InjectorNode : GenericNode {
+public:
+    using GenericNode::GenericNode;
+    ~InjectorNode() override = default;
+
+    size_t num_inputs() const final { return 0; }
+    size_t num_outputs() const final { return 1; }
+
+    // always ready
+    bool invoke(const Context&) final { return true; }
+
+    void add_input(size_t) final { throw std::runtime_error("InjectorNode::add_input()"); }
+    void set_input(size_t, const Samples&) final { throw std::runtime_error("InjectorNode::set_input()"); };
+    Samples get_output(size_t) const final { return Samples{value_.load()}; }
+
+public:
+    void set_value(float value) { value_.store(value); }
+
+private:
+    std::atomic<float> value_;
+};
+
+///
+/// @brief Node which can output values from the graph
+///
+// class OutputNode : GenericNode
+// {
+// public:
+//     using GenericNode::GenericNode;
+//     ~InputNode() override = default;
+//
+//     size_t num_inputs() const final { return 0; }
+//     size_t num_outputs() const final { return kPorts; }
+//
+//     // always ready
+//     bool invoke(const Context&) final {
+//         if (!samples_) return;
+//     }
+//
+//     void accept(size_t, const Samples& samples) final {
+//     }
+//
+//     void send(size_t, AcceptFunction& to) const final {
+//         to(Samples{value_load()});
+//     }
+//
+// public:
+//     void set_value(float value) {
+//     }
+//
+// private:
+//     std::chrono::nanoseconds timestamp_;
+//     std::vector<Samples> buffer_;
+// };
+//
 
 template <size_t kInputs, size_t kOutputs>
 class AbstractNode : public GenericNode {
@@ -82,30 +150,25 @@ public:
         counters_.at(input_index)++;
     }
 
-    bool ready() const final {
-        for (auto& count : counters_) {
-            if (kDebug) std::cerr << name() << "::ready() count:" << count << "\n";
-
-            if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
-
-            if (count != 0) return false;
-        }
-        return true;
-    }
-
-    void invoke(const Context& context) final {
+    bool invoke(const Context& context) final {
         if (kDebug) std::cerr << name() << "::invoke()\n";
+        if (!ready()) {
+            if (kDebug) std::cerr << name() << "::invoke() not ready\n";
+            return false;
+        }
+
         // Pass to the user implemented function
         invoke(context, next_inputs_, outputs_);
 
         // Reset the internal state
         counters_ = initial_counters_;
         next_inputs_ = {};
+        return true;
     }
 
-    void accept(size_t input_index, const Samples& incoming_samples) final {
+    void set_input(size_t input_index, const Samples& incoming_samples) final {
         if (kDebug)
-            std::cerr << name() << "::accept(input_index=" << input_index << ") counter: " << counters_[input_index]
+            std::cerr << name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]
                       << "\n";
 
         auto& next_input = next_inputs_[input_index];
@@ -117,18 +180,25 @@ public:
         counters_[input_index] -= 1;
     }
 
-    void send(size_t output_index, size_t input_index, GenericNode& to) const final {
-        if (kDebug)
-            std::cerr << name() << "::send(output_index=" << output_index << ", input_index=" << input_index
-                      << ", to=" << to.name() << ")\n";
-        to.accept(input_index, outputs_[output_index]);
-    }
+    Samples get_output(size_t index) const final { return outputs_[index]; }
 
 protected:
     virtual void invoke(const Context&, const Inputs& inputs, Outputs& outputs) const {
         return invoke(inputs, outputs);
     }
     virtual void invoke(const Inputs&, Outputs&) const {};
+
+private:
+    bool ready() const {
+        for (auto& count : counters_) {
+            if (kDebug) std::cerr << name() << "::ready() count:" << count << "\n";
+
+            if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
+
+            if (count != 0) return false;
+        }
+        return true;
+    }
 
 private:
     std::array<int, kInputs> initial_counters_;

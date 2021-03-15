@@ -6,8 +6,8 @@
 #include <thread>
 
 namespace synth {
-TEST(Buffer, basic) {
-    Buffer buffer{Buffer::Config{2}};
+TEST(ThreadSafeBuffer, basic) {
+    ThreadSafeBuffer buffer{ThreadSafeBuffer::Config{2}};
 
     float result;
     EXPECT_FALSE(buffer.pop(result));
@@ -33,8 +33,8 @@ TEST(Buffer, basic) {
 // #############################################################################
 //
 
-TEST(Buffer, threaded) {
-    Buffer buffer{Buffer::Config{1000}};
+TEST(ThreadSafeBuffer, threaded) {
+    ThreadSafeBuffer buffer{ThreadSafeBuffer::Config{1000}};
 
     float result;
     EXPECT_FALSE(buffer.pop(result));

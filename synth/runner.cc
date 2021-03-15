@@ -1,6 +1,6 @@
 #include "synth/runner.hh"
 
-namespace synth{
+namespace synth {
 
 //
 // #############################################################################
@@ -64,8 +64,8 @@ void Runner::next() {
         GenericNode& node = *wrapper.node;
         const auto& outputs = wrapper.outputs;
 
-        // Node is waiting on input data
-        if (!node.ready()) {
+        // Try to invoke the node if it's ready
+        if (!node.invoke(context)) {
             if (kDebug) {
                 std::cerr << "Runner::next(): " << node.name() << " not ready.\n";
             }
@@ -75,13 +75,13 @@ void Runner::next() {
             continue;
         }
 
-        // Invoke this node and store the order in which we ran it
-        node.invoke(context);
+        // Store the order in which we ran it
         order_.push_back(index);
 
         for (size_t output_index = 0; output_index < outputs.size(); output_index++) {
-            for (auto& [input_index, next_node] : outputs[output_index]) {
-                node.send(output_index, input_index, *next_node);
+            const auto output = node.get_output(output_index);
+            for (auto& [input_index, input_node] : outputs[output_index]) {
+                input_node->set_input(input_index, output);
             }
         }
     }
@@ -111,8 +111,8 @@ float Runner::get_value(size_t index) const {
     if (kDebug) {
         std::lock_guard lock{wrappers_lock_};
         const auto& node = wrappers_.at(index).node;
-        std::cerr << "Runner::get_value(index=" << node->name() << " ( " << index
-                  << "), value=" << node->get_value() << ")\n";
+        std::cerr << "Runner::get_value(index=" << node->name() << " ( " << index << "), value=" << node->get_value()
+                  << ")\n";
     }
     std::lock_guard lock{wrappers_lock_};
     return wrappers_.at(index).node->get_value();
@@ -129,8 +129,7 @@ Runner::ScopedPrinter::~ScopedPrinter() {
     std::cout << "Runner::next() "
               << std::chrono::duration_cast<std::chrono::microseconds>(Samples::kBatchIncrement).count()
               << " us simulated in "
-              << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start)
-                     .count()
+              << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count()
               << " us\n";
 
     next_ = start + kInc;
