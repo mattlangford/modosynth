@@ -116,7 +116,7 @@ public:
             const std::chrono::nanoseconds min_buffered_time = min_buffered_batches * Samples::kBatchIncrement;
             auto rollback_time = std::min(kMaxRollbackFadeTime, min_buffered_time);
             timestamp_ -= rollback_time;
-            debug("new timestamp" << timestamp_);
+            debug("new timestamp" << timestamp_.count());
         }
 
         // Every call to next() will increase the number of buffered batches by 1. If there are enough batches,
@@ -145,7 +145,7 @@ private:
             if (stream->output().size() < kMinOutputStreamBufferSize) {
                 stream->flush_samples(kMinOutputStreamBufferTime);
             }
-            debug("After flushing, stream: " << name << " has output size: " << stream->output.size()
+            debug("After flushing, stream: " << name << " has output size: " << stream->output().size()
                                              << " and buffered size: " << stream->buffered_batches());
 
             // Then compute the number of generated batches left in the stream

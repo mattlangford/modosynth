@@ -11,7 +11,7 @@ struct SoundIoOutStream;
 namespace synth {
 class AudioDriver {
 public:
-    AudioDriver();
+    AudioDriver(ThreadSafeBuffer &buffer);
     ~AudioDriver();
 
 public:
@@ -35,6 +35,6 @@ private:
     SoundIoDevice *device = nullptr;
     SoundIoOutStream *outstream = nullptr;
 
-    ThreadSafeBuffer buffer_;
+    ThreadSafeBuffer &buffer_;
 };
 }  // namespace synth

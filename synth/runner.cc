@@ -41,7 +41,7 @@ void Runner::next(const std::chrono::nanoseconds& now) {
     auto timer = ScopedPrinter{std::chrono::steady_clock::now()};
     Context context;
     context.timestamp = now;
-    debug("timestamp=" << now << "ns");
+    debug("timestamp=" << now.count() << "ns");
 
     std::queue<size_t> order;
     for (size_t o : order_) order.push(o);

@@ -126,9 +126,10 @@ TEST_F(IntegrationTests, amplifier) {
 
     auto& output = bridge.get_stream_output("/speaker");
     auto check_filled = [&output](const float fill) {
+        EXPECT_GT(output.size(), 0);
+
         float value;
-        for (size_t i = 0; i < output.size(); ++i)
-        {
+        for (size_t i = 0; i < output.size(); ++i) {
             ASSERT_TRUE(output.pop(value));
             EXPECT_EQ(value, fill);
         }

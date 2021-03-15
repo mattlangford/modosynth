@@ -2,13 +2,15 @@
 #include <iostream>
 #include <sstream>
 
-// #define DEBUG_MODE
+#define DEBUG_MODE
 
 #ifdef DEBUG_MODE
-#define debug(s) std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << "(...) [DEBUG]:" << s << "\n";
+#define debug(s) std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << "(...) [DEBUG]: " << s << "\n";
 #else
-#define debug(stream) \
-    do {              \
+#define debug(stream)         \
+    do {                      \
+        std::stringstream ss; \
+        ss << stream          \
     } while (false)
 #endif
 
