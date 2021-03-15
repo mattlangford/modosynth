@@ -18,26 +18,12 @@
 // #############################################################################
 //
 
-struct SpeakerShim final : public synth::AbstractNode<1, 0> {
-    SpeakerShim(std::queue<float>& output_) : AbstractNode{"SpeakerShim"}, output(output_) {}
-
-    void invoke(const Inputs& inputs, Outputs&) const override {
-        for (float sample : inputs[0].samples) output.push(sample);
-    }
-
-    std::queue<float>& output;
-};
-
-//
-// #############################################################################
-//
-
 struct IntegrationTests : public ::testing::Test {
     IntegrationTests() {
         using namespace object::blocks;
 
         int i = 0;
-        bridge.add_factory(Speaker::kName, [this]() { return std::make_unique<SpeakerShim>(speaker_output); });
+        bridge.add_factory(Speaker::kName, [i]() mutable { return std::make_unique<Speaker>(i++); });
         bridge.add_factory(Knob::kName, [i]() mutable { return std::make_unique<Knob>(i++); });
         bridge.add_factory(Amplifier::kName, [i]() mutable { return std::make_unique<Amplifier>(i++); });
 
@@ -60,8 +46,6 @@ struct IntegrationTests : public ::testing::Test {
     std::shared_ptr<objects::PortsObjectManager> ports;
     std::shared_ptr<objects::CableObjectManager> cables;
     std::shared_ptr<objects::BlockObjectManager> blocks;
-
-    std::queue<float> speaker_output;
 };
 
 //
@@ -140,12 +124,13 @@ TEST_F(IntegrationTests, amplifier) {
 
     bridge.process();
 
-    auto check_filled = [this](const float fill) {
-        ASSERT_FALSE(speaker_output.empty());
-        EXPECT_EQ(speaker_output.size(), synth::Samples::kBatchSize) << fill;
-        while (!speaker_output.empty()) {
-            ASSERT_EQ(speaker_output.front(), fill);
-            speaker_output.pop();
+    auto& output = bridge.get_stream_output("/speaker");
+    auto check_filled = [&output](const float fill) {
+        float value;
+        for (size_t i = 0; i < output.size(); ++i)
+        {
+            ASSERT_TRUE(output.pop(value));
+            EXPECT_EQ(value, fill);
         }
     };
 
