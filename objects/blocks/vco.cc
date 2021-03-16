@@ -38,8 +38,6 @@ void VoltageControlledOscillator::invoke(const synth::Context& context, const In
     int discrete_shape = static_cast<int>(shape);
     float percent = shape - discrete_shape;
 
-    throttled(1, "shape: " << discrete_shape << ", percent: " << percent << ", f: " << frequency);
-
     const Shape shape0 = static_cast<Shape>(discrete_shape % max);
     const float mult0 = percent;
     const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % max);

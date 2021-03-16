@@ -27,13 +27,13 @@ public:
     ~Bridge() { stop_processing_thread(); }
 
     // When rolling back due to an input change, we'll go back at max this far
-    inline static constexpr auto kMaxRollbackFadeTime = Samples::time_from_batches(2);
+    inline static constexpr auto kMaxRollbackFadeTime = Samples::time_from_batches(7);
 
     // When buffering stream data, we'll make sure the output has at least this much data
     static constexpr size_t kOutputBufferSize = 5;  // batches
 
     // When updating the stream input buffers, we'll make sure they have at least this much time buffered
-    static constexpr size_t kInputBufferSizeSize = 20;  // batches
+    static constexpr size_t kInputBufferSizeSize = 25;  // batches
 
 public:
     using NodeFactory = std::function<std::unique_ptr<GenericNode>()>;
@@ -91,13 +91,14 @@ public:
     }
 
     void process() {
-        debug("============== Process timestamp: " << timestamp_);
-        // Lets check out much buffered data we've got so far
+        // Lets check out much buffered data we've got so far. We don't want to go back farther than that
         size_t min_buffered_batches = -1;
         for (const auto& [name, stream] : streams_) {
             min_buffered_batches = std::min(min_buffered_batches, stream->buffered_batches());
         }
         debug("min_buffered_batches: " << min_buffered_batches);
+
+        auto timestamp = timestamp_;
 
         // is not generally thread safe, but here I'm only using it as a hint if there are things to do or not.
         if (!queued_values_.empty()) {
@@ -121,19 +122,20 @@ public:
             // Revert back a few batches so that we can fade between
             const std::chrono::nanoseconds min_buffered_time = Samples::time_from_batches(min_buffered_batches);
             auto rollback_time = std::min(kMaxRollbackFadeTime, min_buffered_time);
-            timestamp_ -= rollback_time;
+            timestamp -= rollback_time;
             debug("New timestamp: " << timestamp_ << " rollback_time: " << rollback_time << " min("
                                     << kMaxRollbackFadeTime << ", " << min_buffered_time << ")");
         }
 
         // Every call to next() will increase the number of buffered batches by 1. If there are enough batches,
-        // this loop will be skipped entirely
+        // this loop will be skipped entirely. The loop will always leave the timestamp at the end time.
         {
             std::scoped_lock lock{mutex_};
-            for (; min_buffered_batches < kInputBufferSizeSize; min_buffered_batches++) {
-                runner_.next(timestamp_);
-                timestamp_ += Samples::kBatchIncrement;
+            for (; min_buffered_batches < kInputBufferSizeSize || timestamp < timestamp_; ++min_buffered_batches) {
+                runner_.next(timestamp);
+                timestamp += Samples::kBatchIncrement;
             }
+            timestamp_ = timestamp;
         }
 
         // Now we can flush all of the streams
@@ -151,6 +153,7 @@ private:
     void process_thread() {
         while (!shutdown_) {
             process();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
 

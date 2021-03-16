@@ -71,7 +71,11 @@ size_t Stream::index_of_timestamp(const std::chrono::nanoseconds& timestamp) con
     // The start time of the oldest element in the buffer
     std::chrono::nanoseconds start_time = *end_time_ - Samples::kBatchIncrement * (batches_.size() - 1);
 
-    if (timestamp < start_time) throw std::runtime_error("Asking for timestamp before start of buffer.");
+    if (timestamp < start_time) {
+        std::cerr << "Timestamp: " << timestamp << " is before " << start_time << ". End time: " << *end_time_ << ", "
+                  << batches_.size() << " batches buffered\n";
+        throw std::runtime_error("Asking for timestamp before start of buffer.");
+    }
 
     // 0 will be the oldest entry, batches_.size() - 1 will be the latest
     return (timestamp - start_time) / Samples::kBatchIncrement;

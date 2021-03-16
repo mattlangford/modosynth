@@ -30,7 +30,7 @@ void audio_loop(synth::Bridge& bridge, bool& shutdown) {
     synth::AudioDriver driver{bridge.get_stream_output("/speaker")};
     while (!shutdown) {
         driver.flush_events();
-        std::this_thread::yield();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
