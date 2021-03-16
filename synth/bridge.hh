@@ -18,22 +18,22 @@ struct Identifier {
     size_t id;
     size_t port;
 };
+
 class Bridge {
 public:
     Bridge() {
         // TODO: This needs to be there so the audio loop works
-        streams_["/speaker"] = std::make_unique<Stream>(kMaxRollbackFadeTime);
+        streams_["/speaker"] = std::make_unique<Stream>();
     }
     ~Bridge() { stop_processing_thread(); }
 
     // When rolling back due to an input change, we'll go back at max this far
-    inline static constexpr auto kMaxRollbackFadeTime = Samples::time_from_batches(7);
+    static constexpr std::chrono::nanoseconds kMaxRollbackFadeTime = std::chrono::milliseconds(20);
+    static_assert(Samples::batches_from_time(kMaxRollbackFadeTime) > 0);
 
     // When buffering stream data, we'll make sure the output has at least this much data
-    static constexpr size_t kOutputBufferSize = 5;  // batches
-
-    // When updating the stream input buffers, we'll make sure they have at least this much time buffered
-    static constexpr size_t kInputBufferSizeSize = 25;  // batches
+    static constexpr std::chrono::nanoseconds kOutputBufferTime = std::chrono::milliseconds(15);
+    static_assert(Samples::batches_from_time(kOutputBufferTime) > 0);
 
 public:
     using NodeFactory = std::function<std::unique_ptr<GenericNode>()>;
@@ -58,7 +58,7 @@ public:
                 injectors_[id] = ptr;
             } else if (auto ptr = dynamic_cast<EjectorNode*>(node_ptr)) {
                 auto& stream_ptr = streams_[ptr->stream_name()];
-                if (!stream_ptr) stream_ptr = std::make_unique<Stream>(kMaxRollbackFadeTime);
+                if (!stream_ptr) stream_ptr = std::make_unique<Stream>();
                 std::cout << "Loaded stream: '" << ptr->stream_name() << "'" << std::endl;
                 ptr->set_stream(*stream_ptr);
             }
@@ -90,17 +90,9 @@ public:
         if (processing_thread_.joinable()) processing_thread_.join();
     }
 
-    void process() {
-        // Lets check out much buffered data we've got so far. We don't want to go back farther than that
-        size_t min_buffered_batches = -1;
-        for (const auto& [name, stream] : streams_) {
-            min_buffered_batches = std::min(min_buffered_batches, stream->buffered_batches());
-        }
-        debug("min_buffered_batches: " << min_buffered_batches);
-
-        auto timestamp = timestamp_;
-
-        // is not generally thread safe, but here I'm only using it as a hint if there are things to do or not.
+    void process(const size_t batches) {
+        debug("Generating " << batches << " batches\n");
+        // This is not generally thread safe, but here I'm only using it as a hint if there are things to do or not.
         if (!queued_values_.empty()) {
             // Lock and swap the queue
             std::queue<std::pair<size_t, float>> local_queued_values;
@@ -111,6 +103,7 @@ public:
 
             debug("Swapped queued, size: " << local_queued_values.size());
 
+            // Push new values for all of the injector nodes
             while (!local_queued_values.empty()) {
                 auto& [index, value] = local_queued_values.front();
                 if (auto it = injectors_.find(index); it != injectors_.end()) {
@@ -118,28 +111,20 @@ public:
                 }
                 local_queued_values.pop();
             }
-
-            // Revert back a few batches so that we can fade between
-            const std::chrono::nanoseconds min_buffered_time = Samples::time_from_batches(min_buffered_batches);
-            auto rollback_time = std::min(kMaxRollbackFadeTime, min_buffered_time);
-            timestamp -= rollback_time;
-            debug("New timestamp: " << timestamp_ << " rollback_time: " << rollback_time << " min("
-                                    << kMaxRollbackFadeTime << ", " << min_buffered_time << ")");
         }
 
         // Every call to next() will increase the number of buffered batches by 1. If there are enough batches,
-        // this loop will be skipped entirely. The loop will always leave the timestamp at the end time.
+        // this loop will be skipped entirely.
         {
             std::scoped_lock lock{mutex_};
-            for (; min_buffered_batches < kInputBufferSizeSize || timestamp < timestamp_; ++min_buffered_batches) {
-                runner_.next(timestamp);
-                timestamp += Samples::kBatchIncrement;
+            for (size_t batch = 0; batch < batches; ++batch) {
+                runner_.next(timestamp_);
+                timestamp_ += Samples::kBatchIncrement;
             }
-            timestamp_ = timestamp;
         }
 
-        // Now we can flush all of the streams
-        flush_stream_if_needed();
+        // Now we can flush all of the streams which will populate them
+        flush_streams();
     }
 
     void clear_streams() {
@@ -152,25 +137,33 @@ public:
 private:
     void process_thread() {
         while (!shutdown_) {
-            process();
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            // Lets check out much buffered data we've got so far, if we've got enough still buffered then we don't
+            // need to process any further
+            size_t min_buffered_samples = -1;
+            for (const auto& [name, stream] : streams_) {
+                min_buffered_samples = std::min(min_buffered_samples, stream->output().size());
+            }
+            const size_t min_buffered_batches = min_buffered_samples / Samples::kBatchSize;
+            debug("min_buffered_batches: " << min_buffered_batches);
+
+            constexpr size_t kOutputBufferSize = Samples::batches_from_time(kOutputBufferTime);
+            if (min_buffered_batches > kOutputBufferSize) {
+                std::this_thread::sleep_for(0.3 * kOutputBufferTime);
+                continue;
+            }
+
+            const size_t batches_to_generate = kOutputBufferSize;
+            process(batches_to_generate);
         }
     }
 
-    size_t flush_stream_if_needed() {
-        size_t min_buffered_batches = -1;
+    void flush_streams() {
         for (const auto& [name, stream] : streams_) {
-            constexpr size_t kOutputBufferSampleSize = kOutputBufferSize * Samples::kBatchSize;
             // Flush the stream if the current output buffer size is too small
-            if (stream->output().size() < kOutputBufferSampleSize) {
-                debug("Stream: " << name << " flushing " << kOutputBufferSize);
-                stream->flush_batches(kOutputBufferSize);
+            if (stream->output().size() < Samples::samples_from_time(kOutputBufferTime)) {
+                stream->flush();
             }
-
-            // Then compute the number of generated batches left in the stream
-            min_buffered_batches = std::min(min_buffered_batches, stream->buffered_batches());
         }
-        return min_buffered_batches;
     }
 
 private:

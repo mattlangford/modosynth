@@ -20,7 +20,7 @@ TEST(EjectorNode, basic) {
     EXPECT_TRUE(node.invoke(context));
     EXPECT_FALSE(node.invoke(context));
 
-    Stream stream(std::chrono::seconds(10));
+    Stream stream;
     node.set_stream(stream);
 
     node.add_input(0, Samples{10.0});
@@ -28,7 +28,7 @@ TEST(EjectorNode, basic) {
     node.add_input(0, Samples{20.0});
     EXPECT_TRUE(node.invoke(context));
 
-    stream.flush_samples(Samples::kBatchIncrement);  // only one sample to flush
+    EXPECT_EQ(stream.flush(), 1);
     ASSERT_EQ(stream.output().size(), Samples::kBatchSize);
     for (size_t i = 0; i < Samples::kBatchSize; ++i) {
         float value;

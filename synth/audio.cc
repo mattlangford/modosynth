@@ -3,6 +3,7 @@
 #include <soundio/soundio.h>
 
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -150,12 +151,16 @@ void AudioDriver::write_callback(SoundIoOutStream *outstream, int frame_count_mi
         }
         const struct SoundIoChannelLayout *layout = &outstream->layout;
 
+        static std::ofstream output("/tmp/out.txt", std::ios::out);
+
         for (int frame = 0; frame < frame_count; frame++) {
             float sample = 0.0;
             if (!instance.buffer_.pop(sample)) {
-                std::cout << "No data left in buffer! " << frame << "\n";
+                throttled(0.1, "No data left in buffer! " << frame);
                 sample = 0.0;
             }
+            output << sample << ", ";
+            continue;
 
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
                 *reinterpret_cast<float *>(areas[channel].ptr) = sample;

@@ -125,14 +125,13 @@ TEST_F(IntegrationTests, amplifier) {
     auto& output = bridge.get_stream_output("/speaker");
 
     EXPECT_EQ(output.size(), 0);
-    bridge.process();
+    bridge.process(1);
 
     float value;
 
     EXPECT_GT(output.size(), 0);
-    for (size_t i = 0; i < output.size(); ++i) {
-        ASSERT_TRUE(output.pop(value));
-        ASSERT_EQ(value, 0.0) << "i=" << i;  // the default value
+    while (output.pop(value)) {
+        ASSERT_EQ(value, 0.0);
     }
 
     // Connect the amplifier up!
@@ -140,33 +139,28 @@ TEST_F(IntegrationTests, amplifier) {
     click_and_move(knob1_output, amplifier_gain, window->manager());
     click_and_move(amplifier_output, speaker_input, window->manager());
 
-    bridge.process();
+    bridge.process(1);
     EXPECT_GT(output.size(), 0);
-    for (size_t i = 0; i < output.size(); ++i) {
-        ASSERT_TRUE(output.pop(value));
-        ASSERT_EQ(value, 0.0) << "i=" << i;
+    while (output.pop(value)) {
+        ASSERT_EQ(value, 0.0);
     }
-    bridge.clear_streams();
 
     bridge.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
     bridge.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
 
-    bridge.process();
+    bridge.process(1);
     EXPECT_GT(output.size(), 0);
-    for (size_t i = 0; i < output.size(); ++i) {
-        ASSERT_TRUE(output.pop(value));
-        ASSERT_NEAR(value, 10. * 0.5 * 0.1, 1E-5)
-            << "i=" << i;  // multiplied by 10 since the amplifier does this internally
+    while (output.pop(value)) {
+        // multiplied by 10 since the amplifier does this internally
+        ASSERT_NEAR(value, 10. * 0.5 * 0.1, 1E-5);
     }
-    bridge.clear_streams();
 
     bridge.set_value(knob1_handle.synth_id, 0.1);  // 0.1 gain
 
-    bridge.process();
+    bridge.process(1);
     EXPECT_GT(output.size(), 0);
-    for (size_t i = 0; i < output.size(); ++i) {
-        ASSERT_TRUE(output.pop(value));
-        ASSERT_NEAR(value, 10. * 0.1 * 0.1, 1E-5)
-            << "i=" << i;  // multiplied by 10 since the amplifier does this internally
+    while (output.pop(value)) {
+        // multiplied by 10 since the amplifier does this internally
+        ASSERT_NEAR(value, 10. * 0.1 * 0.1, 1E-5);
     }
 }
