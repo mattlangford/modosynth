@@ -62,7 +62,7 @@ public:
     void set_value(float value) { value_.store(value); }
 
 private:
-    std::atomic<float> value_;
+    std::atomic<float> value_ = {0};
 };
 
 ///

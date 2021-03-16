@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "objects/blocks/knob.hh"
+#include "synth/debug.hh"
 
 namespace object::blocks {
 namespace {
@@ -28,14 +29,17 @@ VoltageControlledOscillator::VoltageControlledOscillator(size_t count) : Abstrac
 //
 
 void VoltageControlledOscillator::invoke(const synth::Context& context, const Inputs& inputs, Outputs& outputs) const {
+    int max = static_cast<int>(Shape::kMax);
+
     // Both of these are assumed to be constant during these samples
     const float frequency = compute_freq(inputs[0].samples[0]);
-    const float shape = inputs[1].samples[0];
+    const float shape = std::clamp(inputs[1].samples[0], 0.f, static_cast<float>(Shape::kMax));
 
     int discrete_shape = static_cast<int>(shape);
     float percent = shape - discrete_shape;
 
-    int max = static_cast<int>(Shape::kMax);
+    throttled(1, "shape: " << discrete_shape << ", percent: " << percent << ", f: " << frequency);
+
     const Shape shape0 = static_cast<Shape>(discrete_shape % max);
     const float mult0 = percent;
     const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % max);
@@ -110,11 +114,11 @@ auto VoltageControlledOscillator::square_batch(const float frequency, const std:
 
 auto VoltageControlledOscillator::sin_batch(const float frequency, const std::chrono::nanoseconds& t) -> Batch {
     Batch batch;
-    const float term = 2 * M_PI * frequency;
+    const double term = 2 * M_PI * frequency;
 
     std::chrono::nanoseconds ns = t;
     for (size_t i = 0; i < batch.size(); ++i, ns += synth::Samples::kSampleIncrement) {
-        batch[i] = std::sin(term * std::chrono::duration<float>(ns).count());
+        batch[i] = std::sin(term * std::chrono::duration<double>(ns).count());
     }
     return batch;
 }

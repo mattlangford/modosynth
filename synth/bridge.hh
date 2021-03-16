@@ -47,6 +47,7 @@ public:
 
 public:
     size_t spawn(const std::string& name) {
+        std::lock_guard lock(mutex_);
         if (auto* f_ptr = get_factory(name)) {
             std::unique_ptr<GenericNode> node = (*f_ptr)();
             GenericNode* node_ptr = node.get();
