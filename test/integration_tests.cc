@@ -122,21 +122,18 @@ TEST_F(IntegrationTests, amplifier) {
     auto amplifier_output = ports->position_of(amplifier_handle, 0, false);
     auto speaker_input = ports->position_of(speaker_handle, 0, true);
 
+    auto& output = bridge.get_stream_output("/speaker");
+
+    EXPECT_EQ(output.size(), 0);
     bridge.process();
 
-    auto& output = bridge.get_stream_output("/speaker");
-    auto check_filled = [&output](const float fill) {
-        EXPECT_GT(output.size(), 0);
+    float value;
 
-        float value;
-        for (size_t i = 0; i < output.size(); ++i) {
-            ASSERT_TRUE(output.pop(value));
-            EXPECT_EQ(value, fill);
-        }
-    };
-
-    // Even if things aren't connected it'll be outputting
-    check_filled(0.f);
+    EXPECT_GT(output.size(), 0);
+    for (size_t i = 0; i < output.size(); ++i) {
+        ASSERT_TRUE(output.pop(value));
+        ASSERT_EQ(value, 0.0) << "i=" << i;  // the default value
+    }
 
     // Connect the amplifier up!
     click_and_move(knob0_output, amplifier_input, window->manager());
@@ -144,16 +141,32 @@ TEST_F(IntegrationTests, amplifier) {
     click_and_move(amplifier_output, speaker_input, window->manager());
 
     bridge.process();
-    check_filled(0.f);
+    EXPECT_GT(output.size(), 0);
+    for (size_t i = 0; i < output.size(); ++i) {
+        ASSERT_TRUE(output.pop(value));
+        ASSERT_EQ(value, 0.0) << "i=" << i;
+    }
+    bridge.clear_streams();
 
     bridge.set_value(knob0_handle.synth_id, 0.1);  // 0.1 signal
     bridge.set_value(knob1_handle.synth_id, 0.5);  // 0.5 gain
 
     bridge.process();
-    check_filled(10 * 0.5 * 0.1);  // multiplied by 10 since the amplifier does this internally
+    EXPECT_GT(output.size(), 0);
+    for (size_t i = 0; i < output.size(); ++i) {
+        ASSERT_TRUE(output.pop(value));
+        ASSERT_NEAR(value, 10. * 0.5 * 0.1, 1E-5)
+            << "i=" << i;  // multiplied by 10 since the amplifier does this internally
+    }
+    bridge.clear_streams();
 
     bridge.set_value(knob1_handle.synth_id, 0.1);  // 0.1 gain
 
     bridge.process();
-    check_filled(10 * 0.1 * 0.1);
+    EXPECT_GT(output.size(), 0);
+    for (size_t i = 0; i < output.size(); ++i) {
+        ASSERT_TRUE(output.pop(value));
+        ASSERT_NEAR(value, 10. * 0.1 * 0.1, 1E-5)
+            << "i=" << i;  // multiplied by 10 since the amplifier does this internally
+    }
 }

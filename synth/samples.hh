@@ -7,9 +7,16 @@ struct Samples {
     Samples(float value = 0.f) { fill(value); }
 
     static constexpr uint64_t kSampleRate = 44000;
-    static constexpr uint64_t kBatchSize = 512;
+    static constexpr uint64_t kBatchSize = 128;
     static constexpr std::chrono::nanoseconds kSampleIncrement{1'000'000'000 / kSampleRate};
     static constexpr std::chrono::nanoseconds kBatchIncrement{kBatchSize * kSampleIncrement};
+
+    static constexpr std::chrono::nanoseconds time_from_samples(size_t samples) { return samples * kSampleIncrement; }
+    static constexpr size_t samples_from_time(const std::chrono::nanoseconds& t) { return t / kSampleIncrement; }
+
+    static constexpr std::chrono::nanoseconds time_from_batches(size_t batches) { return batches * kBatchIncrement; }
+    static constexpr size_t batches_from_time(const std::chrono::nanoseconds& t) { return t / kBatchIncrement; }
+
     static_assert(kSampleIncrement.count() > 1);
     std::array<float, kBatchSize> samples;
 

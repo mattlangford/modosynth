@@ -21,9 +21,12 @@ void Stream::add_samples(const std::chrono::nanoseconds& timestamp, const Sample
         // if a new sample is added.
         // TODO: This doesn't work for multiple people publishing on the same stream... but oh well
         float p = percent(timestamp);
+        debug("Detected rollback. Percentage: " << p);
         batches_[index_of_timestamp(timestamp)].combine(p, samples.samples, 1.0 - p);
         return;
     }
+    debug("Adding sample timestamp=" << timestamp << ", end_time: " << *end_time_
+                                     << " sample[0]=" << samples.samples[0]);
 
     end_time_ = timestamp;  // store the timestamp of the start of this batch
     batches_.push(samples);
@@ -34,8 +37,17 @@ void Stream::add_samples(const std::chrono::nanoseconds& timestamp, const Sample
 //
 
 size_t Stream::flush_samples(const std::chrono::nanoseconds& amount_to_flush) {
-    size_t batches_to_flush = static_cast<size_t>(amount_to_flush / Samples::kBatchIncrement);
-    for (size_t i = 0; i < batches_to_flush; ++i) {
+    const size_t batches_to_flush = std::max(1ul, Samples::batches_from_time(amount_to_flush));
+    return flush_batches(batches_to_flush);
+}
+
+//
+// #############################################################################
+//
+
+size_t Stream::flush_batches(size_t batches) {
+    debug("Flushing " << batches << " / " << batches_.size() << " batches");
+    for (size_t i = 0; i < batches; ++i) {
         auto element = batches_.pop();
         if (!element) {
             default_flush();
@@ -46,7 +58,7 @@ size_t Stream::flush_samples(const std::chrono::nanoseconds& amount_to_flush) {
         }
     }
 
-    return batches_to_flush * Samples::kBatchSize;
+    return batches;
 }
 
 //
@@ -70,6 +82,20 @@ size_t Stream::index_of_timestamp(const std::chrono::nanoseconds& timestamp) con
 //
 
 ThreadSafeBuffer& Stream::output() { return output_; }
+
+//
+// #############################################################################
+//
+
+void Stream::clear() {
+    debug("Clearing Stream!");
+    while (batches_.pop()) {
+    }
+
+    float dummy;
+    while (output_.pop(dummy)) {
+    }
+}
 
 //
 // #############################################################################

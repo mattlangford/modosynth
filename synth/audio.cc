@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "synth/debug.hh"
+
 namespace synth {
 
 //
@@ -148,23 +150,16 @@ void AudioDriver::write_callback(SoundIoOutStream *outstream, int frame_count_mi
         }
         const struct SoundIoChannelLayout *layout = &outstream->layout;
 
-        if (static_cast<int>(instance.buffer_.size()) < frame_count) {
-            std::cerr << "Not enough buffer space...\n";
-
-            for (int frame = 0; frame < frame_count; frame++) {
-                for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    *reinterpret_cast<float *>(areas[channel].ptr) = 0.f;
-                    areas[channel].ptr += areas[channel].step;
-                }
+        for (int frame = 0; frame < frame_count; frame++) {
+            float sample = 0.0;
+            if (!instance.buffer_.pop(sample)) {
+                std::cout << "No data left in buffer! " << frame << "\n";
+                sample = 0.0;
             }
-        } else {
-            for (int frame = 0; frame < frame_count; frame++) {
-                const float sample = instance.buffer_.blind_pop();
 
-                for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    *reinterpret_cast<float *>(areas[channel].ptr) = sample;
-                    areas[channel].ptr += areas[channel].step;
-                }
+            for (int channel = 0; channel < layout->channel_count; channel += 1) {
+                *reinterpret_cast<float *>(areas[channel].ptr) = sample;
+                areas[channel].ptr += areas[channel].step;
             }
         }
 

@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#include "synth/debug.hh"
+#include "synth///debug.hh"
 #include "synth/samples.hh"
 #include "synth/stream.hh"
 
@@ -84,7 +84,6 @@ public:
         input_counter_ = default_counter_;
 
         if (stream_) {
-            std::cout << "Adding samples at t=" << context.timestamp.count() << "\n";
             stream_->add_samples(context.timestamp, samples_);
         }
 
@@ -136,16 +135,16 @@ public:
     size_t num_outputs() const final { return kOutputs; }
 
     void connect(size_t input_index) final {
-        debug(name() << "::add_input(input_index=" << input_index << ")");
+        // debug(name() << "::add_input(input_index=" << input_index << ")");
         initial_counters_.at(input_index)++;
         counters_.at(input_index)++;
     }
 
     bool invoke(const Context& context) final {
-        debug(name() << "::invoke()");
+        // debug(name() << "::invoke()");
 
         if (!ready()) {
-            debug(name() << "::invoke() not ready");
+            // debug(name() << "::invoke() not ready");
             return false;
         }
 
@@ -159,7 +158,7 @@ public:
     }
 
     void add_input(size_t input_index, const Samples& incoming_samples) final {
-        debug(name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]);
+        // debug(name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]);
 
         auto& next_input = next_inputs_[input_index];
         for (size_t i = 0; i < next_input.samples.size(); ++i) {
@@ -181,7 +180,7 @@ protected:
 private:
     bool ready() const {
         for (auto& count : counters_) {
-            debug(name() << "::ready() count:" << count);
+            // debug(name() << "::ready() count:" << count);
 
             if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
 

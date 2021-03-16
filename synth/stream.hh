@@ -16,12 +16,15 @@ public:
 
     /// Returns the number of elements flushed to the output
     size_t flush_samples(const std::chrono::nanoseconds& amount_to_flush);
+    size_t flush_batches(size_t batches);
 
     size_t index_of_timestamp(const std::chrono::nanoseconds& timestamp) const;
 
     size_t buffered_batches() const;
 
     ThreadSafeBuffer& output();
+
+    void clear();
 
 private:
     /// Flushes all zeros to the output
