@@ -1,8 +1,12 @@
 #pragma once
 
+#include <tuple>
+
 #include "synth/node.hh"
 
 namespace object::blocks {
+float remap(float raw, const std::tuple<float, float>& from, const std::tuple<float, float>& to);
+
 class VoltageControlledOscillator final : public synth::AbstractNode<2, 1> {
 public:
     inline static const std::string kName = "Voltage Controlled Oscillator";
@@ -17,17 +21,14 @@ public:
         kMax = 2,
     };
 
-    void invoke(const synth::Context& context, const Inputs& inputs, Outputs& outputs) const override;
+    void invoke(const Inputs& inputs, Outputs& outputs) override;
 
-    using Batch = std::array<float, synth::Samples::kBatchSize>;
-
-    static Batch compute_batch(const Shape shape, const float frequency, const std::chrono::nanoseconds& t);
+    float sample(float frequency, float shape);
 
 private:
-    static Batch constant_batch(float value);
+    double phase_increment(float frequency);
 
-    static Batch square_batch(const float frequency, const std::chrono::nanoseconds& t);
-
-    static Batch sin_batch(const float frequency, const std::chrono::nanoseconds& t);
+private:
+    double phase = 0.0;
 };
 }  // namespace object::blocks

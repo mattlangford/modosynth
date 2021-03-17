@@ -172,10 +172,8 @@ public:
     Samples get_output(size_t index) const final { return outputs_[index]; }
 
 protected:
-    virtual void invoke(const Context&, const Inputs& inputs, Outputs& outputs) const {
-        return invoke(inputs, outputs);
-    }
-    virtual void invoke(const Inputs&, Outputs&) const {};
+    virtual void invoke(const Context&, const Inputs& inputs, Outputs& outputs) { return invoke(inputs, outputs); }
+    virtual void invoke(const Inputs&, Outputs&){};
 
 private:
     bool ready() const {

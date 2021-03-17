@@ -11,7 +11,7 @@ public:
     Amplifier(size_t count) : AbstractNode{kName + std::to_string(count)} {}
 
 public:
-    void invoke(const Inputs& inputs, Outputs& outputs) const override {
+    void invoke(const Inputs& inputs, Outputs& outputs) override {
         auto& input = inputs[0];
         auto& level = inputs[1];
 

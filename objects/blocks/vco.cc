@@ -9,14 +9,22 @@
 #include "synth/debug.hh"
 
 namespace object::blocks {
-namespace {
-float compute_freq(float raw) {
-    constexpr float kMinFreq = 10;
-    constexpr float kMaxFreq = 10'000;
-    constexpr float kRange = kMaxFreq - kMinFreq;
-    return raw * kRange + kMinFreq;
+
+//
+// #############################################################################
+//
+
+float remap(float raw, const std::tuple<float, float>& from, const std::tuple<float, float>& to) {
+    const auto& [from_min, from_max] = from;
+    const auto& [to_min, to_max] = to;
+
+    float from_range = from_max - from_min;
+    float to_range = to_max - to_min;
+
+    // between [0, 1]
+    float normalized = (std::clamp(raw, from_min, from_max) - from_min) / from_range;
+    return normalized * to_range + to_min;
 }
-}  // namespace
 
 //
 // #############################################################################
@@ -28,96 +36,52 @@ VoltageControlledOscillator::VoltageControlledOscillator(size_t count) : Abstrac
 // #############################################################################
 //
 
-void VoltageControlledOscillator::invoke(const synth::Context& context, const Inputs& inputs, Outputs& outputs) const {
-    int max = static_cast<int>(Shape::kMax);
+void VoltageControlledOscillator::invoke(const Inputs& inputs, Outputs& outputs) {
+    auto& frequencies = inputs[0].samples;
+    auto& shapes = inputs[1].samples;
+    auto& output = outputs[0];
 
-    // Both of these are assumed to be constant during these samples
-    const float frequency = compute_freq(inputs[0].samples[0]);
-    const float shape = std::clamp(inputs[1].samples[0], 0.f, static_cast<float>(Shape::kMax));
+    output.populate_samples([&](size_t i) {
+        return sample(remap(frequencies[i], {-1.0, 1.0}, {10, 10000}),
+                      remap(shapes[i], {-1.0, 1.0}, {0.0, static_cast<int>(Shape::kMax) - 1}));
+    });
+}
 
+//
+// #############################################################################
+//
+
+float VoltageControlledOscillator::sample(float frequency, float shape) {
+    constexpr auto kMax = static_cast<int>(Shape::kMax);
     int discrete_shape = static_cast<int>(shape);
     float percent = shape - discrete_shape;
+    const Shape shape0 = static_cast<Shape>(discrete_shape);
+    const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % kMax);
 
-    const Shape shape0 = static_cast<Shape>(discrete_shape % max);
-    const float mult0 = percent;
-    const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % max);
-    const float mult1 = 1.0 - percent;
-
-    auto& output = outputs[0];
-    output.samples = compute_batch(shape0, frequency, context.timestamp);
-    output.combine(mult0, compute_batch(shape1, frequency, context.timestamp), mult1);
-}
-
-//
-// #############################################################################
-//
-
-auto VoltageControlledOscillator::compute_batch(const Shape shape, const float frequency,
-                                                const std::chrono::nanoseconds& t) -> Batch {
-    Batch batch;
-    switch (shape) {
-        case Shape::kSin:
-            batch = sin_batch(frequency, t);
-            break;
-        case Shape::kSquare:
-            batch = square_batch(frequency, t);
-            break;
-        case Shape::kMax:
-        default:
-            batch = constant_batch(-1.0);  // error case, really
-            break;
-    }
-    return batch;
-}
-
-//
-// #############################################################################
-//
-
-auto VoltageControlledOscillator::constant_batch(float value) -> Batch {
-    Batch batch;
-    for (size_t i = 0; i < batch.size(); ++i) batch[i] = value;
-    return batch;
-}
-
-//
-// #############################################################################
-//
-
-auto VoltageControlledOscillator::square_batch(const float frequency, const std::chrono::nanoseconds& t) -> Batch {
-    Batch batch;
-
-    std::chrono::duration<float> period{1.0 / frequency};
-    std::chrono::duration<float> half_period{0.5 * period};
-
-    std::chrono::nanoseconds mod_with{static_cast<int>(1E9 * period.count()) + 1};
-    std::chrono::nanoseconds ns = t % mod_with;
-    std::chrono::duration<float> next_switch = ns < half_period ? half_period : period;
-    bool value = ns >= half_period;
-
-    for (size_t i = 0; i < batch.size(); ++i, ns += synth::Samples::kSampleIncrement) {
-        if (ns >= next_switch) {
-            value = !value;
-            next_switch += half_period;
+    auto sample_with_shape = [phase = this->phase](const Shape s) -> float {
+        switch (s) {
+            case Shape::kSin:
+                return std::sin(phase);
+            case Shape::kSquare:
+                return std::fmod(phase, 2 * M_PI) < M_PI ? -1.f : 1.f;
+            case Shape::kMax:
+            default:
+                throw std::runtime_error("Invalid shape in VCO::sample()!");
+                break;
         }
-        batch[i] = static_cast<float>(value);
-    }
+    };
 
-    return batch;
+    phase += phase_increment(frequency);
+    std::cout << "f: " << frequency << "shape0: " << (int)shape0 << " shape1: " << (int)shape1 << " p: " << percent
+              << "\n";
+    return percent * sample_with_shape(shape0) + (1.0 - percent) * sample_with_shape(shape1);
 }
 
 //
 // #############################################################################
 //
 
-auto VoltageControlledOscillator::sin_batch(const float frequency, const std::chrono::nanoseconds& t) -> Batch {
-    Batch batch;
-    const double term = 2 * M_PI * frequency;
-
-    std::chrono::nanoseconds ns = t;
-    for (size_t i = 0; i < batch.size(); ++i, ns += synth::Samples::kSampleIncrement) {
-        batch[i] = std::sin(term * std::chrono::duration<double>(ns).count());
-    }
-    return batch;
+double VoltageControlledOscillator::phase_increment(float frequency) {
+    return 2.0 * M_PI * static_cast<double>(frequency) / synth::Samples::kSampleRate;
 }
 }  // namespace object::blocks
