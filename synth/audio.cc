@@ -159,8 +159,6 @@ void AudioDriver::write_callback(SoundIoOutStream *outstream, int frame_count_mi
                 throttled(0.1, "No data left in buffer! " << frame);
                 sample = 0.0;
             }
-            output << sample << ", ";
-            continue;
 
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
                 *reinterpret_cast<float *>(areas[channel].ptr) = sample;

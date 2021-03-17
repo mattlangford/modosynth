@@ -27,10 +27,6 @@ public:
     }
     ~Bridge() { stop_processing_thread(); }
 
-    // When rolling back due to an input change, we'll go back at max this far
-    static constexpr std::chrono::nanoseconds kMaxRollbackFadeTime = std::chrono::milliseconds(20);
-    static_assert(Samples::batches_from_time(kMaxRollbackFadeTime) > 0);
-
     // When buffering stream data, we'll make sure the output has at least this much data
     static constexpr std::chrono::nanoseconds kOutputBufferTime = std::chrono::milliseconds(15);
     static_assert(Samples::batches_from_time(kOutputBufferTime) > 0);
@@ -91,7 +87,7 @@ public:
     }
 
     void process(const size_t batches) {
-        debug("Generating " << batches << " batches\n");
+        debug("Generating " << batches << " batches");
         // This is not generally thread safe, but here I'm only using it as a hint if there are things to do or not.
         if (!queued_values_.empty()) {
             // Lock and swap the queue
@@ -144,7 +140,6 @@ private:
                 min_buffered_samples = std::min(min_buffered_samples, stream->output().size());
             }
             const size_t min_buffered_batches = min_buffered_samples / Samples::kBatchSize;
-            debug("min_buffered_batches: " << min_buffered_batches);
 
             constexpr size_t kOutputBufferSize = Samples::batches_from_time(kOutputBufferTime);
             if (min_buffered_batches > kOutputBufferSize) {
@@ -152,7 +147,7 @@ private:
                 continue;
             }
 
-            const size_t batches_to_generate = kOutputBufferSize;
+            const size_t batches_to_generate = kOutputBufferSize - min_buffered_batches;
             process(batches_to_generate);
         }
     }

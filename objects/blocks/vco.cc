@@ -72,8 +72,6 @@ float VoltageControlledOscillator::sample(float frequency, float shape) {
     };
 
     phase += phase_increment(frequency);
-    std::cout << "f: " << frequency << "shape0: " << (int)shape0 << " shape1: " << (int)shape1 << " p: " << percent
-              << "\n";
     return percent * sample_with_shape(shape0) + (1.0 - percent) * sample_with_shape(shape1);
 }
 
