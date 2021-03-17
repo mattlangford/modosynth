@@ -156,7 +156,7 @@ void AudioDriver::write_callback(SoundIoOutStream *outstream, int frame_count_mi
         for (int frame = 0; frame < frame_count; frame++) {
             float sample = 0.0;
             if (!instance.buffer_.pop(sample)) {
-                throttled(0.1, "No data left in buffer! " << frame);
+                throttled(1.0, "No data left in buffer! " << frame);
                 sample = 0.0;
             }
 

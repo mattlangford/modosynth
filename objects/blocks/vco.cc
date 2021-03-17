@@ -30,7 +30,8 @@ float remap(float raw, const std::tuple<float, float>& from, const std::tuple<fl
 // #############################################################################
 //
 
-VoltageControlledOscillator::VoltageControlledOscillator(size_t count) : AbstractNode{kName + std::to_string(count)} {}
+VoltageControlledOscillator::VoltageControlledOscillator(float f_min, float f_max, size_t count)
+    : AbstractNode{kName + std::to_string(count)}, frequency_{f_min, f_max} {}
 
 //
 // #############################################################################
@@ -42,7 +43,7 @@ void VoltageControlledOscillator::invoke(const Inputs& inputs, Outputs& outputs)
     auto& output = outputs[0];
 
     output.populate_samples([&](size_t i) {
-        return sample(remap(frequencies[i], {-1.0, 1.0}, {10, 10000}),
+        return sample(remap(frequencies[i], {-1.0, 1.0}, frequency_),
                       remap(shapes[i], {-1.0, 1.0}, {0.0, static_cast<int>(Shape::kMax) - 1}));
     });
 }
@@ -58,7 +59,7 @@ float VoltageControlledOscillator::sample(float frequency, float shape) {
     const Shape shape0 = static_cast<Shape>(discrete_shape);
     const Shape shape1 = static_cast<Shape>((discrete_shape + 1) % kMax);
 
-    auto sample_with_shape = [phase = this->phase](const Shape s) -> float {
+    auto sample_with_shape = [phase = this->phase_](const Shape s) -> float {
         switch (s) {
             case Shape::kSin:
                 return std::sin(phase);
@@ -71,7 +72,7 @@ float VoltageControlledOscillator::sample(float frequency, float shape) {
         }
     };
 
-    phase += phase_increment(frequency);
+    phase_ += phase_increment(frequency);
     return percent * sample_with_shape(shape0) + (1.0 - percent) * sample_with_shape(shape1);
 }
 

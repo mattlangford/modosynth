@@ -297,8 +297,6 @@ void CableObjectManager::update(float) {
 //
 
 void CableObjectManager::handle_mouse_event(const engine::MouseEvent& event) {
-    if (event.any_modifiers() || event.right) return;
-
     if (event.pressed()) {
         size_t offset_first_index = 0;
         bool input = false;

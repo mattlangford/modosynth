@@ -12,7 +12,7 @@ public:
     inline static const std::string kName = "Voltage Controlled Oscillator";
 
 public:
-    VoltageControlledOscillator(size_t count = 0);
+    VoltageControlledOscillator(float f_min, float f_max, size_t count = 0);
 
 public:
     enum class Shape : uint8_t {
@@ -29,6 +29,7 @@ private:
     double phase_increment(float frequency);
 
 private:
-    double phase = 0.0;
+    std::tuple<float, float> frequency_;
+    double phase_ = 0.0;
 };
 }  // namespace object::blocks

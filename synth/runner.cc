@@ -81,7 +81,7 @@ void Runner::next(const std::chrono::nanoseconds& now) {
 //
 
 Runner::ScopedPrinter::~ScopedPrinter() {
-    constexpr std::chrono::seconds kInc{1};
+    constexpr std::chrono::seconds kInc{10};
 
     if (start < next_) return;
     std::cout << "Runner::next() " << Samples::kBatchIncrement << " simulated in "

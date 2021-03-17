@@ -23,7 +23,9 @@ void populate(synth::Bridge& bridge) {
     bridge.add_factory(Knob::kName, [i]() mutable { return std::make_unique<Knob>(i++); });
     bridge.add_factory(Amplifier::kName, [i]() mutable { return std::make_unique<Amplifier>(i++); });
     bridge.add_factory(VoltageControlledOscillator::kName,
-                       [i]() mutable { return std::make_unique<VoltageControlledOscillator>(i++); });
+                       [i]() mutable { return std::make_unique<VoltageControlledOscillator>(10, 10'000, i++); });
+    bridge.add_factory("Low Frequency Oscillator",
+                       [i]() mutable { return std::make_unique<VoltageControlledOscillator>(1E-3, 10, i++); });
 }
 
 void audio_loop(synth::Bridge& bridge, bool& shutdown) {
