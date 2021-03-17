@@ -14,7 +14,7 @@ struct IntermediateNode final : AbstractNode<1, 2> {
     inline static float value = 0;
     IntermediateNode() : AbstractNode("IntermediateNode") {}
 
-    void invoke(const Inputs& inputs, Outputs& outputs) const {
+    void invoke(const Inputs& inputs, Outputs& outputs) {
         auto& passthrough = outputs[0];
         auto& triple = outputs[1];
 
@@ -29,7 +29,7 @@ struct DestinationNode final : AbstractNode<2, 0> {
 
     DestinationNode() : AbstractNode("DestinationNode") {}
 
-    void invoke(const Inputs& inputs, Outputs&) const {
+    void invoke(const Inputs& inputs, Outputs&) {
         value0 = inputs[0].samples[0];  // just using the first sample since they're all the same
         value1 = inputs[1].samples[0];
     };
@@ -43,9 +43,10 @@ TEST(runner, basic) {
     Runner runner;
 
     auto source = std::make_unique<SourceNode>();
-    source->set_value(10.0);
     auto intermediate = std::make_unique<IntermediateNode>();
     auto destination = std::make_unique<DestinationNode>();
+
+    auto source_ptr = source.get();
 
     auto source_id = runner.spawn(std::move(source));
     auto intermediate_id = runner.spawn(std::move(intermediate));
@@ -56,6 +57,7 @@ TEST(runner, basic) {
     runner.connect(intermediate_id, 0, destination_id, 0);
     runner.connect(intermediate_id, 1, destination_id, 1);
 
+    source_ptr->set_value(10.0);
     float expected_value0 = 20.0;  // source and intermediate node will produce 10.0 each
     float expected_value1 = 30.0;  // intermediate will triple the source 10.0 value
 
