@@ -43,7 +43,7 @@ public:
         auto& proxy = entities_.emplace_back(EntityProxy{});
         lookup_[proxy.id()] = index;
         proxy.active = bitset_of<C...>();
-        (add_component<C>({}, proxy.index), ...);
+        (add<C>({}, proxy.index), ...);
         return proxy;
     }
 
@@ -51,14 +51,14 @@ public:
     /// @brief Add the given component to the already constructed entity
     ///
     template <typename C>
-    void add_component(const Entity& entity, C c = {}) {
-        add_component(std::move(c), lookup(entity).index);
+    void add(const Entity& entity, C c = {}) {
+        add(std::move(c), lookup(entity).index);
     }
 
     ///
     /// @brief A dynamic version of the above function. This will default construct the component.
     ///
-    void add_component_by_index(const Entity& entity, size_t component_index) {
+    void add_by_index(const Entity& entity, size_t component_index) {
         auto& proxy = lookup(entity);
         proxy.active.set(component_index);
         ApplyByIndex{components_}(component_index, [&](auto& components) {
@@ -72,7 +72,7 @@ public:
     /// entity doesn't have the component registered
     ///
     template <typename C>
-    C* get_component(const Entity& entity) {
+    C* get_ptr(const Entity& entity) {
         const auto& index = lookup(entity).index[kIndexOf<C>];
         return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
     }
@@ -131,7 +131,7 @@ private:
     }
 
     template <typename C>
-    void add_component(C c, EntityIndex& index) {
+    void add(C c, EntityIndex& index) {
         // Set the index of each Component to the current size of the component vector
         index[kIndexOf<C>] = std::get<kIndexOf<C>>(components_).size();
 

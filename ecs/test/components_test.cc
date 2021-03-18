@@ -24,11 +24,11 @@ TEST(ComponentManager, spawn_and_add) {
     MyManager manager;
     auto entity = manager.spawn<TestComponentA>();
 
-    ASSERT_NE(manager.get_component<TestComponentA>(entity), nullptr);
-    ASSERT_EQ(manager.get_component<TestComponentB>(entity), nullptr);
+    ASSERT_NE(manager.get_ptr<TestComponentA>(entity), nullptr);
+    ASSERT_EQ(manager.get_ptr<TestComponentB>(entity), nullptr);
 
-    manager.add_component<TestComponentB>(entity);
-    ASSERT_NE(manager.get_component<TestComponentB>(entity), nullptr);
+    manager.add<TestComponentB>(entity);
+    ASSERT_NE(manager.get_ptr<TestComponentB>(entity), nullptr);
 }
 
 //
@@ -58,7 +58,7 @@ TEST(ComponentManager, despawn) {
 
     // Make sure the remaining elements are still correct
     {
-        const TestComponentA* a = manager.get_component<TestComponentA>(entity_abc);
+        const TestComponentA* a = manager.get_ptr<TestComponentA>(entity_abc);
         ASSERT_NE(a, nullptr);
         EXPECT_EQ(a->value, 2);
     }
@@ -94,8 +94,8 @@ TEST(ComponentManager, run_system) {
     EXPECT_EQ(count, 2);
 
     // Spot check one of the elements
-    const TestComponentA* a = manager.get_component<TestComponentA>(entity_ac);
-    const TestComponentC* c = manager.get_component<TestComponentC>(entity_ac);
+    const TestComponentA* a = manager.get_ptr<TestComponentA>(entity_ac);
+    const TestComponentC* c = manager.get_ptr<TestComponentC>(entity_ac);
     ASSERT_NE(a, nullptr);
     ASSERT_NE(c, nullptr);
 
@@ -112,9 +112,9 @@ TEST(ComponentManager, dynmamic) {
 
     // No component
     auto entity = manager.spawn();
-    manager.add_component_by_index(entity, 0);  // A
+    manager.add_by_index(entity, 0);  // A
 
-    TestComponentA* a = manager.get_component<TestComponentA>(entity);
+    TestComponentA* a = manager.get_ptr<TestComponentA>(entity);
     ASSERT_NE(a, nullptr);
     EXPECT_EQ(a->value, 0);  // default constructed
 
