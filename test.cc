@@ -1,3 +1,5 @@
+#include <random>
+
 #include "ecs/components.hh"
 #include "ecs/events.hh"
 #include "engine/buffer.hh"
@@ -46,8 +48,11 @@ using TestComponentManager = ecs::ComponentManager<Name, Transform, Box, Moveabl
 struct Spawn {
     ecs::Entity entity;
 };
+struct Despawn {
+    ecs::Entity entity;
+};
 
-using TestEventManager = ecs::EventManager<Spawn>;
+using TestEventManager = ecs::EventManager<Spawn, Despawn>;
 
 //
 // #############################################################################
@@ -80,6 +85,10 @@ void main()
 }
 )";
 }  // namespace
+
+//
+// #############################################################################
+//
 
 struct BoxRenderer {
     BoxRenderer(TestComponentManager& manager_) : manager(manager_) {}
@@ -129,16 +138,19 @@ struct BoxRenderer {
     engine::Buffer<float, 3> color_buffer;
 };
 
+//
+// #############################################################################
+//
+
 class Manager : public engine::AbstractSingleShaderObjectManager {
 public:
     Manager()
         : engine::AbstractSingleShaderObjectManager{vertex_shader_text, fragment_shader_text}, renderer_{components_} {
-        Entity e1 =
-            components_.spawn<Name, Transform, Box>(Name{"e1"}, Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
-                                                    Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}});
-        components_.spawn<Name, Transform, Box, Moveable, Selectable>(
-            Name{"e2"}, Transform{e1, Eigen::Vector2f{50.0, 50.0}},
-            Box{Eigen::Vector3f{1.0, 0.0, 1.0}, Eigen::Vector2f{20.0, 20.0}}, Moveable{}, Selectable{});
+        entities_.push_back(
+            components_.spawn<Transform, Box>(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
+                                              Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}}));
+
+        events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
     }
 
 protected:
@@ -179,11 +191,47 @@ public:
         }
     }
 
-    void handle_keyboard_event(const engine::KeyboardEvent&) override {}
+    void handle_keyboard_event(const engine::KeyboardEvent& event) override {
+        if (event.space && event.pressed()) {
+            std::random_device rd;
+            std::mt19937 mt(rd());
+            std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+            Eigen::Vector2f offset;
+            offset[0] = dist(mt) * 500 - 250;
+            offset[1] = dist(mt) * 500 - 250;
+
+            Eigen::Vector3f color;
+            color[0] = dist(mt);
+            color[1] = dist(mt);
+            color[2] = dist(mt);
+
+            Eigen::Vector2f size;
+            size[0] = dist(mt) * 100;
+            size[1] = dist(mt) * 100;
+
+            entities_.push_back(components_.spawn<Transform, Box, Moveable, Selectable>(
+                Transform{entities_.back(), offset}, Box{color, size}, Moveable{}, Selectable{}));
+            events_.trigger<Spawn>({entities_.back()});
+        } else if (event.clicked && event.control && event.key == 'z') {
+            std::cout << "Undoing\n";
+            events_.undo();
+        }
+    }
 
 private:
+    void undo_spawn(const Spawn& spawn) {
+        if (entities_.size() <= 1) return;
+
+        if (entities_.back().id() == spawn.entity.id()) entities_.pop_back();
+
+        components_.despawn(spawn.entity);
+    }
+
+private:
+    std::vector<Entity> entities_;
     TestComponentManager components_;
-    // EventsManager events_;
+    TestEventManager events_;
     BoxRenderer renderer_;
 };
 

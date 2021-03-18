@@ -167,6 +167,8 @@ private:
 
     template <typename C>
     void remove_component_at(size_t component_index) {
+        if (component_index == kInvalidIndex) return;
+
         constexpr size_t I = kIndexOf<C>;
         auto& vector = std::get<I>(components_);
 
