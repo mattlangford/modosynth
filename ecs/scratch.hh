@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include <bitset>
 #include <cstdint>
 #include <functional>
@@ -103,12 +105,31 @@ public:
     }
 
     template <typename C>
-    C* get(const Entity& entity) {
+    C* get_component(const Entity& entity) {
         const auto& index = index_[entity.id()][kIndexOf<C>];
         return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
     }
 
-    void despawn(const Entity& entity);
+    void despawn(const Entity& entity) {
+        assert(!entities_.empty());
+
+        auto it = std::find_if(entities_.begin(), entities_.end(), [&entity](const auto& enitiy_holder) {
+            return enitiy_holder.entity.id() == entity.id();
+        });
+        assert(it != entities_.end());
+
+        std::iter_swap(it, std::prev(entities_.end()));
+        entities_.pop_back();
+
+        events().trigger(Despawn{entity});
+
+        // Remove components AFTER triggering the event, since handling the event may need component data
+        auto index_it = index_.find(entity.id());
+        ArrayProxy index = index_it->second;
+        index_.erase(index_it);
+
+        (remove_component_at<Component>(index[kIndexOf<Component>]), ...);
+    }
 
     template <typename C0, typename... ReqComponent, typename F>
     void run_system(const F& f) {
@@ -121,7 +142,6 @@ public:
         }
     }
 
-public:
     auto& events() { return events_; };
 
 private:
@@ -144,6 +164,21 @@ private:
         std::apply(f, std::tuple_cat(std::tuple{entity}, components));
     }
 
+    template <typename C>
+    void remove_component_at(size_t component_index) {
+        constexpr size_t I = kIndexOf<C>;
+        auto& vector = std::get<I>(components_);
+
+        assert(vector.size() != 0);
+        const size_t end_index = vector.size() - 1;
+        std::swap(vector[component_index], vector[end_index]);
+        vector.pop_back();
+
+        // Make sure to fix up any "dangling pointers" after we removed the component index
+        for (auto& [_, index] : index_)
+            if (index[I] == end_index) index[I] = component_index;
+    }
+
 private:
     std::tuple<std::vector<Component>...> components_;
 
@@ -154,7 +189,7 @@ private:
     std::unordered_map<Entity::Id, ArrayProxy> index_;
 
     struct EntitiyHolder {
-        Entity entitiy;
+        Entity entity;
         std::bitset<kNumComponents> active;
     };
     std::vector<EntitiyHolder> entities_;
