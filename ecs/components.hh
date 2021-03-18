@@ -46,6 +46,15 @@ public:
         (add<C>({}, proxy.index), ...);
         return proxy;
     }
+    template <typename... C>
+    Entity spawn(C... c) {
+        const size_t index = entities_.size();
+        auto& proxy = entities_.emplace_back(EntityProxy{});
+        lookup_[proxy.id()] = index;
+        proxy.active = bitset_of<C...>();
+        (add<C>(c, proxy.index), ...);
+        return proxy;
+    }
 
     ///
     /// @brief Add the given component to the already constructed entity
@@ -76,6 +85,14 @@ public:
         const auto& index = lookup(entity).index[kIndexOf<C>];
         return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
     }
+    template <typename C>
+    C& get(const Entity& entity) {
+        auto ptr = get_ptr<C>(entity);
+        if (ptr == nullptr)
+            throw std::runtime_error(
+                "Call to ComponentManager::get() with an entity that doesn't have that component.");
+        return *ptr;
+    }
 
     ///
     /// @brief Despawn the given object
@@ -102,7 +119,7 @@ public:
     /// @brief Execute the given function on entities with at least the given required components
     ///
     template <typename C0, typename... ReqComponent, typename System>
-    void run_system(const System& system) {
+    void run_system(System&& system) {
         auto target = bitset_of<C0, ReqComponent...>();
         for (const auto& proxy : entities_) {
             if ((target & proxy.active) != target) {
@@ -124,7 +141,7 @@ private:
     static constexpr size_t kIndexOf = Index<C, Component...>::value;
 
     template <typename... ReqComponent, typename Function>
-    void run_system(const Function& system, const EntityProxy& proxy) {
+    void run_system(Function& system, const EntityProxy& proxy) {
         std::tuple<const EntityProxy&, ReqComponent&...> args{
             proxy, std::get<kIndexOf<ReqComponent>>(components_)[proxy.index[kIndexOf<ReqComponent>]]...};
         return std::apply(system, args);

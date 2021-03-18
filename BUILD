@@ -11,7 +11,8 @@ cc_binary(
     name = "test_main",
     srcs = ["test.cc"],
     deps = [
-        "//ecs"
+        "//ecs",
+        "//engine",
     ]
 )
 

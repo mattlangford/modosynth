@@ -72,8 +72,8 @@ void Window::init() {
 //
 
 bool Window::render_loop() {
-    // glfwPollEvents();
-    glfwWaitEvents();  // only need to rerender when something changes
+    glfwPollEvents();
+    // glfwWaitEvents();  // only need to rerender when something changes
 
     gl_check(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     gl_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);

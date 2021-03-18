@@ -28,7 +28,7 @@ TEST(ComponentManager, spawn_and_add) {
     ASSERT_EQ(manager.get_ptr<TestComponentB>(entity), nullptr);
 
     manager.add<TestComponentB>(entity);
-    ASSERT_NE(manager.get_ptr<TestComponentB>(entity), nullptr);
+    EXPECT_NO_THROW(manager.get<TestComponentB>(entity));
 }
 
 //
@@ -58,9 +58,8 @@ TEST(ComponentManager, despawn) {
 
     // Make sure the remaining elements are still correct
     {
-        const TestComponentA* a = manager.get_ptr<TestComponentA>(entity_abc);
-        ASSERT_NE(a, nullptr);
-        EXPECT_EQ(a->value, 2);
+        const TestComponentA& a = manager.get<TestComponentA>(entity_abc);
+        EXPECT_EQ(a.value, 2);
     }
 
     // Now back to 3
