@@ -3,6 +3,7 @@
 #include "engine/buffer.hh"
 #include "engine/object_global.hh"
 #include "engine/object_manager.hh"
+#include "engine/utils.hh"
 #include "engine/window.hh"
 
 using namespace ecs;
@@ -31,8 +32,12 @@ struct Box {
     Eigen::Vector3f color;
     Eigen::Vector2f dim;
 };
+struct Moveable {};
+struct Selectable {
+    bool selected = false;
+};
 
-using TestComponentManager = ecs::ComponentManager<Name, Transform, Box>;
+using TestComponentManager = ecs::ComponentManager<Name, Transform, Box, Moveable, Selectable>;
 
 //
 // #############################################################################
@@ -76,13 +81,13 @@ void main()
 )";
 }  // namespace
 
-struct Renderer {
-    Renderer(TestComponentManager& manager_) : manager(manager_) {}
+struct BoxRenderer {
+    BoxRenderer(TestComponentManager& manager_) : manager(manager_) {}
 
-    Renderer(const Renderer&) = delete;
-    Renderer(Renderer&&) = delete;
-    Renderer& operator=(const Renderer&) = delete;
-    Renderer& operator=(Renderer&&) = delete;
+    BoxRenderer(const BoxRenderer&) = delete;
+    BoxRenderer(BoxRenderer&&) = delete;
+    BoxRenderer& operator=(const BoxRenderer&) = delete;
+    BoxRenderer& operator=(BoxRenderer&&) = delete;
 
     void init(const engine::VertexArrayObject& vao_) {
         position_buffer.init(GL_ARRAY_BUFFER, 0, vao_);
@@ -131,8 +136,9 @@ public:
         Entity e1 =
             components_.spawn<Name, Transform, Box>(Name{"e1"}, Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
                                                     Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}});
-        components_.spawn<Name, Transform, Box>(Name{"e2"}, Transform{e1, Eigen::Vector2f{50.0, 50.0}},
-                                                Box{Eigen::Vector3f{1.0, 0.0, 1.0}, Eigen::Vector2f{20.0, 20.0}});
+        components_.spawn<Name, Transform, Box, Moveable, Selectable>(
+            Name{"e2"}, Transform{e1, Eigen::Vector2f{50.0, 50.0}},
+            Box{Eigen::Vector3f{1.0, 0.0, 1.0}, Eigen::Vector2f{20.0, 20.0}}, Moveable{}, Selectable{});
     }
 
 protected:
@@ -149,14 +155,38 @@ public:
         });
     }
 
-    void handle_mouse_event(const engine::MouseEvent&) override {}
+    void handle_mouse_event(const engine::MouseEvent& event) override {
+        if (event.any_modifiers()) return;
+
+        if (event.pressed()) {
+            // Select a new object
+            components_.run_system<Transform, Box, Selectable>([&event, this](const Entity&, Transform& tf,
+                                                                              const Box& box, Selectable& selectable) {
+                const Eigen::Vector2f center = tf.world_position(components_);
+                selectable.selected = engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim);
+            });
+        } else if (event.held()) {
+            // Move any new object
+            components_.run_system<Transform, Moveable, Selectable>(
+                [&event](const Entity&, Transform& tf, Moveable&, Selectable& selectable) {
+                    if (!selectable.selected) {
+                        return;
+                    }
+
+                    tf.from_parent += event.delta_position;
+                });
+        } else if (event.released()) {
+            components_.run_system<Selectable>(
+                [](const Entity&, Selectable& selectable) { selectable.selected = false; });
+        }
+    }
 
     void handle_keyboard_event(const engine::KeyboardEvent&) override {}
 
 private:
     TestComponentManager components_;
     // EventsManager events_;
-    Renderer renderer_;
+    BoxRenderer renderer_;
 };
 
 int main() {
