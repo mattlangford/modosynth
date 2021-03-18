@@ -1,3 +1,4 @@
+#pragma once
 #include <assert.h>
 
 #include <bitset>
@@ -9,33 +10,10 @@
 #include <variant>
 #include <vector>
 
-template <typename T, typename... Ts>
-struct Index;
-template <typename T, typename... Ts>
-struct Index<T, T, Ts...> : std::integral_constant<std::size_t, 0> {};
-template <typename T, typename U, typename... Ts>
-struct Index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + Index<T, Ts...>::value> {};
+#include "ecs/entity.hh"
+#include "ecs/utils.hh"
 
-/////////////////////////////////////////////////////////////
-
-class Entity {
-public:
-    using Id = uint16_t;
-    static Entity spawn() { return {counter_++}; }
-    static Entity spawn_with(Id id) {
-        counter_ = id + 1;
-        return {id};
-    }
-
-    const Id& id() const { return id_; }
-    size_t operator()(const Entity& e) const { return e.id(); }
-    bool operator==(const Entity& rhs) const { return id() == rhs.id(); }
-
-private:
-    inline static Id counter_ = 0;
-    Entity(Id id) : id_(id) {}
-    Id id_;
-};
+namespace ecs {
 
 /////////////////////////////////////////////////////////////
 
@@ -80,7 +58,6 @@ class Manager;
 template <typename... Component, typename... Event>
 class Manager<Components<Component...>, Events<Event...>> {
 public:
-    using ComponentVariant = std::variant<Component...>;
     static constexpr size_t kNumComponents = sizeof...(Component);
 
     struct Spawn {
@@ -96,8 +73,8 @@ public:
         const auto& [entity, active] = entities_.emplace_back(EntitiyHolder{Entity::spawn(), bitset_of<C...>()});
 
         auto& index = index_[entity.id()];
-        ((index[kIndexOf<C>] = std::get<kIndexOf<C>>(components_).size()), ...);
-        (std::get<kIndexOf<C>>(components_).emplace_back(components), ...);
+        set_index_from_components<C...>(index);
+        add_components(std::move(components)...);
 
         events().trigger(Spawn{entity});
 
@@ -113,6 +90,9 @@ public:
     void despawn(const Entity& entity) {
         assert(!entities_.empty());
 
+        // Trigger the event BEFORE removing anything, since handling the event may need component data
+        events().trigger(Despawn{entity});
+
         auto it = std::find_if(entities_.begin(), entities_.end(), [&entity](const auto& enitiy_holder) {
             return enitiy_holder.entity.id() == entity.id();
         });
@@ -121,9 +101,6 @@ public:
         std::iter_swap(it, std::prev(entities_.end()));
         entities_.pop_back();
 
-        events().trigger(Despawn{entity});
-
-        // Remove components AFTER triggering the event, since handling the event may need component data
         auto index_it = index_.find(entity.id());
         ArrayProxy index = index_it->second;
         index_.erase(index_it);
@@ -154,6 +131,16 @@ private:
 
     template <typename C>
     static constexpr size_t kIndexOf = Index<C, Component...>::value;
+
+    template <typename... C>
+    void set_index_from_components(std::array<size_t, kNumComponents>& index) const {
+        ((index[kIndexOf<C>] = std::get<kIndexOf<C>>(components_).size()), ...);
+    }
+
+    template <typename... C>
+    void add_components(C... c) {
+        (std::get<kIndexOf<C>>(components_).emplace_back(c), ...);
+    }
 
     template <typename... ReqComponent, typename F>
     void run_system_on_entity(const F& f, const Entity& entity) {
@@ -196,3 +183,4 @@ private:
 
     EventManager<Spawn, Despawn, Event...> events_;
 };
+}  // namespace ecs

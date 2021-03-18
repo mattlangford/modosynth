@@ -1,5 +1,7 @@
 #include "ecs/scratch.hh"
 
+using namespace ecs;
+
 struct Name {
     std::string name;
     const std::string& operator()() const { return name; }
