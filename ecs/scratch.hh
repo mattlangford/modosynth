@@ -105,7 +105,7 @@ public:
     template <typename C>
     C* get(const Entity& entity) {
         const auto& index = index_[entity.id()][kIndexOf<C>];
-        return index == -1 ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
+        return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
     }
 
     void despawn(const Entity& entity);
@@ -146,7 +146,12 @@ private:
 
 private:
     std::tuple<std::vector<Component>...> components_;
-    std::unordered_map<Entity::Id, std::array<size_t, kNumComponents>> index_;
+
+    static constexpr size_t kInvalidIndex = -1;
+    struct ArrayProxy : public std::array<size_t, kNumComponents> {
+        ArrayProxy() { this->fill(kInvalidIndex); }
+    };
+    std::unordered_map<Entity::Id, ArrayProxy> index_;
 
     struct EntitiyHolder {
         Entity entitiy;
@@ -156,33 +161,3 @@ private:
 
     EventManager<Spawn, Despawn, Event...> events_;
 };
-struct Name {
-    std::string name;
-    const std::string& operator()() const { return name; }
-};
-struct Transform {
-    int b = 0;
-};
-struct Texture {
-    int a = 0;
-};
-struct Selectable {
-    bool selected = false;
-};
-
-int main() {
-    using MyManager = Manager<Components<Name, Texture, Transform, Selectable>, Events<>>;
-
-    MyManager manager;
-
-    manager.events().add_handler<MyManager::Spawn>([&](const MyManager::Spawn& spawn) {
-        auto name = *manager.get<Name>(spawn.entity);
-        std::cout << name() << " spawned \n";
-    });
-
-    manager.spawn_with(Name{"test_object"}, Texture{10}, Transform{20}, Selectable{});
-
-    manager.run_system<Texture, Selectable>([&](const Entity& entity, Texture& box, Selectable& selectable) {
-        selectable.selected = !selectable.selected;
-    });
-}

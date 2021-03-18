@@ -11,7 +11,7 @@ cc_binary(
     name = "test_main",
     srcs = ["test.cc"],
     deps = [
-        "@libsoundio//:soundio"
+        "//ecs"
     ]
 )
 
