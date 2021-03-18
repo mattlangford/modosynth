@@ -11,7 +11,7 @@ cc_test(
     srcs = glob(["test/*.cc"]),
     size = "small",
     deps = [
-        ":esc",
+        ":ecs",
         "@gtest",
         "@gtest//:gtest_main",
     ]

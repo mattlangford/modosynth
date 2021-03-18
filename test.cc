@@ -20,19 +20,21 @@ int main() {
     using MyManager = Manager<Components<Name, Texture, Transform, Selectable>, Events<> >;
 
     MyManager manager;
+    auto& components = manager.component_manager();
+    auto& events = manager.event_manager();
 
-    manager.events().add_handler<MyManager::Spawn>([&](const MyManager::Spawn& spawn) {
-        auto name = *manager.get_component<Name>(spawn.entity);
+    events.add_handler<Spawn>([&](const Spawn& spawn) {
+        auto name = *components.get_component<Name>(spawn.entity);
         std::cout << name() << " spawned \n";
     });
-    manager.events().add_handler<MyManager::Despawn>([&](const MyManager::Despawn& despawn) {
-        auto name = *manager.get_component<Name>(despawn.entity);
+    events.add_handler<Despawn>([&](const Despawn& despawn) {
+        auto name = *components.get_component<Name>(despawn.entity);
         std::cout << name() << " despawned \n";
     });
 
     Entity e = manager.spawn_with(Name{"test_object"}, Texture{10}, Transform{20}, Selectable{});
 
-    manager.run_system<Texture, Selectable>(
+    components.run_system<Texture, Selectable>(
         [&](const Entity&, Texture&, Selectable& selectable) { selectable.selected = !selectable.selected; });
 
     manager.despawn(e);
