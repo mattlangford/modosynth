@@ -59,9 +59,10 @@ public:
     /// @brief A dynamic version of the above function. This will default construct the component.
     ///
     void add_component_by_index(const Entity& entity, size_t component_index) {
-        auto& index = lookup(entity).index;
+        auto& proxy = lookup(entity);
+        proxy.active.set(component_index);
         ApplyByIndex{components_}(component_index, [&](auto& components) {
-            index[component_index] = components.size();
+            proxy.index[component_index] = components.size();
             components.emplace_back();
         });
     }
@@ -124,9 +125,10 @@ private:
 
     template <typename... ReqComponent, typename F>
     void run_system_on_entity(const F& f, const EntityProxy& proxy) {
-        std::apply(f,
-                   std::tuple<const EntityProxy&, ReqComponent&...>{
-                       proxy, std::get<kIndexOf<ReqComponent>>(components_)[proxy.index[kIndexOf<ReqComponent>]]...});
+        std::tuple<const EntityProxy&, ReqComponent&...> args{
+            proxy, std::get<kIndexOf<ReqComponent>>(components_)[proxy.index[kIndexOf<ReqComponent>]]...};
+
+        std::apply(f, args);
     }
 
     template <typename C>
