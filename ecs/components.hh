@@ -101,14 +101,14 @@ public:
     ///
     /// @brief Execute the given function on entities with at least the given required components
     ///
-    template <typename C0, typename... ReqComponent, typename F>
-    void run_system(const F& f) {
+    template <typename C0, typename... ReqComponent, typename System>
+    void run_system(const System& system) {
         auto target = bitset_of<C0, ReqComponent...>();
         for (const auto& proxy : entities_) {
             if ((target & proxy.active) != target) {
                 continue;
             }
-            run_system_on_entity<C0, ReqComponent...>(f, proxy);
+            run_system<C0, ReqComponent...>(system, proxy);
         }
     }
 
@@ -123,12 +123,11 @@ private:
     template <typename C>
     static constexpr size_t kIndexOf = Index<C, Component...>::value;
 
-    template <typename... ReqComponent, typename F>
-    void run_system_on_entity(const F& f, const EntityProxy& proxy) {
+    template <typename... ReqComponent, typename Function>
+    void run_system(const Function& system, const EntityProxy& proxy) {
         std::tuple<const EntityProxy&, ReqComponent&...> args{
             proxy, std::get<kIndexOf<ReqComponent>>(components_)[proxy.index[kIndexOf<ReqComponent>]]...};
-
-        std::apply(f, args);
+        return std::apply(system, args);
     }
 
     template <typename C>

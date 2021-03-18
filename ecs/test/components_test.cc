@@ -119,6 +119,6 @@ TEST(ComponentManager, dynmamic) {
     EXPECT_EQ(a->value, 0);  // default constructed
 
     manager.run_system<TestComponentA>([](const Entity&, TestComponentA& a) { a.value = 100; });
-    EXPECT_EQ(a->value, 100); // ptr should still be valid since we didn't remove anything
+    EXPECT_EQ(a->value, 100);  // ptr should still be valid since we didn't remove anything
 }
 }  // namespace ecs
