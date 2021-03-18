@@ -22,7 +22,7 @@ using MyManager = ComponentManager<TestComponentA, TestComponentB, TestComponent
 
 TEST(ComponentManager, spawn_and_add) {
     MyManager manager;
-    auto entity = manager.spawn_with<TestComponentA>();
+    auto entity = manager.spawn<TestComponentA>();
 
     ASSERT_NE(manager.get_component<TestComponentA>(entity), nullptr);
     ASSERT_EQ(manager.get_component<TestComponentB>(entity), nullptr);
@@ -37,9 +37,9 @@ TEST(ComponentManager, spawn_and_add) {
 
 TEST(ComponentManager, despawn) {
     MyManager manager;
-    manager.spawn_with<TestComponentA>();
-    auto entity_ab = manager.spawn_with<TestComponentA, TestComponentB>();
-    auto entity_abc = manager.spawn_with<TestComponentA, TestComponentB, TestComponentC>();
+    manager.spawn<TestComponentA>();
+    auto entity_ab = manager.spawn<TestComponentA, TestComponentB>();
+    auto entity_abc = manager.spawn<TestComponentA, TestComponentB, TestComponentC>();
 
     {
         size_t count = 0;
@@ -64,7 +64,7 @@ TEST(ComponentManager, despawn) {
     }
 
     // Now back to 3
-    manager.spawn_with<TestComponentA, TestComponentC>();
+    manager.spawn<TestComponentA, TestComponentC>();
     {
         size_t count = 0;
         manager.run_system<TestComponentA>([&](const Entity&, const TestComponentA&) { count++; });
@@ -77,10 +77,10 @@ TEST(ComponentManager, despawn) {
 
 TEST(ComponentManager, run_system) {
     MyManager manager;
-    manager.spawn_with<TestComponentA>();
-    manager.spawn_with<TestComponentA, TestComponentB>();
-    manager.spawn_with<TestComponentC>();
-    auto entity_ac = manager.spawn_with<TestComponentA, TestComponentC>();
+    manager.spawn<TestComponentA>();
+    manager.spawn<TestComponentA, TestComponentB>();
+    manager.spawn<TestComponentC>();
+    auto entity_ac = manager.spawn<TestComponentA, TestComponentC>();
 
     size_t count = 0;
     manager.run_system<TestComponentA>([&](const Entity&, TestComponentA& component) { component.value = count++; });
@@ -111,7 +111,7 @@ TEST(ComponentManager, dynmamic) {
     MyManager manager;
 
     // No component
-    auto entity = manager.spawn_with();
+    auto entity = manager.spawn();
     manager.add_component_by_index(entity, 0);  // A
 
     TestComponentA* a = manager.get_component<TestComponentA>(entity);

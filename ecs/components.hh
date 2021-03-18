@@ -4,6 +4,7 @@
 #include <bitset>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,23 +20,31 @@ private:
     static constexpr size_t kNumComponents = sizeof...(Component);
     using EntityIndex = std::array<size_t, kNumComponents>;
 
+    static constexpr size_t kInvalidIndex = -1;
+
+    ///
+    /// @brief Proxy returned by spawn calls which contains info useful for other calls. This inherits from Entity so
+    /// that it's convertible by default
+    ///
+    struct EntityProxy : Entity {
+        EntityProxy() : Entity(Entity::spawn()) { index.fill(kInvalidIndex); }
+
+        std::bitset<kNumComponents> active;
+        EntityIndex index;
+    };
+
 public:
     ///
     /// @brief Spawn an entity with the given components
     ///
     template <typename... C>
-    Entity spawn_with(C... components) {
-        const auto& [entity, active] = entities_.emplace_back(EntitiyHolder{Entity::spawn(), bitset_of<C...>()});
-        auto& index = index_[entity.id()];
-        (add_component(std::move(components), index), ...);
-        return entity;
-    }
-    template <typename... C>
-    Entity spawn_with() {
-        const auto& [entity, active] = entities_.emplace_back(EntitiyHolder{Entity::spawn(), bitset_of<C...>()});
-        auto& index = index_[entity.id()];
-        (add_component<C>({}, index), ...);
-        return entity;
+    Entity spawn() {
+        const size_t index = entities_.size();
+        auto& proxy = entities_.emplace_back(EntityProxy{});
+        lookup_[proxy.id()] = index;
+        proxy.active = bitset_of<C...>();
+        (add_component<C>({}, proxy.index), ...);
+        return proxy;
     }
 
     ///
@@ -43,14 +52,14 @@ public:
     ///
     template <typename C>
     void add_component(const Entity& entity, C c = {}) {
-        add_component(std::move(c), index_[entity.id()]);
+        add_component(std::move(c), lookup(entity).index);
     }
 
     ///
     /// @brief A dynamic version of the above function. This will default construct the component.
     ///
     void add_component_by_index(const Entity& entity, size_t component_index) {
-        auto& index = index_[entity.id()];
+        auto& index = lookup(entity).index;
         ApplyByIndex{components_}(component_index, [&](auto& components) {
             index[component_index] = components.size();
             components.emplace_back();
@@ -63,36 +72,42 @@ public:
     ///
     template <typename C>
     C* get_component(const Entity& entity) {
-        const auto& index = index_[entity.id()][kIndexOf<C>];
+        const auto& index = lookup(entity).index[kIndexOf<C>];
         return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
     }
 
+    ///
+    /// @brief Despawn the given object
+    ///
     void despawn(const Entity& entity) {
-        assert(!entities_.empty());
+        // We're going to be destroying proxy, so keep the index around
+        auto& proxy = lookup(entity);
+        auto index = proxy.index;
 
-        auto it = std::find_if(entities_.begin(), entities_.end(), [&entity](const auto& enitiy_holder) {
-            return enitiy_holder.entity.id() == entity.id();
-        });
-        assert(it != entities_.end());
+        // Since we swap when we remove this proxy from the vector, there will be a dangling reference in the lookup
+        // table to whatever was put in last. This loop will correct that
+        auto it = lookup_.find(proxy.id());
+        for (auto& [id, i] : lookup_)
+            if ((i + 1) == entities_.size()) i = it->second;
+        lookup_.erase(it);
 
-        std::iter_swap(it, std::prev(entities_.end()));
+        std::swap(proxy, entities_.back());
         entities_.pop_back();
-
-        auto index_it = index_.find(entity.id());
-        EntityIndex index = index_it->second;
-        index_.erase(index_it);
 
         (remove_component_at<Component>(index[kIndexOf<Component>]), ...);
     }
 
+    ///
+    /// @brief Execute the given function on entities with at least the given required components
+    ///
     template <typename C0, typename... ReqComponent, typename F>
     void run_system(const F& f) {
         auto target = bitset_of<C0, ReqComponent...>();
-        for (const auto& [entity, active] : entities_) {
-            if ((target & active) != target) {
+        for (const auto& proxy : entities_) {
+            if ((target & proxy.active) != target) {
                 continue;
             }
-            run_system_on_entity<C0, ReqComponent...>(f, entity);
+            run_system_on_entity<C0, ReqComponent...>(f, proxy);
         }
     }
 
@@ -108,12 +123,10 @@ private:
     static constexpr size_t kIndexOf = Index<C, Component...>::value;
 
     template <typename... ReqComponent, typename F>
-    void run_system_on_entity(const F& f, const Entity& entity) {
-        const auto& index = index_[entity.id()];
-        std::tuple<ReqComponent&...> components{
-            std::get<kIndexOf<ReqComponent>>(components_)[index[kIndexOf<ReqComponent>]]...};
-
-        std::apply(f, std::tuple_cat(std::tuple{entity}, components));
+    void run_system_on_entity(const F& f, const EntityProxy& proxy) {
+        std::apply(f,
+                   std::tuple<const EntityProxy&, ReqComponent&...>{
+                       proxy, std::get<kIndexOf<ReqComponent>>(components_)[proxy.index[kIndexOf<ReqComponent>]]...});
     }
 
     template <typename C>
@@ -130,29 +143,29 @@ private:
         constexpr size_t I = kIndexOf<C>;
         auto& vector = std::get<I>(components_);
 
+        // Replace the component at this index with the component at the end
         assert(vector.size() != 0);
         const size_t end_index = vector.size() - 1;
         std::swap(vector[component_index], vector[end_index]);
         vector.pop_back();
 
         // Make sure to fix up any "dangling pointers" after we removed the component index
-        for (auto& [_, index] : index_)
-            if (index[I] == end_index) index[I] = component_index;
+        for (auto& proxy : entities_)
+            if (proxy.index[I] == end_index) proxy.index[I] = component_index;
+    }
+
+    EntityProxy& lookup(const Entity& entity) {
+        auto it = lookup_.find(entity.id());
+        if (it == lookup_.end())
+            throw std::runtime_error("Unable to find Entity with the given ID. Maybe it was despawned? id=" +
+                                     std::to_string(entity.id()));
+        return entities_.at(it->second);
     }
 
 private:
     std::tuple<std::vector<Component>...> components_;
 
-    static constexpr size_t kInvalidIndex = -1;
-    struct ArrayProxy : public EntityIndex {
-        ArrayProxy() { this->fill(kInvalidIndex); }
-    };
-    std::unordered_map<Entity::Id, ArrayProxy> index_;
-
-    struct EntitiyHolder {
-        Entity entity;
-        std::bitset<kNumComponents> active;
-    };
-    std::vector<EntitiyHolder> entities_;
+    std::unordered_map<Entity::Id, size_t> lookup_;
+    std::vector<EntityProxy> entities_;
 };
 }  // namespace ecs
