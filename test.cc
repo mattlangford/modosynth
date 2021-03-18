@@ -1,4 +1,4 @@
-#include "ecs/scratch.hh"
+#include "ecs/manager.hh"
 
 using namespace ecs;
 

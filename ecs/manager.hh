@@ -11,38 +11,10 @@
 #include <vector>
 
 #include "ecs/entity.hh"
+#include "ecs/events.hh"
 #include "ecs/utils.hh"
 
 namespace ecs {
-
-/////////////////////////////////////////////////////////////
-
-template <typename... Event>
-class EventManager {
-private:
-    template <typename E>
-    using Handler = std::function<void(const E&)>;
-
-public:
-    template <typename E>
-    void add_handler(Handler<E> handler) {
-        std::get<kIndexOf<E>>(handlers_).push_back(std::move(handler));
-    }
-
-    template <typename E>
-    void trigger(const E& event) {
-        for (auto& handler : std::get<kIndexOf<E>>(handlers_)) {
-            handler(event);
-        }
-    }
-
-private:
-    template <typename E>
-    static constexpr size_t kIndexOf = Index<E, Event...>::value;
-
-private:
-    std::tuple<std::vector<Handler<Event>>...> handlers_;
-};
 
 /////////////////////////////////////////////////////////////
 
@@ -60,6 +32,9 @@ class Manager<Components<Component...>, Events<Event...>> {
 public:
     static constexpr size_t kNumComponents = sizeof...(Component);
 
+    ///
+    /// @brief Events the manager will emit when an object is spawned or destroyed
+    ///
     struct Spawn {
         const Entity& entity;
     };
@@ -68,6 +43,9 @@ public:
     };
 
 public:
+    ///
+    /// @brief Spawn an entity with the given components attached, note that this will emit a spawn event
+    ///
     template <typename... C>
     Entity spawn_with(C... components) {
         const auto& [entity, active] = entities_.emplace_back(EntitiyHolder{Entity::spawn(), bitset_of<C...>()});
@@ -81,12 +59,18 @@ public:
         return entity;
     }
 
+    ///
+    /// @brief Get the component associated with the given entity (or nullptr if the entity and component are unrelated)
+    ///
     template <typename C>
     C* get_component(const Entity& entity) {
         const auto& index = index_[entity.id()][kIndexOf<C>];
         return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
     }
 
+    ///
+    /// @brief Despawn the given object, note that this will emit a despawn event
+    ///
     void despawn(const Entity& entity) {
         assert(!entities_.empty());
 
@@ -108,6 +92,10 @@ public:
         (remove_component_at<Component>(index[kIndexOf<Component>]), ...);
     }
 
+    ///
+    /// @brief Execute a "system" on the current set of entities and components. The system will only execute on
+    /// entities that have the appropriate components.
+    ///
     template <typename C0, typename... ReqComponent, typename F>
     void run_system(const F& f) {
         auto target = bitset_of<C0, ReqComponent...>();
@@ -119,6 +107,9 @@ public:
         }
     }
 
+    ///
+    /// @brief Obtain a handle to the underlying event manager
+    ///
     auto& events() { return events_; };
 
 private:
