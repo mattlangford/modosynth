@@ -166,18 +166,16 @@ public:
                 selectable.selected = engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim);
             });
         } else if (event.held()) {
-            // Move any new object
+            // Move any objects which are selected
             components_.run_system<Transform, Moveable, Selectable>(
                 [&event](const Entity&, Transform& tf, Moveable&, Selectable& selectable) {
-                    if (!selectable.selected) {
-                        return;
-                    }
-
-                    tf.from_parent += event.delta_position;
+                    if (selectable.selected) tf.from_parent += event.delta_position;
                 });
         } else if (event.released()) {
-            components_.run_system<Selectable>(
-                [](const Entity&, Selectable& selectable) { selectable.selected = false; });
+            auto [ptr, size] = components_.raw_view<Selectable>();
+            for (size_t i = 0; i < size; ++i) {
+                ptr[i].selected = false;
+            }
         }
     }
 

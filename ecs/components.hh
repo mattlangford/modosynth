@@ -129,6 +129,15 @@ public:
         }
     }
 
+    ///
+    /// @brief Gives raw access to the component data
+    ///
+    template <typename C>
+    std::pair<C*, size_t> raw_view() {
+        auto& components = std::get<kIndexOf<C>>(components_);
+        return {components.data(), components.size()};
+    }
+
 private:
     template <typename... C>
     static constexpr std::bitset<kNumComponents> bitset_of() {
