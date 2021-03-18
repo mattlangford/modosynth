@@ -1,4 +1,5 @@
-#include "ecs/manager.hh"
+#include "ecs/components.hh"
+#include "ecs/events.hh"
 
 using namespace ecs;
 
@@ -16,26 +17,28 @@ struct Selectable {
     bool selected = false;
 };
 
-int main() {
-    using MyManager = Manager<Components<Name, Texture, Transform, Selectable>, Events<> >;
+struct Spawn {
+    Entity entity;
+};
 
-    MyManager manager;
-    auto& components = manager.component_manager();
-    auto& events = manager.event_manager();
+int main() {
+    using ComponentManager = ComponentManager<Name, Texture, Transform, Selectable>;
+    using EventManager = EventManager<Spawn>;
+
+    ComponentManager components;
+    EventManager events;
 
     events.add_handler<Spawn>([&](const Spawn& spawn) {
         auto name = *components.get_component<Name>(spawn.entity);
         std::cout << name() << " spawned \n";
     });
-    events.add_handler<Despawn>([&](const Despawn& despawn) {
-        auto name = *components.get_component<Name>(despawn.entity);
-        std::cout << name() << " despawned \n";
-    });
 
-    Entity e = manager.spawn_with(Name{"test_object"}, Texture{10}, Transform{20}, Selectable{});
+    Entity e = components.spawn<Name, Texture, Transform, Selectable>();
+    components.get_component<Name>(e)->name = "test_object";
+    events.trigger<Spawn>({e});
 
     components.run_system<Texture, Selectable>(
         [&](const Entity&, Texture&, Selectable& selectable) { selectable.selected = !selectable.selected; });
 
-    manager.despawn(e);
+    components.despawn(e);
 }
