@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -125,7 +126,16 @@ public:
             if ((target & proxy.active) != target) {
                 continue;
             }
-            run_system<C0, ReqComponent...>(system, proxy);
+
+            const auto run = [&]() { return run_system<C0, ReqComponent...>(system, proxy); };
+
+            if constexpr (std::is_same_v<decltype(run()), bool>) {
+                if (run()) {
+                    break;
+                }
+            } else {
+                run();
+            }
         }
     }
 
@@ -150,7 +160,7 @@ private:
     static constexpr size_t kIndexOf = Index<C, Component...>::value;
 
     template <typename... ReqComponent, typename Function>
-    void run_system(Function& system, const EntityProxy& proxy) {
+    auto run_system(Function& system, const EntityProxy& proxy) {
         std::tuple<const EntityProxy&, ReqComponent&...> args{
             proxy, std::get<kIndexOf<ReqComponent>>(components_)[proxy.index[kIndexOf<ReqComponent>]]...};
         return std::apply(system, args);

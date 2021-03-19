@@ -39,7 +39,9 @@ struct Selectable {
     bool selected = false;
 };
 
-using TestComponentManager = ecs::ComponentManager<Name, Transform, Box, Moveable, Selectable>;
+struct RopeSpawner {};
+
+using TestComponentManager = ecs::ComponentManager<Name, Transform, Box, Moveable, Selectable, RopeSpawner>;
 
 //
 // #############################################################################
@@ -146,9 +148,9 @@ class Manager : public engine::AbstractSingleShaderObjectManager {
 public:
     Manager()
         : engine::AbstractSingleShaderObjectManager{vertex_shader_text, fragment_shader_text}, renderer_{components_} {
-        entities_.push_back(
-            components_.spawn<Transform, Box>(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
-                                              Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}}));
+        entities_.push_back(components_.spawn<Transform, Box, RopeSpawner>(
+            Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
+            Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}}, RopeSpawner{}));
 
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
     }
@@ -172,11 +174,24 @@ public:
 
         if (event.pressed()) {
             // Select a new object
-            components_.run_system<Transform, Box, Selectable>([&event, this](const Entity&, Transform& tf,
-                                                                              const Box& box, Selectable& selectable) {
-                const Eigen::Vector2f center = tf.world_position(components_);
-                selectable.selected = engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim);
-            });
+            bool selected = false;
+            components_.run_system<Transform, Box, Selectable>(
+                [&](const Entity&, Transform& tf, const Box& box, Selectable& selectable) -> bool {
+                    const Eigen::Vector2f center = tf.world_position(components_);
+                    selected = engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim);
+                    selectable.selected = selected;
+                    return selected;
+                });
+
+            if (selected) return;
+
+            components_.run_system<Transform, Box, RopeSpawner>(
+                [&](const Entity&, Transform& tf, const Box& box, const RopeSpawner&) {
+                    const Eigen::Vector2f center = tf.world_position(components_);
+                    if (engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim)) {
+                        std::cout << "Rope\n";
+                    }
+                });
         } else if (event.held()) {
             // Move any objects which are selected
             components_.run_system<Transform, Moveable, Selectable>(
