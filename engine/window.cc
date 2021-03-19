@@ -102,7 +102,7 @@ void Window::handle_mouse_event(const MouseEvent& event) {
     Eigen::Vector2f mouse = event.mouse_position.cwiseQuotient(kWindowDim);
     if (mouse.x() < 0.0 || mouse.x() >= 1.0 || mouse.y() < 0.0 || mouse.y() >= 1.0) {
         // off screen, don't worry about anything else
-        return;
+        if (!event.was_clicked) return;
     }
     // Next scale to be between (-1, 1)
     mouse = 2.f * (mouse - Eigen::Vector2f{0.5f, 0.5f});

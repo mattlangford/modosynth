@@ -145,7 +145,7 @@ bool CatenarySolver::solve(double tol, size_t max_iter) {
 // #############################################################################
 //
 
-std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) {
+std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
     if (points <= 1) throw std::runtime_error("Calling CatenarySolver::trace() with too few point steps");
     std::vector<Eigen::Vector2f> result;
     result.reserve(points);

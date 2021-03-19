@@ -22,7 +22,7 @@ public:
 
     bool solve(double tol = 1E-3, size_t max_iter = 100);
 
-    std::vector<Eigen::Vector2f> trace(size_t points);
+    std::vector<Eigen::Vector2f> trace(size_t points) const;
 
     double& length();
 
