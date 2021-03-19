@@ -25,11 +25,13 @@ public:
     std::vector<Eigen::Vector2f> trace(size_t points) const;
 
     double& length();
+    bool flipped() const;
 
 private:
     double f(double x) const;
     constexpr static double sq(double in) { return in * in; }
 
+    bool flipped_ = false;
     Eigen::Vector2f start_;
     Eigen::Vector2d diff_;
     double length_;

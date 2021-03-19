@@ -98,7 +98,10 @@ CatenarySolver::CatenarySolver() {}
 //
 
 void CatenarySolver::reset(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
-    if (start.x() > end.x()) std::swap(start, end);
+    flipped_ = start.x() > end.x();
+    if (flipped_) {
+        std::swap(start, end);
+    }
     start_ = start;
     diff_.x() = end.x() - start.x();
     diff_.y() = end.y() - start.y();
@@ -155,6 +158,11 @@ std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
     for (size_t point = 0; point < points; ++point, x += step_size) {
         result.push_back({x + start_.x(), f(x) + start_.y()});
     }
+
+    if (flipped()) {
+        std::reverse(result.begin(), result.end());
+    }
+
     return result;
 }
 
@@ -163,6 +171,7 @@ std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
 //
 
 double& CatenarySolver::length() { return length_; }
+bool CatenarySolver::flipped() const { return flipped_; }
 
 //
 // #############################################################################

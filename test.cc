@@ -41,6 +41,7 @@ struct RopeConnectable {};
 struct Rope {
     Transform start;
     Transform end;
+    float color_pulse = 0.0;
     objects::CatenarySolver solver;
 };
 
@@ -72,9 +73,9 @@ static std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
 layout (location = 0) in vec2 world_position;
-layout (location = 1) in vec3 in_color;
+layout (location = 1) in vec4 in_color;
 
-out vec3 color;
+out vec4 color;
 
 void main()
 {
@@ -86,11 +87,12 @@ void main()
 
 static std::string fragment_shader_text = R"(
 #version 330
-in vec3 color;
+in vec4 color;
 out vec4 fragment;
+
 void main()
 {
-    fragment = vec4(color, 1.0);
+    fragment = color;
 }
 )";
 }  // namespace
@@ -112,8 +114,8 @@ struct BoxRenderer {
         position_buffer.init(GL_ARRAY_BUFFER, 0, vao);
         color_buffer.init(GL_ARRAY_BUFFER, 1, vao);
 
-        position_buffer.resize(8 * 2);
-        color_buffer.resize(8 * 3);
+        position_buffer.resize(8 * 4);
+        color_buffer.resize(8 * 4);
     }
 
     void operator()(const ecs::Entity&, const Transform& tf, const Box& box) {
@@ -124,7 +126,8 @@ struct BoxRenderer {
 
     void set_color(const Eigen::Vector3f& color) {
         auto batch = color_buffer.batched_updater();
-        for (size_t i = 0; i < 4; ++i) batch.element(i) = color;
+        const Eigen::Vector4f with_alpha{color[0], color[1], color[2], 1.0};
+        for (size_t i = 0; i < 4; ++i) batch.element(i) = with_alpha;
     }
 
     void set_position(const Eigen::Vector2f& center, const Eigen::Vector2f& dim) {
@@ -143,7 +146,7 @@ struct BoxRenderer {
     TestComponentManager& manager;
     engine::VertexArrayObject vao;
     engine::Buffer<float, 2> position_buffer;
-    engine::Buffer<float, 3> color_buffer;
+    engine::Buffer<float, 4> color_buffer;
 };
 
 struct RopeRenderer {
@@ -162,18 +165,25 @@ struct RopeRenderer {
         color_buffer.init(GL_ARRAY_BUFFER, 1, vao);
 
         position_buffer.resize(kTrace * 2);
-        color_buffer.resize(kTrace * 3);
+        color_buffer.resize(kTrace * 4);
     }
 
     void operator()(const ecs::Entity&, const Rope& rope) {
-        set_color(Eigen::Vector3f::Ones());
+        set_color(rope.color_pulse);
         set_position(rope.solver.trace(kTrace));
         gl_check_with_vao(vao, glDrawArrays, GL_LINE_STRIP, 0, kTrace);
     }
 
-    void set_color(const Eigen::Vector3f& color) {
+    void set_color(float pulse) {
         auto batch = color_buffer.batched_updater();
-        for (size_t i = 0; i < kTrace; ++i) batch.element(i) = color;
+        for (size_t i = 0; i < kTrace; ++i) {
+            if (pulse > 1.0)
+                batch.element(i) = Eigen::Vector4f{1.0, 1.0, 1.0, 2 - pulse};
+            else if (i > kTrace * pulse)
+                batch.element(i) = Eigen::Vector4f::Zero();
+            else
+                batch.element(i) = Eigen::Vector4f::Ones();
+        }
     }
 
     void set_position(const std::vector<Eigen::Vector2f>& traced) {
@@ -186,7 +196,7 @@ struct RopeRenderer {
     TestComponentManager& manager;
     engine::VertexArrayObject vao;
     engine::Buffer<float, 2> position_buffer;
-    engine::Buffer<float, 3> color_buffer;
+    engine::Buffer<float, 4> color_buffer;
 };
 
 //
@@ -233,6 +243,8 @@ public:
             double min_length = 1.01 * (end - start).norm();
             rope.solver.reset(start, end, std::max(min_length, rope.solver.length()));
             rope.solver.solve();
+
+            if (rope.end.parent) rope.color_pulse = std::fmod(rope.color_pulse + 0.05, 2.0f);
         });
     }
 
@@ -265,7 +277,7 @@ public:
                 });
 
             if (!start) return;
-            drawing_rope_ = components_.spawn<Rope>({*start, {std::nullopt, event.mouse_position}, {}});
+            drawing_rope_ = components_.spawn<Rope>({*start, {std::nullopt, event.mouse_position}, 1.0f, {}});
 
         } else if (event.held()) {
             if (drawing_rope_) {
