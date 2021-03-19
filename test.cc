@@ -208,11 +208,10 @@ public:
     Manager()
         : engine::AbstractSingleShaderObjectManager{vertex_shader_text, fragment_shader_text},
           box_renderer_{components_},
-          rope_renderer_{components_} {
-        entities_.push_back(components_.spawn<Transform, Box, RopeSpawnable>(
-            Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
-            Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}}, RopeSpawnable{}));
-
+          rope_renderer_{components_},
+          parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
+                                    Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}},
+                                    RopeSpawnable{})} {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
     }
@@ -340,9 +339,8 @@ public:
             size[0] = dist(mt) * 100;
             size[1] = dist(mt) * 100;
 
-            entities_.push_back(components_.spawn<Transform, Box, Moveable, Selectable, RopeConnectable>(
-                Transform{entities_.back(), offset}, Box{color, size}, Moveable{}, Selectable{}, RopeConnectable{}));
-            events_.trigger<Spawn>({entities_.back()});
+            events_.trigger<Spawn>({components_.spawn(Transform{parent_, offset}, Box{color, size}, Moveable{},
+                                                      Selectable{}, RopeConnectable{})});
         } else if (event.clicked && event.control && event.key == 'z') {
             std::cout << "Undoing\n";
             events_.undo();
@@ -350,23 +348,17 @@ public:
     }
 
 private:
-    void undo_spawn(const Spawn& spawn) {
-        if (entities_.size() <= 1) return;
-
-        if (entities_.back().id() == spawn.entity.id()) entities_.pop_back();
-
-        components_.despawn(spawn.entity);
-    }
+    void undo_spawn(const Spawn& spawn) { components_.despawn(spawn.entity); }
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
 private:
-    std::optional<Entity> drawing_rope_;
-
-    std::vector<Entity> entities_;
     TestComponentManager components_;
     TestEventManager events_;
     BoxRenderer box_renderer_;
     RopeRenderer rope_renderer_;
+
+    std::optional<Entity> drawing_rope_;
+    Entity parent_;
 };
 
 int main() {
