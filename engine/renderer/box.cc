@@ -43,8 +43,7 @@ BoxRenderer::BoxRenderer() : shader_(vertex_shader_text, fragment_shader_text) {
 // #############################################################################
 //
 
-size_t BoxRenderer::add_texture(Texture texture)
-{
+size_t BoxRenderer::add_texture(Texture texture) {
     size_t index = textures_.size();
     textures_.push_back(std::move(texture));
     return index;
@@ -66,8 +65,7 @@ void BoxRenderer::init() {
     position_buffer_.resize(8);
     uv_buffer_.resize(8);
 
-    for (auto& texture : textures_)
-    {
+    for (auto& texture : textures_) {
         texture.init();
     }
 }
@@ -83,11 +81,11 @@ void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world)
     auto& texture = textures_.at(box.texture_index);
     texture.activate();
 
-    set_position(box.center, 0.5 * box.dim);
+    set_position(box.center, box.dim);
 
-    // The UV texture needs to be between 0 and 1
+    // The UV texture needs to be normalized between 0 and 1
     Eigen::Vector2f uv_size{texture.bitmap().get_width(), texture.bitmap().get_height()};
-    set_uv(box.uv_center.cwiseQuotient(uv_size), 0.5 * box.dim.cwiseQuotient(uv_size));
+    set_uv(box.uv_center.cwiseQuotient(uv_size), box.dim.cwiseQuotient(uv_size));
 
     gl_check_with_vao(vao_, glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 }

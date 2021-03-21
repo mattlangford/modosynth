@@ -29,8 +29,7 @@ struct Transform {
         return from_parent + parent_tf.world_position(manager);
     }
 };
-struct TexturedBox
-{
+struct TexturedBox {
     Eigen::Vector2f dim;
     Eigen::Vector2f uv_center;
     size_t texture_index;
@@ -46,7 +45,7 @@ struct RopeConnectable {};
 struct Rope {
     Transform start;
     Transform end;
-    float color_pulse = 0.0;
+
     objects::CatenarySolver solver;
 };
 
@@ -73,10 +72,8 @@ using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
 // #############################################################################
 //
 
-TexturedBox vco()
-{
-    return {Eigen::Vector2f{32, 16}, Eigen::Vector2f{16, 8}, 0};
-}
+TexturedBox vco() { return {0.5 * Eigen::Vector2f{32, 16}, Eigen::Vector2f{16, 8}, 0}; }
+TexturedBox port() { return {0.5 * Eigen::Vector2f{3, 3}, Eigen::Vector2f{1.5, 1.5}, 1}; }
 
 //
 // #############################################################################
@@ -84,12 +81,12 @@ TexturedBox vco()
 
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager()
-        : parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}}, vco(), RopeSpawnable{})} {
+    Manager() : parent_{spawn_block()} {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
 
         box_renderer_.add_texture({"/Users/mlangford/Downloads/test.bmp"});
+        box_renderer_.add_texture({"/Users/mlangford/Documents/code/modosynth/objects/ports.bmp"});
     }
 
 protected:
@@ -99,14 +96,15 @@ protected:
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
-        components_.run_system<Transform, TexturedBox>([&](const ecs::Entity&, const Transform& tf, const TexturedBox& box) {
-            engine::renderer::Box r_box;
-            r_box.center = tf.world_position(components_);
-            r_box.dim = box.dim;
-            r_box.uv_center = box.uv_center;
-            r_box.texture_index = box.texture_index;
-            box_renderer_.draw(r_box, screen_from_world);
-        });
+        components_.run_system<Transform, TexturedBox>(
+            [&](const ecs::Entity&, const Transform& tf, const TexturedBox& box) {
+                engine::renderer::Box r_box;
+                r_box.center = tf.world_position(components_);
+                r_box.dim = box.dim;
+                r_box.uv_center = box.uv_center;
+                r_box.texture_index = box.texture_index;
+                box_renderer_.draw(r_box, screen_from_world);
+            });
         components_.run_system<Rope>([&](const ecs::Entity&, const Rope& rope) {
             engine::renderer::Line line;
             line.segments = rope.solver.trace(32);
@@ -122,8 +120,6 @@ public:
             double min_length = 1.01 * (end - start).norm();
             rope.solver.reset(start, end, std::max(min_length, rope.solver.length()));
             rope.solver.solve();
-
-            if (rope.end.parent) rope.color_pulse = std::fmod(rope.color_pulse + 0.05, 2.0f);
         });
     }
 
@@ -137,8 +133,12 @@ public:
                 [&](const ecs::Entity&, const Transform& tf, const TexturedBox& box, Selectable& selectable) -> bool {
                     const Eigen::Vector2f center = tf.world_position(components_);
                     selected = engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim);
-                    selectable.selected = selected;
-                    return selected;
+                    if (engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim)) {
+                        selected = true;
+                        selectable.selected = true;
+                        return true;
+                    }
+                    return false;
                 });
 
             if (selected) return;
@@ -149,14 +149,14 @@ public:
                 [&](const ecs::Entity& e, const Transform& tf, const TexturedBox& box, const RopeSpawnable&) {
                     const Eigen::Vector2f center = tf.world_position(components_);
                     if (engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim)) {
-                        start.emplace(Transform{e, event.mouse_position - center});
+                        start.emplace(tf);
                         return true;
                     }
                     return false;
                 });
 
             if (!start) return;
-            drawing_rope_ = components_.spawn<Rope>({*start, {std::nullopt, event.mouse_position}, 1.0f, {}});
+            drawing_rope_ = components_.spawn<Rope>({*start, {std::nullopt, start->world_position(components_)}, {}});
 
         } else if (event.held()) {
             if (drawing_rope_) {
@@ -219,8 +219,8 @@ public:
             size[0] = dist(mt) * 100;
             size[1] = dist(mt) * 100;
 
-            events_.trigger<Spawn>({components_.spawn(Transform{parent_, offset}, vco(), Moveable{},
-                                                      Selectable{}, RopeConnectable{})});
+            events_.trigger<Spawn>(
+                {components_.spawn(Transform{parent_, offset}, vco(), Moveable{}, Selectable{}, RopeConnectable{})});
         } else if (event.clicked && event.control && event.key == 'z') {
             std::cout << "Undoing\n";
             events_.undo();
@@ -230,6 +230,14 @@ public:
 private:
     void undo_spawn(const Spawn& spawn) { components_.despawn(spawn.entity); }
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
+
+    ecs::Entity spawn_block() {
+        auto block =
+            components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}}, vco(), Selectable{}, Moveable{});
+        components_.spawn(Transform{block, Eigen::Vector2f{-(16 + 1.5), 0}}, port(), RopeSpawnable{});
+        components_.spawn(Transform{block, Eigen::Vector2f{(16 + 1.5), 0}}, port(), RopeSpawnable{});
+        return block;
+    }
 
 private:
     ComponentManager components_;

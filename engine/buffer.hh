@@ -211,14 +211,12 @@ public:
 
     BatchedUpdateBuffer batched_updater() { return {*this}; }
 
-    std::string print() const{
+    std::string print() const {
         std::stringstream res;
         res << "[";
-        for (size_t i = 0; i < data_.size(); ++i)
-        {
-            if ((i % Stride == 0) && i > 0)
-            {
-                res<< "]\n[";
+        for (size_t i = 0; i < data_.size(); ++i) {
+            if ((i % Stride == 0) && i > 0) {
+                res << "]\n[";
             }
             res << data_[i] << ", ";
         }

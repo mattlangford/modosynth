@@ -37,7 +37,7 @@ vec4 to_screen(vec2 world)
 
 void main()
 {
-    float thickness = 1.0;
+    float thickness = 0.25;
     vec2 start = gl_in[0].gl_Position.xy;
     vec2 end = gl_in[1].gl_Position.xy;
 
