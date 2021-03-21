@@ -29,10 +29,13 @@ struct Transform {
         return from_parent + parent_tf.world_position(manager);
     }
 };
-struct Box {
-    Eigen::Vector3f color;
+struct TexturedBox
+{
     Eigen::Vector2f dim;
+    Eigen::Vector2f uv_center;
+    size_t texture_index;
 };
+
 struct Moveable {};
 struct Selectable {
     bool selected = false;
@@ -47,8 +50,8 @@ struct Rope {
     objects::CatenarySolver solver;
 };
 
-using TestComponentManager =
-    ecs::ComponentManager<Transform, Box, Moveable, Selectable, RopeSpawnable, RopeConnectable, Rope>;
+using ComponentManager =
+    ecs::ComponentManager<Transform, TexturedBox, Moveable, Selectable, RopeSpawnable, RopeConnectable, Rope>;
 
 //
 // #############################################################################
@@ -64,15 +67,29 @@ struct Connect {
     ecs::Entity entity;
 };
 
-using TestEventManager = ecs::EventManager<Spawn, Despawn, Connect>;
+using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
+
+//
+// #############################################################################
+//
+
+TexturedBox vco()
+{
+    return {Eigen::Vector2f{32, 16}, Eigen::Vector2f{16, 8}, 0};
+}
+
+//
+// #############################################################################
+//
+
 class Manager : public engine::AbstractObjectManager {
 public:
     Manager()
-        : parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
-                                    Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}},
-                                    RopeSpawnable{})} {
+        : parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}}, vco(), RopeSpawnable{})} {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
+
+        box_renderer_.add_texture({"/Users/mlangford/Downloads/test.bmp"});
     }
 
 protected:
@@ -82,11 +99,12 @@ protected:
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
-        components_.run_system<Transform, Box>([&](const ecs::Entity&, const Transform& tf, const Box& box) {
+        components_.run_system<Transform, TexturedBox>([&](const ecs::Entity&, const Transform& tf, const TexturedBox& box) {
             engine::renderer::Box r_box;
             r_box.center = tf.world_position(components_);
             r_box.dim = box.dim;
-            r_box.color = box.color;
+            r_box.uv_center = box.uv_center;
+            r_box.texture_index = box.texture_index;
             box_renderer_.draw(r_box, screen_from_world);
         });
         components_.run_system<Rope>([&](const ecs::Entity&, const Rope& rope) {
@@ -115,8 +133,8 @@ public:
         if (event.pressed()) {
             // Select a new object
             bool selected = false;
-            components_.run_system<Transform, Box, Selectable>(
-                [&](const ecs::Entity&, const Transform& tf, const Box& box, Selectable& selectable) -> bool {
+            components_.run_system<Transform, TexturedBox, Selectable>(
+                [&](const ecs::Entity&, const Transform& tf, const TexturedBox& box, Selectable& selectable) -> bool {
                     const Eigen::Vector2f center = tf.world_position(components_);
                     selected = engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim);
                     selectable.selected = selected;
@@ -127,8 +145,8 @@ public:
 
             // Now check if we should spawn a rope
             std::optional<Transform> start;
-            components_.run_system<Transform, Box, RopeSpawnable>(
-                [&](const ecs::Entity& e, const Transform& tf, const Box& box, const RopeSpawnable&) {
+            components_.run_system<Transform, TexturedBox, RopeSpawnable>(
+                [&](const ecs::Entity& e, const Transform& tf, const TexturedBox& box, const RopeSpawnable&) {
                     const Eigen::Vector2f center = tf.world_position(components_);
                     if (engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim)) {
                         start.emplace(Transform{e, event.mouse_position - center});
@@ -156,8 +174,8 @@ public:
         } else if (event.released()) {
             if (drawing_rope_) {
                 bool connected = false;
-                components_.run_system<Transform, Box, RopeConnectable>(
-                    [&](const ecs::Entity& e, const Transform& tf, const Box& box, const RopeConnectable&) {
+                components_.run_system<Transform, TexturedBox, RopeConnectable>(
+                    [&](const ecs::Entity& e, const Transform& tf, const TexturedBox& box, const RopeConnectable&) {
                         const Eigen::Vector2f center = tf.world_position(components_);
                         if (engine::is_in_rectangle(event.mouse_position, center - box.dim, center + box.dim)) {
                             components_.get<Rope>(*drawing_rope_).end = Transform{e, event.mouse_position - center};
@@ -201,7 +219,7 @@ public:
             size[0] = dist(mt) * 100;
             size[1] = dist(mt) * 100;
 
-            events_.trigger<Spawn>({components_.spawn(Transform{parent_, offset}, Box{color, size}, Moveable{},
+            events_.trigger<Spawn>({components_.spawn(Transform{parent_, offset}, vco(), Moveable{},
                                                       Selectable{}, RopeConnectable{})});
         } else if (event.clicked && event.control && event.key == 'z') {
             std::cout << "Undoing\n";
@@ -214,8 +232,8 @@ private:
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
 private:
-    TestComponentManager components_;
-    TestEventManager events_;
+    ComponentManager components_;
+    EventManager events_;
     engine::renderer::BoxRenderer box_renderer_;
     engine::renderer::LineRenderer line_renderer_;
 

@@ -211,6 +211,21 @@ public:
 
     BatchedUpdateBuffer batched_updater() { return {*this}; }
 
+    std::string print() const{
+        std::stringstream res;
+        res << "[";
+        for (size_t i = 0; i < data_.size(); ++i)
+        {
+            if ((i % Stride == 0) && i > 0)
+            {
+                res<< "]\n[";
+            }
+            res << data_[i] << ", ";
+        }
+        res << "]";
+        return res.str();
+    }
+
 private:
     GLenum target_;
     const VertexArrayObject* vao_ = nullptr;  // we don't own this
