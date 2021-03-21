@@ -14,7 +14,7 @@ int main() {
     auto manager = std::make_shared<objects::Manager>();
     object_manager.add_manager(manager);
 
-    engine::Window window{1000, 1000, std::move(object_manager)};
+    engine::Window window{800, 600, std::move(object_manager)};
 
     window.init();
 

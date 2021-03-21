@@ -17,6 +17,7 @@ namespace objects {
 // #############################################################################
 //
 
+struct TexturedBox;
 struct Transform {
     std::optional<ecs::Entity> parent;
     Eigen::Vector2f from_parent;
@@ -25,24 +26,28 @@ struct Transform {
     Eigen::Vector2f world_position(ecs::ComponentManager<Components...>& manager) const {
         if (!parent) return from_parent;
 
-        const auto& parent_tf = manager.template get<Transform>(*parent);
+        const auto& parent_tf = manager.template get<TexturedBox>(*parent).center;
         return from_parent + parent_tf.world_position(manager);
     }
 };
 struct TexturedBox {
+    Transform center;
     Eigen::Vector2f dim;
     Eigen::Vector2f uv_center;
     size_t texture_index;
 };
 
-struct Moveable {};
+struct Moveable {
+    Eigen::Vector2f position;
+    bool snap_to_pixel = true;
+};
 struct Selectable {
     bool selected = false;
 };
 
 struct CableSource {};
 struct CableSink {};
-struct Rope {
+struct Cable {
     Transform start;
     Transform end;
 
@@ -53,8 +58,7 @@ struct Rope {
     Eigen::Vector2f previous_end;
 };
 
-using ComponentManager =
-    ecs::ComponentManager<Transform, TexturedBox, Moveable, Selectable, CableSource, CableSink, Rope>;
+using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable>;
 
 //
 // #############################################################################
@@ -76,8 +80,10 @@ using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
 // #############################################################################
 //
 
-TexturedBox vco() { return {0.5 * Eigen::Vector2f{32, 16}, Eigen::Vector2f{16, 8}, 0}; }
-TexturedBox port() { return {0.5 * Eigen::Vector2f{3, 3}, Eigen::Vector2f{1.5, 1.5}, 1}; }
+TexturedBox vco(const Transform& center) { return {center, 0.5 * Eigen::Vector2f{32, 16}, Eigen::Vector2f{16, 8}, 0}; }
+TexturedBox port(const Transform& center) {
+    return {center, 0.5 * Eigen::Vector2f{3, 3}, Eigen::Vector2f{1.5, 1.5}, 1};
+}
 
 //
 // #############################################################################
@@ -85,13 +91,14 @@ TexturedBox port() { return {0.5 * Eigen::Vector2f{3, 3}, Eigen::Vector2f{1.5, 1
 
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager() : parent_{spawn_block()} {
+    Manager() {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
 
         box_renderer_.add_texture({"/Users/mlangford/Downloads/test.bmp"});
         box_renderer_.add_texture({"/Users/mlangford/Documents/code/modosynth/objects/ports.bmp"});
 
+        spawn_block();
         spawn_block();
     }
 
@@ -101,16 +108,15 @@ public:
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
-        components_.run_system<Transform, TexturedBox>(
-            [&](const ecs::Entity&, const Transform& tf, const TexturedBox& box) {
-                engine::renderer::Box r_box;
-                r_box.center = tf.world_position(components_);
-                r_box.dim = box.dim;
-                r_box.uv_center = box.uv_center;
-                r_box.texture_index = box.texture_index;
-                box_renderer_.draw(r_box, screen_from_world);
-            });
-        components_.run_system<Rope>([&](const ecs::Entity&, const Rope& rope) {
+        components_.run_system<TexturedBox>([&](const ecs::Entity&, const TexturedBox& box) {
+            engine::renderer::Box r_box;
+            r_box.center = box.center.world_position(components_);
+            r_box.dim = box.dim;
+            r_box.uv_center = box.uv_center;
+            r_box.texture_index = box.texture_index;
+            box_renderer_.draw(r_box, screen_from_world);
+        });
+        components_.run_system<Cable>([&](const ecs::Entity&, const Cable& rope) {
             engine::renderer::Line line;
             line.segments = rope.solver.trace(32);
             line_renderer_.draw(line, screen_from_world);
@@ -119,7 +125,7 @@ public:
 
 public:
     void update(float) override {
-        components_.run_system<Rope>([this](const ecs::Entity&, Rope& rope) {
+        components_.run_system<Cable>([this](const ecs::Entity&, Cable& rope) {
             const Eigen::Vector2f start = rope.start.world_position(components_);
             const Eigen::Vector2f end = rope.end.world_position(components_);
 
@@ -159,17 +165,17 @@ private:
     void undo_spawn(const Spawn& spawn) { components_.despawn(spawn.entity); }
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
-    void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
+    void mouse_click(const engine::MouseEvent&, const ecs::Entity& entity) {
         if (auto ptr = components_.get_ptr<Selectable>(entity)) {
             ptr->selected = true;
         } else if (components_.has<CableSource>(entity)) {
-            drawing_rope_ = spawn_cable_from(components_.get<Transform>(entity));
+            drawing_rope_ = spawn_cable_from(components_.get<TexturedBox>(entity).center);
         }
     }
 
     void mouse_drag(const engine::MouseEvent& event) {
         if (drawing_rope_) {
-            components_.run_system<Rope>([&event](const ecs::Entity&, Rope& r) {
+            components_.run_system<Cable>([&event](const ecs::Entity&, Cable& r) {
                 if (r.end.parent) return;
                 r.end.from_parent = event.mouse_position;
             });
@@ -177,13 +183,22 @@ private:
         }
 
         // Move any objects which are selected
-        components_.run_system<Transform, Moveable, Selectable>(
-            [&event](const ecs::Entity&, Transform& tf, Moveable&, Selectable& selectable) {
-                if (selectable.selected) tf.from_parent += event.delta_position;
+        components_.run_system<TexturedBox, Moveable, Selectable>(
+            [&event](const ecs::Entity&, TexturedBox& box, Moveable& moveable, const Selectable& selectable) {
+                if (!selectable.selected) {
+                    return;
+                }
+
+                moveable.position += event.delta_position;
+
+                if (moveable.snap_to_pixel)
+                    box.center.from_parent = moveable.position.cast<int>().cast<float>();
+                else
+                    box.center.from_parent = moveable.position;
             });
     }
 
-    void mouse_released(const engine::MouseEvent& event, const std::optional<ecs::Entity>& entity) {
+    void mouse_released(const engine::MouseEvent&, const std::optional<ecs::Entity>& entity) {
         if (!drawing_rope_) {
             auto [ptr, size] = components_.raw_view<Selectable>();
             for (size_t i = 0; i < size; ++i) {
@@ -200,49 +215,47 @@ private:
             return;
         }
 
-        components_.get<Rope>(drawing_rope).end = components_.get<Transform>(*entity);
+        components_.get<Cable>(drawing_rope).end = components_.get<TexturedBox>(*entity).center;
         events_.trigger<Connect>({drawing_rope});
     }
 
 private:
-    ecs::Entity spawn_block() {
-        auto block =
-            components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}}, vco(), Selectable{}, Moveable{});
-        components_.spawn(Transform{block, Eigen::Vector2f{-(16 + 1.5), 0}}, port(), CableSink{});
-        components_.spawn(Transform{block, Eigen::Vector2f{(16 + 1.5), 0}}, port(), CableSource{});
+    ecs::Entity spawn_block(const Eigen::Vector2f& location = {100, 200}) {
+        auto block = components_.spawn(vco(Transform{std::nullopt, location}), Selectable{}, Moveable{location, true});
+        components_.spawn(port(Transform{block, Eigen::Vector2f{-(16 + 1.5), 0}}), CableSink{});
+        components_.spawn(port(Transform{block, Eigen::Vector2f{(16 + 1.5), 0}}), CableSource{});
         return block;
     }
 
     ecs::Entity spawn_cable_from(const Transform& start) {
-        return components_.spawn<Rope>({start,
-                                        {std::nullopt, start.world_position(components_)},
-                                        {},
-                                        Eigen::Vector2f::Zero(),
-                                        Eigen::Vector2f::Zero()});
+        return components_.spawn<Cable>({start,
+                                         {std::nullopt, start.world_position(components_)},
+                                         {},
+                                         Eigen::Vector2f::Zero(),
+                                         Eigen::Vector2f::Zero()});
     }
 
     std::optional<ecs::Entity> get_box_under_mouse(const Eigen::Vector2f& mouse) {
         std::optional<ecs::Entity> selected;
-        components_.run_system<Transform, TexturedBox>(
-            [&](const ecs::Entity& e, const Transform& tf, const TexturedBox& box) -> bool {
-                const Eigen::Vector2f center = tf.world_position(components_);
-                if (engine::is_in_rectangle(mouse, center - box.dim, center + box.dim)) {
-                    selected = e;
-                    return true;
-                }
-                return false;
-            });
+        components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) -> bool {
+            const Eigen::Vector2f center = box.center.world_position(components_);
+            if (engine::is_in_rectangle(mouse, center - box.dim, center + box.dim)) {
+                selected = e;
+                return true;
+            }
+            return false;
+        });
         return selected;
     }
 
 private:
     ComponentManager components_;
     EventManager events_;
+
     engine::renderer::BoxRenderer box_renderer_;
     engine::renderer::LineRenderer line_renderer_;
 
     std::optional<ecs::Entity> drawing_rope_;
-    ecs::Entity parent_;
 };
 
 }  // namespace objects
