@@ -108,7 +108,7 @@ void LineRenderer::draw(const Line& line, const Eigen::Matrix3f& screen_from_wor
     set_elements(line.segments.size());
 
     // Each step will generate a triangle, so render 3 times as many
-    gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, 3 * (line.segments.size()) - 1, GL_UNSIGNED_INT, 0);
+    gl_check_with_vao(vao_, glDrawElements, GL_TRIANGLES, 3 * (line.segments.size() - 1), GL_UNSIGNED_INT, 0);
 }
 
 //

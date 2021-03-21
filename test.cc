@@ -96,20 +96,13 @@ protected:
         });
         components_.run_system<Rope>([&](const Entity&, const Rope& rope) {
             engine::renderer::Line line;
-            line.segments = rope.solver.trace(16);
+            line.segments = rope.solver.trace(32);
             line_renderer_.draw(line, screen_from_world);
         });
     }
 
 public:
     void update(float) override {
-        components_.run_system<Transform>([](const Entity&, Transform& tf) {
-            if (tf.parent) return;
-            static float diff = 1;
-            tf.from_parent.x() += diff;
-            if (tf.from_parent.x() > 1000 || tf.from_parent.x() <= 0) diff *= -1;
-        });
-
         components_.run_system<Rope>([this](const Entity&, Rope& rope) {
             const Eigen::Vector2f start = rope.start.world_position(components_);
             const Eigen::Vector2f end = rope.end.world_position(components_);
