@@ -24,7 +24,7 @@ public:
 
 public:
     void init();
-    void operator()(const Box& box, const Eigen::Matrix3f& screen_from_world);
+    void draw(const Box& box, const Eigen::Matrix3f& screen_from_world);
 
 private:
     void set_color(const Eigen::Vector3f& color);

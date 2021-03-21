@@ -57,7 +57,7 @@ void BoxRenderer::init() {
 // #############################################################################
 //
 
-void BoxRenderer::operator()(const Box& box, const Eigen::Matrix3f& screen_from_world) {
+void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world) {
     shader_.activate();
     gl_check(glUniformMatrix3fv, screen_from_world_loc_, 1, GL_FALSE, screen_from_world.data());
 

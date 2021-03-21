@@ -6,6 +6,7 @@
 #include "engine/object_global.hh"
 #include "engine/object_manager.hh"
 #include "engine/renderer/box.hh"
+#include "engine/renderer/line.hh"
 #include "engine/utils.hh"
 #include "engine/window.hh"
 #include "objects/cable.hh"
@@ -69,98 +70,10 @@ using TestEventManager = ecs::EventManager<Spawn, Despawn, Connect>;
 // #############################################################################
 //
 
-namespace {
-static std::string vertex_shader_text = R"(
-#version 330
-uniform mat3 screen_from_world;
-layout (location = 0) in vec2 world_position;
-layout (location = 1) in vec4 in_color;
-
-out vec4 color;
-
-void main()
-{
-    vec3 screen = screen_from_world * vec3(world_position.x, world_position.y, 1.0);
-    gl_Position = vec4(screen.x, screen.y, 0.0, 1.0);
-    color = in_color;
-}
-)";
-
-static std::string fragment_shader_text = R"(
-#version 330
-in vec4 color;
-out vec4 fragment;
-
-void main()
-{
-    fragment = color;
-}
-)";
-}  // namespace
-
-//
-// #############################################################################
-//
-
-struct RopeRenderer {
-    RopeRenderer(TestComponentManager& manager_) : manager(manager_) {}
-
-    RopeRenderer(const RopeRenderer&) = delete;
-    RopeRenderer(RopeRenderer&&) = delete;
-    RopeRenderer& operator=(const RopeRenderer&) = delete;
-    RopeRenderer& operator=(RopeRenderer&&) = delete;
-
-    static constexpr size_t kTrace = 32;
-
-    void init() {
-        vao.init();
-        position_buffer.init(GL_ARRAY_BUFFER, 0, vao);
-        color_buffer.init(GL_ARRAY_BUFFER, 1, vao);
-
-        position_buffer.resize(kTrace * 2);
-        color_buffer.resize(kTrace * 4);
-    }
-
-    void operator()(const ecs::Entity&, const Rope& rope) {
-        set_color(rope.color_pulse);
-        set_position(rope.solver.trace(kTrace));
-        gl_check_with_vao(vao, glDrawArrays, GL_LINE_STRIP, 0, kTrace);
-    }
-
-    void set_color(float pulse) {
-        auto batch = color_buffer.batched_updater();
-        for (size_t i = 0; i < kTrace; ++i) {
-            if (pulse > 1.0)
-                batch.element(i) = Eigen::Vector4f{1.0, 1.0, 1.0, 2 - pulse};
-            else if (i > kTrace * pulse)
-                batch.element(i) = Eigen::Vector4f::Zero();
-            else
-                batch.element(i) = Eigen::Vector4f::Ones();
-        }
-    }
-
-    void set_position(const std::vector<Eigen::Vector2f>& traced) {
-        auto batch = position_buffer.batched_updater();
-        for (size_t i = 0; i < traced.size(); ++i) {
-            batch.element(i) = traced[i];
-        }
-    }
-
-    TestComponentManager& manager;
-    engine::VertexArrayObject vao;
-    engine::Buffer<float, 2> position_buffer;
-    engine::Buffer<float, 4> color_buffer;
-};
-
-//
-// #############################################################################
-//
-
 class Manager : public engine::AbstractObjectManager {
 public:
     Manager()
-        : rope_renderer_{components_},
-          parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
+        : parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
                                     Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}},
                                     RopeSpawnable{})} {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
@@ -170,7 +83,7 @@ public:
 protected:
     void init() override {
         box_renderer_.init();
-        rope_renderer_.init();
+        line_renderer_.init();
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -179,9 +92,13 @@ protected:
             r_box.center = tf.world_position(components_);
             r_box.dim = box.dim;
             r_box.color = box.color;
-            box_renderer_(r_box, screen_from_world);
+            box_renderer_.draw(r_box, screen_from_world);
         });
-        components_.run_system<Rope>(rope_renderer_);
+        components_.run_system<Rope>([&](const Entity&, const Rope& rope) {
+            engine::renderer::Line line;
+            line.segments = rope.solver.trace(16);
+            line_renderer_.draw(line, screen_from_world);
+        });
     }
 
 public:
@@ -312,7 +229,7 @@ private:
     TestComponentManager components_;
     TestEventManager events_;
     engine::renderer::BoxRenderer box_renderer_;
-    RopeRenderer rope_renderer_;
+    engine::renderer::LineRenderer line_renderer_;
 
     std::optional<Entity> drawing_rope_;
     Entity parent_;
