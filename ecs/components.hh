@@ -94,6 +94,10 @@ public:
                 "Call to ComponentManager::get() with an entity that doesn't have that component.");
         return *ptr;
     }
+    template <typename... C>
+    bool has(const Entity& entity) {
+        return ((get_ptr<C>(entity) != nullptr) && ...);
+    }
 
     ///
     /// @brief Despawn the given object
