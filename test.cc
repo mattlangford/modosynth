@@ -5,6 +5,7 @@
 #include "engine/buffer.hh"
 #include "engine/object_global.hh"
 #include "engine/object_manager.hh"
+#include "engine/renderer/box.hh"
 #include "engine/utils.hh"
 #include "engine/window.hh"
 #include "objects/cable.hh"
@@ -101,54 +102,6 @@ void main()
 // #############################################################################
 //
 
-struct BoxRenderer {
-    BoxRenderer(TestComponentManager& manager_) : manager(manager_) {}
-
-    BoxRenderer(const BoxRenderer&) = delete;
-    BoxRenderer(BoxRenderer&&) = delete;
-    BoxRenderer& operator=(const BoxRenderer&) = delete;
-    BoxRenderer& operator=(BoxRenderer&&) = delete;
-
-    void init() {
-        vao.init();
-        position_buffer.init(GL_ARRAY_BUFFER, 0, vao);
-        color_buffer.init(GL_ARRAY_BUFFER, 1, vao);
-
-        position_buffer.resize(8 * 4);
-        color_buffer.resize(8 * 4);
-    }
-
-    void operator()(const ecs::Entity&, const Transform& tf, const Box& box) {
-        set_color(box.color);
-        set_position(tf.world_position(manager), box.dim);
-        gl_check_with_vao(vao, glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
-    }
-
-    void set_color(const Eigen::Vector3f& color) {
-        auto batch = color_buffer.batched_updater();
-        const Eigen::Vector4f with_alpha{color[0], color[1], color[2], 1.0};
-        for (size_t i = 0; i < 4; ++i) batch.element(i) = with_alpha;
-    }
-
-    void set_position(const Eigen::Vector2f& center, const Eigen::Vector2f& dim) {
-        auto batch = position_buffer.batched_updater();
-
-        // top left
-        batch.element(0) = center + Eigen::Vector2f{-dim.x(), dim.y()};
-        // top right
-        batch.element(1) = center + Eigen::Vector2f{dim.x(), dim.y()};
-        // bottom left
-        batch.element(2) = center + Eigen::Vector2f{-dim.x(), -dim.y()};
-        // bottom right
-        batch.element(3) = center + Eigen::Vector2f{dim.x(), -dim.y()};
-    }
-
-    TestComponentManager& manager;
-    engine::VertexArrayObject vao;
-    engine::Buffer<float, 2> position_buffer;
-    engine::Buffer<float, 4> color_buffer;
-};
-
 struct RopeRenderer {
     RopeRenderer(TestComponentManager& manager_) : manager(manager_) {}
 
@@ -203,12 +156,10 @@ struct RopeRenderer {
 // #############################################################################
 //
 
-class Manager : public engine::AbstractSingleShaderObjectManager {
+class Manager : public engine::AbstractObjectManager {
 public:
     Manager()
-        : engine::AbstractSingleShaderObjectManager{vertex_shader_text, fragment_shader_text},
-          box_renderer_{components_},
-          rope_renderer_{components_},
+        : rope_renderer_{components_},
           parent_{components_.spawn(Transform{std::nullopt, Eigen::Vector2f{100.0, 200.0}},
                                     Box{Eigen::Vector3f{1.0, 1.0, 0.0}, Eigen::Vector2f{10.0, 30.0}},
                                     RopeSpawnable{})} {
@@ -217,13 +168,19 @@ public:
     }
 
 protected:
-    void init_with_vao() override {
+    void init() override {
         box_renderer_.init();
         rope_renderer_.init();
     }
 
-    void render_with_vao() override {
-        components_.run_system<Transform, Box>(box_renderer_);
+    void render(const Eigen::Matrix3f& screen_from_world) override {
+        components_.run_system<Transform, Box>([&](const Entity&, const Transform& tf, const Box& box) {
+            engine::renderer::Box r_box;
+            r_box.center = tf.world_position(components_);
+            r_box.dim = box.dim;
+            r_box.color = box.color;
+            box_renderer_(r_box, screen_from_world);
+        });
         components_.run_system<Rope>(rope_renderer_);
     }
 
@@ -354,7 +311,7 @@ private:
 private:
     TestComponentManager components_;
     TestEventManager events_;
-    BoxRenderer box_renderer_;
+    engine::renderer::BoxRenderer box_renderer_;
     RopeRenderer rope_renderer_;
 
     std::optional<Entity> drawing_rope_;

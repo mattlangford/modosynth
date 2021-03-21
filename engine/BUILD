@@ -1,8 +1,9 @@
 cc_library(
     name = "engine",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.hh"]),
+    srcs = glob(["*.cc", "renderer/*.cc"]),
+    hdrs = glob(["*.hh", "renderer/*.hh"]),
     visibility = ["//visibility:public"],
+    data = glob(["renderer/*.vert", "renderer/*.geom", "renderer/*.frag"]),
     deps = [
         "@glfw//:glfw",
         "@eigen//:eigen",
