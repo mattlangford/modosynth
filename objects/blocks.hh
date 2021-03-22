@@ -1,6 +1,7 @@
 #pragma once
 #include <Eigen/Dense>
 #include <filesystem>
+#include <map>
 #include <vector>
 
 #include "engine/buffer.hh"
@@ -39,6 +40,61 @@ struct Config {
     };
 
     std::vector<BlockConfig> blocks;
+};
+
+//
+// #############################################################################
+//
+
+class Factory {
+public:
+    virtual ~Factory() = default;
+
+    virtual void spawn_entity() = 0;
+    virtual void spawn_node() = 0;
+
+protected:
+    const Config::BlockConfig& get_block_config() const { return config_; }
+
+public:
+    void set_config(Config::BlockConfig config) { config_ = config; }
+
+private:
+    Config::BlockConfig config_;
+};
+
+//
+// #############################################################################
+//
+
+class BlockLoader {
+public:
+    BlockLoader(const std::filesystem::path& config_path) : config_(config_path) {}
+
+public:
+    void add_factory(const std::string& name, std::unique_ptr<Factory> factory) {
+        for (const auto& block : config().blocks) {
+            if (block.name == name) {
+                factory->set_config(block);
+                factories_[std::move(name)] = std::move(factory);
+                return;
+            }
+        }
+
+        std::cerr << "Unable to associate '" << name << "' with config, ignoring it.\n";
+    }
+
+    const Config& config() const { return config_; }
+
+    Factory& get(const std::string& name) {
+        auto it = factories_.find(name);
+        if (it == factories_.end()) throw std::runtime_error("Unable to find '" + name + "'");
+        return *it->second;
+    }
+
+private:
+    Config config_;
+    std::map<std::string, std::unique_ptr<Factory>> factories_;
 };
 
 //

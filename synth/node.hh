@@ -72,7 +72,6 @@ class EjectorNode : public GenericNode {
 public:
     EjectorNode(std::string node_name, const std::string& stream_name)
         : GenericNode{node_name}, stream_name_(stream_name) {}
-    using GenericNode::GenericNode;
     ~EjectorNode() override = default;
 
 public:

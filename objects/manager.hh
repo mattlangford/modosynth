@@ -34,7 +34,7 @@ struct Transform {
 struct TexturedBox {
     Transform bottom_left;
     Eigen::Vector2f dim;
-    Eigen::Vector2f uv;  // uv map is inverted compared to position
+    Eigen::Vector2f uv;
     size_t texture_index;
 };
 
