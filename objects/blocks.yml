@@ -1,5 +1,6 @@
 ---
 texture_path: "/Users/mlangford/Downloads/test.bmp"
+port_texture_path: "objects/ports.bmp"
 blocks:
     # Outputs a signal who's frequency is proportional to the input signal. By changing the shape, you can switch
     # between different voltage shapes (smooth, triangle, square, random).

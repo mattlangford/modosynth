@@ -25,6 +25,7 @@ struct Config {
     Config(const std::filesystem::path& path);
 
     std::string texture_path;
+    std::string port_texture_path;
 
     struct BlockConfig {
         std::string name;

@@ -56,6 +56,7 @@ void main()
 Config::Config(const std::filesystem::path& path) {
     const auto root = YAML::LoadFile(path);
     texture_path = root["texture_path"].as<std::string>();
+    port_texture_path = root["port_texture_path"].as<std::string>();
 
     for (const auto& block : root["blocks"]) {
         BlockConfig block_config;

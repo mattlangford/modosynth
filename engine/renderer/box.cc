@@ -81,11 +81,11 @@ void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world)
     auto& texture = textures_.at(box.texture_index);
     texture.activate();
 
-    set_position(box.center, box.dim);
+    set_position(box.bottom_left, box.dim);
 
     // The UV texture needs to be normalized between 0 and 1
     Eigen::Vector2f uv_size{texture.bitmap().get_width(), texture.bitmap().get_height()};
-    set_uv(box.uv_center.cwiseQuotient(uv_size), box.dim.cwiseQuotient(uv_size));
+    set_uv(box.uv.cwiseQuotient(uv_size), box.dim.cwiseQuotient(uv_size));
 
     gl_check_with_vao(vao_, glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -94,34 +94,32 @@ void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world)
 // #############################################################################
 //
 
-void BoxRenderer::set_uv(const Eigen::Vector2f& center, const Eigen::Vector2f& dim) {
+void BoxRenderer::set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f& dim) {
     auto batch = uv_buffer_.batched_updater();
 
-    // Note that the Y coordinate for each UV coord is inverted from the position ones
-
     // top left
-    batch.element(0) = center + Eigen::Vector2f{-dim.x(), -dim.y()};
+    batch.element(0) = top_left;
     // top right
-    batch.element(1) = center + Eigen::Vector2f{dim.x(), -dim.y()};
+    batch.element(1) = top_left + Eigen::Vector2f{dim.x(), 0.f};
     // bottom left
-    batch.element(2) = center + Eigen::Vector2f{-dim.x(), dim.y()};
+    batch.element(2) = top_left + Eigen::Vector2f{0.f, dim.y()};
     // bottom right
-    batch.element(3) = center + Eigen::Vector2f{dim.x(), dim.y()};
+    batch.element(3) = top_left + dim;
 }
 //
 // #############################################################################
 //
 
-void BoxRenderer::set_position(const Eigen::Vector2f& center, const Eigen::Vector2f& dim) {
+void BoxRenderer::set_position(const Eigen::Vector2f& bottom_left, const Eigen::Vector2f& dim) {
     auto batch = position_buffer_.batched_updater();
 
     // top left
-    batch.element(0) = center + Eigen::Vector2f{-dim.x(), dim.y()};
+    batch.element(0) = bottom_left + Eigen::Vector2f{0.f, dim.y()};
     // top right
-    batch.element(1) = center + Eigen::Vector2f{dim.x(), dim.y()};
+    batch.element(1) = bottom_left + dim;
     // bottom left
-    batch.element(2) = center + Eigen::Vector2f{-dim.x(), -dim.y()};
+    batch.element(2) = bottom_left;
     // bottom right
-    batch.element(3) = center + Eigen::Vector2f{dim.x(), -dim.y()};
+    batch.element(3) = bottom_left + Eigen::Vector2f{dim.x(), 0.f};
 }
 };  // namespace engine::renderer

@@ -10,6 +10,7 @@
 #include "engine/renderer/line.hh"
 #include "engine/utils.hh"
 #include "engine/window.hh"
+#include "objects/blocks.hh"
 #include "objects/cable.hh"
 
 namespace objects {
@@ -26,14 +27,14 @@ struct Transform {
     Eigen::Vector2f world_position(ecs::ComponentManager<Components...>& manager) const {
         if (!parent) return from_parent;
 
-        const auto& parent_tf = manager.template get<TexturedBox>(*parent).center;
+        const auto& parent_tf = manager.template get<TexturedBox>(*parent).bottom_left;
         return from_parent + parent_tf.world_position(manager);
     }
 };
 struct TexturedBox {
-    Transform center;
+    Transform bottom_left;
     Eigen::Vector2f dim;
-    Eigen::Vector2f uv_center;
+    Eigen::Vector2f uv;  // uv map is inverted compared to position
     size_t texture_index;
 };
 
@@ -80,26 +81,18 @@ using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
 // #############################################################################
 //
 
-TexturedBox vco(const Transform& center) { return {center, 0.5 * Eigen::Vector2f{32, 16}, Eigen::Vector2f{16, 8}, 0}; }
-TexturedBox port(const Transform& center) {
-    return {center, 0.5 * Eigen::Vector2f{3, 3}, Eigen::Vector2f{1.5, 1.5}, 1};
-}
-
-//
-// #############################################################################
-//
-
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager() {
+    Manager(const std::filesystem::path& block_config_path) : block_config_(block_config_path) {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
 
-        box_renderer_.add_texture({"/Users/mlangford/Downloads/test.bmp"});
-        box_renderer_.add_texture({"/Users/mlangford/Documents/code/modosynth/objects/ports.bmp"});
+        box_renderer_.add_texture({block_config_.texture_path});
+        box_renderer_.add_texture({block_config_.port_texture_path});
 
-        spawn_block();
-        spawn_block();
+        spawn_block(0);
+        spawn_block(1);
+        // for (size_t i = 0; i < block_config_.blocks.size(); ++i) spawn_block(i);
     }
 
     void init() override {
@@ -110,9 +103,9 @@ public:
     void render(const Eigen::Matrix3f& screen_from_world) override {
         components_.run_system<TexturedBox>([&](const ecs::Entity&, const TexturedBox& box) {
             engine::renderer::Box r_box;
-            r_box.center = box.center.world_position(components_);
+            r_box.bottom_left = box.bottom_left.world_position(components_);
             r_box.dim = box.dim;
-            r_box.uv_center = box.uv_center;
+            r_box.uv = box.uv;
             r_box.texture_index = box.texture_index;
             box_renderer_.draw(r_box, screen_from_world);
         });
@@ -165,11 +158,11 @@ private:
     void undo_spawn(const Spawn& spawn) { components_.despawn(spawn.entity); }
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
-    void mouse_click(const engine::MouseEvent&, const ecs::Entity& entity) {
+    void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
         if (auto ptr = components_.get_ptr<Selectable>(entity)) {
             ptr->selected = true;
         } else if (components_.has<CableSource>(entity)) {
-            drawing_rope_ = spawn_cable_from(components_.get<TexturedBox>(entity).center);
+            drawing_rope_ = spawn_cable_from(entity, event);
         }
     }
 
@@ -192,9 +185,9 @@ private:
                 moveable.position += event.delta_position;
 
                 if (moveable.snap_to_pixel)
-                    box.center.from_parent = moveable.position.cast<int>().cast<float>();
+                    box.bottom_left.from_parent = moveable.position.cast<int>().cast<float>();
                 else
-                    box.center.from_parent = moveable.position;
+                    box.bottom_left.from_parent = moveable.position;
             });
     }
 
@@ -215,21 +208,51 @@ private:
             return;
         }
 
-        components_.get<Cable>(drawing_rope).end = components_.get<TexturedBox>(*entity).center;
+        const auto& box = components_.get<TexturedBox>(*entity);
+        auto& cable = components_.get<Cable>(drawing_rope);
+        cable.end = box.bottom_left;
+        cable.end.from_parent += 0.5 * box.dim;  // put it in the center
+
         events_.trigger<Connect>({drawing_rope});
     }
 
 private:
-    ecs::Entity spawn_block(const Eigen::Vector2f& location = {100, 200}) {
-        auto block = components_.spawn(vco(Transform{std::nullopt, location}), Selectable{}, Moveable{location, true});
-        components_.spawn(port(Transform{block, Eigen::Vector2f{-(16 + 1.5), 0}}), CableSink{});
-        components_.spawn(port(Transform{block, Eigen::Vector2f{(16 + 1.5), 0}}), CableSource{});
+    ecs::Entity spawn_block(size_t index, const Eigen::Vector2f& location = {100, 200}) {
+        const auto& config = block_config_.blocks.at(index);
+
+        const Eigen::Vector2f block_dim = config.px_dim.cast<float>();
+        const Eigen::Vector2f block_uv = config.background_start.cast<float>();
+        ecs::Entity block = components_.spawn(TexturedBox{Transform{std::nullopt, location}, block_dim, block_uv, 0},
+                                              Selectable{}, Moveable{location, true});
+
+        const float width = config.px_dim.x();
+        const float height = config.px_dim.y();
+
+        if (config.inputs > height || config.outputs > height) {
+            throw std::runtime_error("Too many ports for the given object!");
+        }
+
+        const size_t input_spacing = height / (config.inputs + 1);
+        const size_t output_spacing = height / (config.outputs + 1);
+
+        const Eigen::Vector2f port_dim = Eigen::Vector2f{3.0, 3.0};
+        const Eigen::Vector2f port_uv = Eigen::Vector2f{0.0, 0.0};
+        for (size_t i = 0; i < config.inputs; ++i) {
+            Eigen::Vector2f offset{-3.0, height - (i + 1) * input_spacing - 1.5};
+            components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSink{});
+        }
+        for (size_t i = 0; i < config.outputs; ++i) {
+            Eigen::Vector2f offset{width, height - (i + 1) * output_spacing - 1.5};
+            components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSource{});
+        }
+
         return block;
     }
 
-    ecs::Entity spawn_cable_from(const Transform& start) {
-        return components_.spawn<Cable>({start,
-                                         {std::nullopt, start.world_position(components_)},
+    ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
+        const auto& box = components_.get<TexturedBox>(entity);
+        return components_.spawn<Cable>({{entity, 0.5 * box.dim},
+                                         {std::nullopt, event.mouse_position},
                                          {},
                                          Eigen::Vector2f::Zero(),
                                          Eigen::Vector2f::Zero()});
@@ -238,8 +261,8 @@ private:
     std::optional<ecs::Entity> get_box_under_mouse(const Eigen::Vector2f& mouse) {
         std::optional<ecs::Entity> selected;
         components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) -> bool {
-            const Eigen::Vector2f center = box.center.world_position(components_);
-            if (engine::is_in_rectangle(mouse, center - box.dim, center + box.dim)) {
+            const Eigen::Vector2f bottom_left = box.bottom_left.world_position(components_);
+            if (engine::is_in_rectangle(mouse, bottom_left, bottom_left + box.dim)) {
                 selected = e;
                 return true;
             }
@@ -249,6 +272,8 @@ private:
     }
 
 private:
+    const Config block_config_;
+
     ComponentManager components_;
     EventManager events_;
 
