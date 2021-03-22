@@ -62,16 +62,17 @@ void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, obje
 
 int main() {
     synth::Bridge bridge;
-    populate(bridge);
+    // populate(bridge);
 
-    bridge.start_processing_thread();
+    // bridge.start_processing_thread();
 
-    bool shutdown = false;
-    std::thread synth_loop_thread{[&]() { audio_loop(bridge, shutdown); }};
+    // bool shutdown = false;
+    // std::thread synth_loop_thread{[&]() { audio_loop(bridge, shutdown); }};
 
     engine::GlobalObjectManager object_manager;
 
-    auto manager = std::make_shared<objects::Manager>("objects/blocks.yml");
+    objects::BlockLoader loader{"objects/blocks.yml"};
+    auto manager = std::make_shared<objects::Manager>(loader);
 
     manager->events().add_handler<objects::Spawn>(
         [&](const objects::Spawn& spawn) { handle_spawn(spawn, bridge, *manager); });
@@ -88,9 +89,9 @@ int main() {
     while (window.render_loop()) {
     }
 
-    std::cout << "Shutting down Synth Loop...\n";
-    shutdown = true;
-    synth_loop_thread.join();
+    // std::cout << "Shutting down Synth Loop...\n";
+    // shutdown = true;
+    // synth_loop_thread.join();
 
     exit(EXIT_SUCCESS);
 }

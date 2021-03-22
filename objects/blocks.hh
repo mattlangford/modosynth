@@ -2,7 +2,11 @@
 #include <Eigen/Dense>
 #include <filesystem>
 #include <map>
-#include <vector>
+#include <memory>
+#include <unordered_map>
+
+#include "ecs/entity.hh"
+#include "objects/components.hh"
 
 namespace objects {
 
@@ -17,17 +21,11 @@ struct Config {
     std::string port_texture_path;
 
     struct BlockConfig {
-        std::string name;
-        std::string full_name;
-        // Where the texture in the texture path, used for UV mapping
-        Eigen::Vector2i foreground_start;
-        Eigen::Vector2i background_start;
-        Eigen::Vector2i px_dim;
-        size_t inputs;
-        size_t outputs;
+        Eigen::Vector2i uv;
+        Eigen::Vector2i dim;
     };
 
-    std::vector<BlockConfig> blocks;
+    std::unordered_map<std::string, BlockConfig> blocks;
 };
 
 //
@@ -38,9 +36,26 @@ class Factory {
 public:
     virtual ~Factory() = default;
 
+    ///
+    /// @brief Called during init and can be used to pull config information out of the full config
+    ///
     virtual void load_config(const Config& config) = 0;
-    virtual void spawn_entity() = 0;
-    virtual void spawn_node() = 0;
+
+    ///
+    /// @brief Spawn this block and all associated entities
+    ///
+    virtual std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const = 0;
+
+    ///
+    /// @brief Spawn the synth node
+    ///
+    virtual void spawn_node() const = 0;
+
+protected:
+    ///
+    /// @brief Helper function to spawn ports
+    ///
+    ecs::Entity spawn_port(const ecs::Entity& parent, const Eigen::Vector2f& position) const;
 };
 
 //
@@ -49,21 +64,19 @@ public:
 
 class BlockLoader {
 public:
-    BlockLoader(const std::filesystem::path& config_path) : config_(config_path) {}
+    BlockLoader(const std::filesystem::path& config_path);
 
 public:
-    void add_factory(const std::string& name, std::unique_ptr<Factory> factory) {
-        factory->load_config(config_);
-        factories_[name] = std::move(factory);
-    }
+    void add_factory(const std::string& name, std::unique_ptr<Factory> factory);
 
-    const Config& config() const { return config_; }
+    const Config& config() const;
 
-    Factory& get(const std::string& name) {
-        auto it = factories_.find(name);
-        if (it == factories_.end()) throw std::runtime_error("Unable to find '" + name + "'");
-        return *it->second;
-    }
+    const Factory& get(const std::string& name) const;
+
+    std::vector<std::string> textures() const;
+    std::vector<std::string> names() const;
+
+    size_t size() const;
 
 private:
     Config config_;

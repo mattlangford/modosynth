@@ -2,49 +2,27 @@
 texture_path: "/Users/mlangford/Downloads/test.bmp"
 port_texture_path: "objects/ports.bmp"
 blocks:
-    # Outputs a signal who's frequency is proportional to the input signal. By changing the shape, you can switch
-    # between different voltage shapes (smooth, triangle, square, random).
-    - name: "Voltage Controlled Oscillator"
-      foreground_start: [32, 64] # Empty part of the texture map
-      background_start: [0, 0]
-      px_dim: [32, 16]
-      inputs: 2 # voltage | shape
-      outputs: 1 # oscillating signal
-    - name: "Low Frequency Oscillator"
-      foreground_start: [32, 64] # Empty part of the texture map
-      background_start: [0, 64]
-      px_dim: [32, 16]
-      inputs: 2 # voltage | shape
-      outputs: 1 # oscillating signal
-    # Scales the input signal by the value of the input gain voltage
+    - name: "VoltageControlledOscillator"
+      uv: [0, 0]
+      dim: [32, 16]
+    - name: "LowFrequencyOscillator"
+      uv: [0, 64]
+      dim: [32, 16]
     - name: "Amplifier"
-      foreground_start: [32, 64] # Empty part of the texture map
-      background_start: [0, 16]
-      px_dim: [32, 16]
-      inputs: 2 # signal | gain
-      outputs: 1 # signal
-    # - name: "High Pass Filter"
-    #   foreground_start: [32, 64] # Empty part of the texture map
-    #   background_start: [0, 32]
-    #   px_dim: [32, 16]
-    #   inputs: 2 # signal | cutoff
-    #   outputs: 1 # signal
-    # Only passes through the lower frequencies of the input signal.
-    # - name: "Low Pass Filter"
-    #   foreground_start: [32, 64] # Empty part of the texture map
-    #   background_start: [0, 48]
-    #   px_dim: [32, 16]
-    #   inputs: 2 # signal | cutoff
-    #   outputs: 1 # signal
+      uv: [0, 16]
+      dim: [32, 16]
+    - name: "HighPassFilter"
+      uv: [0, 32]
+      dim: [32, 16]
+    - name: "LowPassFilter"
+      uv: [0, 48]
+      dim: [32, 16]
     - name: "Knob"
-      foreground_start: [51, 3]
-      background_start: [32, 0]
-      px_dim: [15, 15]
-      inputs: 0
-      outputs: 1 # signal
+      uv: [32, 0]
+      dim: [15, 15]
+    - name: "KnobBackground"
+      uv: [32, 0]
+      dim: [15, 15]
     - name: "Speaker"
-      foreground_start: [32, 64] # Empty part of the texture map
-      background_start: [32, 16]
-      px_dim: [16, 32]
-      inputs: 1 # signal
-      outputs: 0
+      uv: [32, 16]
+      dim: [16, 32]

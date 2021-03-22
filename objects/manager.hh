@@ -16,29 +16,29 @@ namespace objects {
 
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager(const std::filesystem::path& block_config_path) : block_config_(block_config_path) {
+    Manager(const BlockLoader& loader) : loader_(loader) {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
 
-        box_renderer_.add_texture({block_config_.texture_path});
-        box_renderer_.add_texture({block_config_.port_texture_path});
-
-        // for (size_t i = 0; i < block_config_.blocks.size(); ++i) spawn_block(i);
+        for (const std::string& texture_path : loader_.textures()) {
+            box_renderer_.add_texture({texture_path});
+        }
     }
 
     void init() override {
         box_renderer_.init();
         line_renderer_.init();
 
-        for (size_t i = 0; i < block_config_.blocks.size(); ++i) {
-            std::cout << "Press '" << (i + 1) << "' to spawn '" << block_config_.blocks[i].name << "'\n";
+        auto names = loader_.names();
+        for (size_t i = 0; i < names.size(); ++i) {
+            std::cout << "Press '" << (i + 1) << "' to spawn '" << names[i] << "'\n";
         }
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
         components_.run_system<TexturedBox>([&](const ecs::Entity&, const TexturedBox& box) {
             engine::renderer::Box r_box;
-            r_box.bottom_left = box.bottom_left.world_position(components_);
+            r_box.bottom_left = world_position(box.bottom_left, components_);
             r_box.dim = box.dim;
             r_box.uv = box.uv;
             r_box.texture_index = box.texture_index;
@@ -60,8 +60,8 @@ public:
 public:
     void update(float) override {
         components_.run_system<Cable>([this](const ecs::Entity&, Cable& rope) {
-            const Eigen::Vector2f start = rope.start.world_position(components_);
-            const Eigen::Vector2f end = rope.end.world_position(components_);
+            const Eigen::Vector2f start = world_position(rope.start, components_);
+            const Eigen::Vector2f end = world_position(rope.end, components_);
 
             // No change
             if (start == rope.previous_start && end == rope.previous_end) {
@@ -92,11 +92,11 @@ public:
     void handle_keyboard_event(const engine::KeyboardEvent& event) override {
         if (event.pressed() && event.space) {
             static int i = 0;
-            spawn_block(i++ % block_config_.blocks.size());
+            spawn_block(i++ % loader_.size());
         } else if (event.clicked && event.control && event.key == 'z') {
             std::cout << "Unable to undo.\n";
             // events_.undo();
-        } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < block_config_.blocks.size())) {
+        } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
         }
     }
@@ -163,41 +163,10 @@ private:
     }
 
 private:
-    ecs::Entity spawn_block(size_t index, const Eigen::Vector2f& location = {100, 200}) {
+    void spawn_block(size_t index) {
         Spawn spawn;
-        const auto& config = block_config_.blocks.at(index);
-
-        const Eigen::Vector2f block_dim = config.px_dim.cast<float>();
-        const Eigen::Vector2f block_uv = config.background_start.cast<float>();
-        ecs::Entity block = components_.spawn(TexturedBox{Transform{std::nullopt, location}, block_dim, block_uv, 0},
-                                              Selectable{}, Moveable{location, true}, SynthNode{config.name, 777});
-        spawn.entities.push_back(block);
-
-        const float width = config.px_dim.x();
-        const float height = config.px_dim.y();
-
-        if (config.inputs > height || config.outputs > height) {
-            throw std::runtime_error("Too many ports for the given object!");
-        }
-
-        const size_t input_spacing = height / (config.inputs + 1);
-        const size_t output_spacing = height / (config.outputs + 1);
-
-        const Eigen::Vector2f port_dim = Eigen::Vector2f{3.0, 3.0};
-        const Eigen::Vector2f port_uv = Eigen::Vector2f{0.0, 0.0};
-        for (size_t i = 0; i < config.inputs; ++i) {
-            Eigen::Vector2f offset{-3.0, height - (i + 1) * input_spacing - 1.5};
-            spawn.entities.push_back(
-                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSink{i}));
-        }
-        for (size_t i = 0; i < config.outputs; ++i) {
-            Eigen::Vector2f offset{width, height - (i + 1) * output_spacing - 1.5};
-            spawn.entities.push_back(
-                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSource{i}));
-        }
-
+        spawn.entities = loader_.get(loader_.names().at(index)).spawn_entities(components_);
         events_.trigger(spawn);
-        return block;
     }
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
@@ -212,7 +181,7 @@ private:
     std::optional<ecs::Entity> get_box_under_mouse(const Eigen::Vector2f& mouse) {
         std::optional<ecs::Entity> selected;
         components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) -> bool {
-            const Eigen::Vector2f bottom_left = box.bottom_left.world_position(components_);
+            const Eigen::Vector2f bottom_left = world_position(box.bottom_left, components_);
             if (engine::is_in_rectangle(mouse, bottom_left, bottom_left + box.dim)) {
                 selected = e;
                 return true;
@@ -223,7 +192,7 @@ private:
     }
 
 private:
-    const Config block_config_;
+    const BlockLoader& loader_;
 
     ComponentManager components_;
     EventManager events_;

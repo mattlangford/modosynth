@@ -2,24 +2,18 @@
 
 #include <Eigen/Dense>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "ecs/components.hh"
 #include "ecs/entity.hh"
+#include "objects/catenary.hh"
 
 namespace objects {
-struct TexturedBox;
+
 struct Transform {
     std::optional<ecs::Entity> parent;
     Eigen::Vector2f from_parent;
-
-    template <typename... Components>
-    Eigen::Vector2f world_position(ecs::ComponentManager<Components...>& manager) const {
-        if (!parent) return from_parent;
-
-        const auto& parent_tf = manager.template get<TexturedBox>(*parent).bottom_left;
-        return from_parent + parent_tf.world_position(manager);
-    }
 };
 struct TexturedBox {
     Transform bottom_left;
@@ -61,4 +55,13 @@ struct SynthNode {
 using ComponentManager =
     ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable, SynthNode>;
 
+//
+// #############################################################################
+//
+
+inline Eigen::Vector2f world_position(const Transform& tf, ComponentManager& manager) {
+    if (!tf.parent) return tf.from_parent;
+    const auto& parent_tf = manager.get<TexturedBox>(*tf.parent).bottom_left;
+    return tf.from_parent + world_position(parent_tf, manager);
+}
 }  // namespace objects
