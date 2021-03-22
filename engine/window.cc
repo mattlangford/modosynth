@@ -44,7 +44,6 @@ void Window::init() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_SAMPLES, 4);
 
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     window_ = glfwCreateWindow(kWindowDim.x(), kWindowDim.y(), "ModoSynth", NULL, NULL);
@@ -66,8 +65,6 @@ void Window::init() {
     gl_check(glDepthMask, GL_TRUE);
     gl_check(glDepthFunc, GL_LEQUAL);
     gl_check(glDepthRange, 0.0f, 1.0f);
-
-    gl_check(glEnable, GL_MULTISAMPLE);
 
     object_manager_.init();
 }
