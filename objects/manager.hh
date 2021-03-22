@@ -66,7 +66,7 @@ using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable
 //
 
 struct Spawn {
-    ecs::Entity entity;
+    std::vector<ecs::Entity> entities;
 };
 struct Despawn {
     ecs::Entity entity;
@@ -149,13 +149,18 @@ public:
     }
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override {
-        if (event.clicked && event.control && event.key == 'z') {
+        if (event.pressed() && event.space) {
+            static int i = 0;
+            spawn_block(i++ % block_config_.blocks.size());
+        } else if (event.clicked && event.control && event.key == 'z') {
             events_.undo();
         }
     }
 
 private:
-    void undo_spawn(const Spawn& spawn) { components_.despawn(spawn.entity); }
+    void undo_spawn(const Spawn& spawn) {
+        for (const auto& entity : spawn.entities) components_.despawn(entity);
+    }
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
@@ -218,12 +223,14 @@ private:
 
 private:
     ecs::Entity spawn_block(size_t index, const Eigen::Vector2f& location = {100, 200}) {
+        Spawn spawn;
         const auto& config = block_config_.blocks.at(index);
 
         const Eigen::Vector2f block_dim = config.px_dim.cast<float>();
         const Eigen::Vector2f block_uv = config.background_start.cast<float>();
         ecs::Entity block = components_.spawn(TexturedBox{Transform{std::nullopt, location}, block_dim, block_uv, 0},
                                               Selectable{}, Moveable{location, true});
+        spawn.entities.push_back(block);
 
         const float width = config.px_dim.x();
         const float height = config.px_dim.y();
@@ -239,13 +246,16 @@ private:
         const Eigen::Vector2f port_uv = Eigen::Vector2f{0.0, 0.0};
         for (size_t i = 0; i < config.inputs; ++i) {
             Eigen::Vector2f offset{-3.0, height - (i + 1) * input_spacing - 1.5};
-            components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSink{});
+            spawn.entities.push_back(
+                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSink{}));
         }
         for (size_t i = 0; i < config.outputs; ++i) {
             Eigen::Vector2f offset{width, height - (i + 1) * output_spacing - 1.5};
-            components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSource{});
+            spawn.entities.push_back(
+                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSource{}));
         }
 
+        events_.trigger(spawn);
         return block;
     }
 
