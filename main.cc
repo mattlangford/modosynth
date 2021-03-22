@@ -1,13 +1,13 @@
 #include <thread>
 
 #include "engine/object_global.hh"
+#include "engine/renderer/grid.hh"
 #include "engine/window.hh"
 #include "objects/blocks.hh"
 #include "objects/blocks/amplifier.hh"
 #include "objects/blocks/knob.hh"
 #include "objects/blocks/speaker.hh"
 #include "objects/blocks/vco.hh"
-#include "objects/grid.hh"
 #include "objects/manager.hh"
 #include "synth/audio.hh"
 #include "synth/bridge.hh"
@@ -78,7 +78,7 @@ int main() {
     manager->events().add_handler<objects::Connect>(
         [&](const objects::Connect& connect) { handle_connect(connect, bridge, *manager); });
 
-    object_manager.add_manager(std::make_shared<objects::GridObjectManager>(25, 25));
+    object_manager.add_manager(std::make_shared<engine::renderer::Grid>(25, 25));
     object_manager.add_manager(manager);
 
     engine::Window window{kWidth, kHeight, std::move(object_manager)};

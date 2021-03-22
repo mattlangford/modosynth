@@ -1,4 +1,4 @@
-#include "objects/grid.hh"
+#include "engine/renderer/grid.hh"
 
 #include <OpenGL/gl3.h>
 
@@ -6,7 +6,7 @@
 
 #include "engine/gl.hh"
 
-namespace objects {
+namespace engine::renderer {
 namespace {
 static std::string vertex_shader_text = R"(
 #version 330
@@ -106,7 +106,7 @@ void main() {
 // #############################################################################
 //
 
-GridObjectManager::GridObjectManager(const size_t grid_width, const size_t grid_height)
+Grid::Grid(const size_t grid_width, const size_t grid_height)
     : width_(grid_width),
       height_(grid_height),
       shader_(vertex_shader_text, fragment_shader_text, geometry_shader_text) {}
@@ -115,7 +115,7 @@ GridObjectManager::GridObjectManager(const size_t grid_width, const size_t grid_
 // #############################################################################
 //
 
-void GridObjectManager::init() {
+void Grid::init() {
     shader_.init();
     vao_.init();
     buffer_.init(GL_ARRAY_BUFFER, 0, vao_);
@@ -133,7 +133,7 @@ void GridObjectManager::init() {
 // #############################################################################
 //
 
-void GridObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
+void Grid::render(const Eigen::Matrix3f& screen_from_world) {
     shader_.activate();
     gl_check(glUniformMatrix3fv, screen_from_world_location_, 1, GL_FALSE, screen_from_world.data());
     gl_check_with_vao(vao_, glDrawArrays, GL_LINES, 0, 2);
@@ -144,7 +144,7 @@ void GridObjectManager::render(const Eigen::Matrix3f& screen_from_world) {
 //
 
 // no-ops
-void GridObjectManager::update(float) {}
-void GridObjectManager::handle_mouse_event(const engine::MouseEvent&) {}
-void GridObjectManager::handle_keyboard_event(const engine::KeyboardEvent&) {}
-}  // namespace objects
+void Grid::update(float) {}
+void Grid::handle_mouse_event(const engine::MouseEvent&) {}
+void Grid::handle_keyboard_event(const engine::KeyboardEvent&) {}
+}  // namespace engine::renderer

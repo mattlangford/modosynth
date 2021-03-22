@@ -7,16 +7,16 @@
 #include "engine/object_manager.hh"
 #include "engine/shader.hh"
 
-namespace objects {
+namespace engine::renderer {
 
 //
 // #############################################################################
 //
 
-class GridObjectManager final : public engine::AbstractObjectManager {
+class Grid final : public engine::AbstractObjectManager {
 public:
-    GridObjectManager(const size_t grid_width, const size_t grid_height);
-    virtual ~GridObjectManager() = default;
+    Grid(const size_t grid_width, const size_t grid_height);
+    virtual ~Grid() = default;
 
 protected:
     void init() override;
@@ -40,4 +40,4 @@ private:
     engine::VertexArrayObject vao_;
     engine::Buffer<float, 2> buffer_;
 };
-}  // namespace objects
+}  // namespace engine::renderer
