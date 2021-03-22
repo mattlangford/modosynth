@@ -17,12 +17,13 @@ cc_library(
     visibility = ["//visibility:public"],
     data = [":config", ":textures"],
     deps = [
+        ":blocks",
+        "//ecs",
+        "//engine",
+        "//synth",
         "@glfw//:glfw",
         "@eigen//:eigen",
         "@yaml-cpp",
-        ":blocks",
-        "//engine",
-        "//synth"
     ]
 )
 

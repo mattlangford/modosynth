@@ -26,7 +26,6 @@ public:
 
     template <typename E>
     void trigger(E event = {}) {
-        std::cout << "Triggering event: " << kIndexOf<E> << "\n";
         for (auto& handler : std::get<kIndexOf<E>>(handlers_)) {
             handler(event);
         }

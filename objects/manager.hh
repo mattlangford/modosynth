@@ -46,8 +46,12 @@ struct Selectable {
     bool selected = false;
 };
 
-struct CableSource {};
-struct CableSink {};
+struct CableSource {
+    size_t index;
+};
+struct CableSink {
+    size_t index;
+};
 struct Cable {
     Transform start;
     Transform end;
@@ -59,7 +63,15 @@ struct Cable {
     Eigen::Vector2f previous_end;
 };
 
-using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable>;
+struct SynthNode {
+    std::string name;
+
+    // TODO: This is quite a hack to get things talking, probably should replace this
+    size_t id;
+};
+
+using ComponentManager =
+    ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable, SynthNode>;
 
 //
 // #############################################################################
@@ -90,14 +102,16 @@ public:
         box_renderer_.add_texture({block_config_.texture_path});
         box_renderer_.add_texture({block_config_.port_texture_path});
 
-        spawn_block(0);
-        spawn_block(1);
         // for (size_t i = 0; i < block_config_.blocks.size(); ++i) spawn_block(i);
     }
 
     void init() override {
         box_renderer_.init();
         line_renderer_.init();
+
+        for (size_t i = 0; i < block_config_.blocks.size(); ++i) {
+            std::cout << "Press '" << (i + 1) << "' to spawn '" << block_config_.blocks[i].name << "'\n";
+        }
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -115,6 +129,12 @@ public:
             line_renderer_.draw(line, screen_from_world);
         });
     }
+
+public:
+    ComponentManager& components() { return components_; };
+    const ComponentManager& components() const { return components_; };
+    EventManager& events() { return events_; };
+    const EventManager& events() const { return events_; };
 
 public:
     void update(float) override {
@@ -153,7 +173,10 @@ public:
             static int i = 0;
             spawn_block(i++ % block_config_.blocks.size());
         } else if (event.clicked && event.control && event.key == 'z') {
-            events_.undo();
+            std::cout << "Unable to undo.\n";
+            // events_.undo();
+        } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < block_config_.blocks.size())) {
+            spawn_block(event.key - '1');
         }
     }
 
@@ -213,10 +236,7 @@ private:
             return;
         }
 
-        const auto& box = components_.get<TexturedBox>(*entity);
-        auto& cable = components_.get<Cable>(drawing_rope);
-        cable.end = box.bottom_left;
-        cable.end.from_parent += 0.5 * box.dim;  // put it in the center
+        components_.get<Cable>(drawing_rope).end = Transform{entity, 0.5 * components_.get<TexturedBox>(*entity).dim};
 
         events_.trigger<Connect>({drawing_rope});
     }
@@ -229,7 +249,7 @@ private:
         const Eigen::Vector2f block_dim = config.px_dim.cast<float>();
         const Eigen::Vector2f block_uv = config.background_start.cast<float>();
         ecs::Entity block = components_.spawn(TexturedBox{Transform{std::nullopt, location}, block_dim, block_uv, 0},
-                                              Selectable{}, Moveable{location, true});
+                                              Selectable{}, Moveable{location, true}, SynthNode{config.name, 777});
         spawn.entities.push_back(block);
 
         const float width = config.px_dim.x();
@@ -247,12 +267,12 @@ private:
         for (size_t i = 0; i < config.inputs; ++i) {
             Eigen::Vector2f offset{-3.0, height - (i + 1) * input_spacing - 1.5};
             spawn.entities.push_back(
-                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSink{}));
+                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSink{i}));
         }
         for (size_t i = 0; i < config.outputs; ++i) {
             Eigen::Vector2f offset{width, height - (i + 1) * output_spacing - 1.5};
             spawn.entities.push_back(
-                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSource{}));
+                components_.spawn(TexturedBox{Transform{block, offset}, port_dim, port_uv, 1}, CableSource{i}));
         }
 
         events_.trigger(spawn);

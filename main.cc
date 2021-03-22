@@ -9,6 +9,7 @@
 #include "objects/blocks/vco.hh"
 #include "objects/cable.hh"
 #include "objects/grid.hh"
+#include "objects/manager.hh"
 #include "objects/ports.hh"
 #include "synth/audio.hh"
 #include "synth/bridge.hh"
@@ -36,6 +37,32 @@ void audio_loop(synth::Bridge& bridge, bool& shutdown) {
     }
 }
 
+void handle_spawn(const objects::Spawn& spawn, synth::Bridge& bridge, objects::Manager& manager) {
+    for (const auto& entity : spawn.entities) {
+        if (auto ptr = manager.components().get_ptr<objects::SynthNode>(entity)) {
+            std::cout << "Spawning: " << ptr->name << "\n";
+            ptr->id = bridge.spawn(ptr->name);
+        }
+    }
+}
+
+void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, objects::Manager& manager) {
+    const auto& cable = manager.components().get<objects::Cable>(connect.entity);
+
+    auto hacky_get_port = [&](const ecs::Entity& entity) -> synth::Identifier {
+        const auto& box = manager.components().get<objects::TexturedBox>(entity);
+        const auto& parent = manager.components().get<objects::SynthNode>(box.bottom_left.parent.value());
+
+        if (auto ptr = manager.components().get_ptr<objects::CableSource>(entity)) {
+            return {parent.id, ptr->index};
+        } else {
+            return {parent.id, manager.components().get<objects::CableSink>(entity).index};
+        }
+    };
+
+    bridge.connect(hacky_get_port(cable.start.parent.value()), hacky_get_port(cable.end.parent.value()));
+}
+
 int main() {
     synth::Bridge bridge;
     populate(bridge);
@@ -46,13 +73,16 @@ int main() {
     std::thread synth_loop_thread{[&]() { audio_loop(bridge, shutdown); }};
 
     engine::GlobalObjectManager object_manager;
-    auto ports_manager = std::make_shared<objects::PortsObjectManager>();
+
+    auto manager = std::make_shared<objects::Manager>("objects/blocks.yml");
+
+    manager->events().add_handler<objects::Spawn>(
+        [&](const objects::Spawn& spawn) { handle_spawn(spawn, bridge, *manager); });
+    manager->events().add_handler<objects::Connect>(
+        [&](const objects::Connect& connect) { handle_connect(connect, bridge, *manager); });
 
     object_manager.add_manager(std::make_shared<objects::GridObjectManager>(25, 25));
-    object_manager.add_manager(ports_manager);
-    object_manager.add_manager(
-        std::make_shared<objects::BlockObjectManager>("objects/blocks.yml", *ports_manager, bridge));
-    object_manager.add_manager(std::make_shared<objects::CableObjectManager>(*ports_manager, bridge));
+    object_manager.add_manager(manager);
 
     engine::Window window{kWidth, kHeight, std::move(object_manager)};
 
