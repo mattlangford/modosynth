@@ -50,17 +50,9 @@ class Factory {
 public:
     virtual ~Factory() = default;
 
+    virtual void load_config(const Config& config) = 0;
     virtual void spawn_entity() = 0;
     virtual void spawn_node() = 0;
-
-protected:
-    const Config::BlockConfig& get_block_config() const { return config_; }
-
-public:
-    void set_config(Config::BlockConfig config) { config_ = config; }
-
-private:
-    Config::BlockConfig config_;
 };
 
 //
@@ -73,15 +65,8 @@ public:
 
 public:
     void add_factory(const std::string& name, std::unique_ptr<Factory> factory) {
-        for (const auto& block : config().blocks) {
-            if (block.name == name) {
-                factory->set_config(block);
-                factories_[std::move(name)] = std::move(factory);
-                return;
-            }
-        }
-
-        std::cerr << "Unable to associate '" << name << "' with config, ignoring it.\n";
+        factory->load_config(config_);
+        factories_[name] = std::move(factory);
     }
 
     const Config& config() const { return config_; }

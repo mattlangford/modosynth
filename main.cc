@@ -7,10 +7,8 @@
 #include "objects/blocks/knob.hh"
 #include "objects/blocks/speaker.hh"
 #include "objects/blocks/vco.hh"
-#include "objects/cable.hh"
 #include "objects/grid.hh"
 #include "objects/manager.hh"
-#include "objects/ports.hh"
 #include "synth/audio.hh"
 #include "synth/bridge.hh"
 
@@ -40,7 +38,6 @@ void audio_loop(synth::Bridge& bridge, bool& shutdown) {
 void handle_spawn(const objects::Spawn& spawn, synth::Bridge& bridge, objects::Manager& manager) {
     for (const auto& entity : spawn.entities) {
         if (auto ptr = manager.components().get_ptr<objects::SynthNode>(entity)) {
-            std::cout << "Spawning: " << ptr->name << "\n";
             ptr->id = bridge.spawn(ptr->name);
         }
     }

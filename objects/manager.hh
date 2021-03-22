@@ -1,94 +1,15 @@
 #pragma once
-#include <random>
 
-#include "ecs/components.hh"
-#include "ecs/events.hh"
-#include "engine/buffer.hh"
-#include "engine/object_global.hh"
 #include "engine/object_manager.hh"
 #include "engine/renderer/box.hh"
 #include "engine/renderer/line.hh"
 #include "engine/utils.hh"
-#include "engine/window.hh"
 #include "objects/blocks.hh"
-#include "objects/cable.hh"
+#include "objects/catenary.hh"
+#include "objects/components.hh"
+#include "objects/events.hh"
 
 namespace objects {
-//
-// #############################################################################
-//
-
-struct TexturedBox;
-struct Transform {
-    std::optional<ecs::Entity> parent;
-    Eigen::Vector2f from_parent;
-
-    template <typename... Components>
-    Eigen::Vector2f world_position(ecs::ComponentManager<Components...>& manager) const {
-        if (!parent) return from_parent;
-
-        const auto& parent_tf = manager.template get<TexturedBox>(*parent).bottom_left;
-        return from_parent + parent_tf.world_position(manager);
-    }
-};
-struct TexturedBox {
-    Transform bottom_left;
-    Eigen::Vector2f dim;
-    Eigen::Vector2f uv;
-    size_t texture_index;
-};
-
-struct Moveable {
-    Eigen::Vector2f position;
-    bool snap_to_pixel = true;
-};
-struct Selectable {
-    bool selected = false;
-};
-
-struct CableSource {
-    size_t index;
-};
-struct CableSink {
-    size_t index;
-};
-struct Cable {
-    Transform start;
-    Transform end;
-
-    objects::CatenarySolver solver;
-
-    // A sort of cache so we don't have recompute the catenary
-    Eigen::Vector2f previous_start;
-    Eigen::Vector2f previous_end;
-};
-
-struct SynthNode {
-    std::string name;
-
-    // TODO: This is quite a hack to get things talking, probably should replace this
-    size_t id;
-};
-
-using ComponentManager =
-    ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable, SynthNode>;
-
-//
-// #############################################################################
-//
-
-struct Spawn {
-    std::vector<ecs::Entity> entities;
-};
-struct Despawn {
-    ecs::Entity entity;
-};
-struct Connect {
-    ecs::Entity entity;
-};
-
-using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
-
 //
 // #############################################################################
 //
