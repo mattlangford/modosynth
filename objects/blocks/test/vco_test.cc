@@ -28,7 +28,7 @@ TEST(VoltageControlledOscillatorTest, remap) {
 //
 
 TEST(VoltageControlledOscillatorTest, pure_sin) {
-    VoltageControlledOscillator vco;
+    VoltageControlledOscillator vco(0, 10000);
 
     synth::Samples frequency(1.0);
     synth::Samples shape(1.0);
@@ -51,7 +51,7 @@ TEST(VoltageControlledOscillatorTest, pure_sin) {
 //
 
 TEST(VoltageControlledOscillatorTest, pure_square) {
-    VoltageControlledOscillator vco;
+    VoltageControlledOscillator vco(0, 10000);
 
     synth::Samples frequency(0.0);
     synth::Samples shape(-1.0);
@@ -74,7 +74,7 @@ TEST(VoltageControlledOscillatorTest, pure_square) {
 //
 
 TEST(VoltageControlledOscillatorTest, mixed) {
-    VoltageControlledOscillator vco;
+    VoltageControlledOscillator vco(0, 10000);
 
     synth::Samples frequency(0.0);
     synth::Samples shape(0.6);  // 20% square 80% sin
