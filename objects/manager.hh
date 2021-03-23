@@ -36,12 +36,15 @@ public:
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
-        components_.run_system<TexturedBox>([&](const ecs::Entity&, const TexturedBox& box) {
+        components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) {
             engine::renderer::Box r_box;
             r_box.bottom_left = world_position(box.bottom_left, components_);
             r_box.dim = box.dim;
             r_box.uv = box.uv;
             r_box.texture_index = box.texture_index;
+
+            if (auto ptr = components_.get_ptr<Rotateable>(e)) r_box.rotation = ptr->rotation;
+
             box_renderer_.draw(r_box, screen_from_world);
         });
         components_.run_system<Cable>([&](const ecs::Entity&, const Cable& rope) {

@@ -81,7 +81,7 @@ void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world)
     auto& texture = textures_.at(box.texture_index);
     texture.activate();
 
-    set_position(box.bottom_left, box.dim);
+    set_position(box.bottom_left, box.dim, box.rotation);
 
     // The UV texture needs to be normalized between 0 and 1
     Eigen::Vector2f uv_size{texture.bitmap().get_width(), texture.bitmap().get_height()};
@@ -110,16 +110,29 @@ void BoxRenderer::set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f&
 // #############################################################################
 //
 
-void BoxRenderer::set_position(const Eigen::Vector2f& bottom_left, const Eigen::Vector2f& dim) {
+void BoxRenderer::set_position(const Eigen::Vector2f& bottom_left, const Eigen::Vector2f& dim,
+                               const std::optional<float>& rotation) {
     auto batch = position_buffer_.batched_updater();
 
-    // top left
-    batch.element(0) = bottom_left + Eigen::Vector2f{0.f, dim.y()};
-    // top right
-    batch.element(1) = bottom_left + dim;
-    // bottom left
-    batch.element(2) = bottom_left;
-    // bottom right
-    batch.element(3) = bottom_left + Eigen::Vector2f{dim.x(), 0.f};
+    Eigen::Matrix<float, 2, 4> coords;
+    coords << bottom_left + Eigen::Vector2f{0.f, dim.y()},  // top left
+        bottom_left + dim,                                  // top right
+        bottom_left,                                        // bottom left
+        bottom_left + Eigen::Vector2f{dim.x(), 0.f};        // bottom right
+
+    if (rotation) {
+        Eigen::Matrix2f r = Eigen::Matrix2f::Identity();
+        float s = std::sin(-*rotation);  // Invert so that positive rotations go CW
+        float c = std::cos(-*rotation);
+        r << c, -s, s, c;
+
+        // TODO: This can all be done with one matrix
+        Eigen::Matrix<float, 2, 1> center = bottom_left + 0.5 * dim;
+        for (int i = 0; i < coords.cols(); ++i) coords.col(i) -= center;
+        coords = r * coords;
+        for (int i = 0; i < coords.cols(); ++i) coords.col(i) += center;
+    }
+
+    batch.elements<4>(0) = coords;
 }
 };  // namespace engine::renderer

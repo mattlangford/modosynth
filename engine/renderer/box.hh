@@ -13,6 +13,8 @@ struct Box {
 
     Eigen::Vector2f uv;
     size_t texture_index;
+
+    std::optional<float> rotation;
 };
 
 class BoxRenderer {
@@ -34,7 +36,8 @@ public:
 
 private:
     void set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f& dim);
-    void set_position(const Eigen::Vector2f& bottom_left, const Eigen::Vector2f& dim);
+    void set_position(const Eigen::Vector2f& bottom_left, const Eigen::Vector2f& dim,
+                      const std::optional<float>& rotation);
 
 private:
     engine::Shader shader_;

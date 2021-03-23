@@ -39,7 +39,7 @@ public:
         auto& parent = result.front();
 
         result.push_back(manager.spawn(
-            TexturedBox{Transform{parent, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0}, Rotateable{0.0}));
+            TexturedBox{Transform{parent, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0}, Rotateable{1.0}));
 
         return result;
     }
