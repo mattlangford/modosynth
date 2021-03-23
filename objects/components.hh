@@ -29,6 +29,9 @@ struct Moveable {
 struct Selectable {
     bool selected = false;
 };
+struct Rotateable {
+    float rotation;
+};
 
 struct CableSource {
     size_t index;
@@ -52,7 +55,7 @@ struct SynthNode {
 };
 
 using ComponentManager =
-    ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable, SynthNode>;
+    ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable, SynthNode, Rotateable>;
 
 //
 // #############################################################################

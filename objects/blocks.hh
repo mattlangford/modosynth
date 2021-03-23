@@ -79,6 +79,9 @@ public:
 private:
     std::vector<ecs::Entity> spawn_ports(const ecs::Entity& parent, objects::ComponentManager& manager) const;
 
+protected:
+    inline const Eigen::Vector2f& dim() const { return dim_; }
+
 private:
     Config config_;
 

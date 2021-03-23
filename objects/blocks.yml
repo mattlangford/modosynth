@@ -20,7 +20,7 @@ blocks:
     - name: "Knob"
       uv: [32, 0]
       dim: [15, 15]
-    - name: "KnobBackground"
+    - name: "KnobForeground"
       uv: [32, 0]
       dim: [15, 15]
     - name: "Speaker"

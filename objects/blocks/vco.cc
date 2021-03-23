@@ -31,7 +31,7 @@ float remap(float raw, const std::tuple<float, float>& from, const std::tuple<fl
 //
 
 VoltageControlledOscillator::VoltageControlledOscillator(float f_min, float f_max, size_t count)
-    : AbstractNode{kName + std::to_string(count)}, frequency_{f_min, f_max} {}
+    : AbstractNode{"VoltageControlledOscillator" + std::to_string(count)}, frequency_{f_min, f_max} {}
 
 //
 // #############################################################################

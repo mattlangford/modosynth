@@ -3,6 +3,8 @@
 #include <iostream>
 #include <memory>
 
+#include "objects/blocks/knob.hh"
+#include "objects/blocks/speaker.hh"
 #include "objects/blocks/vco.hh"
 #include "yaml-cpp/yaml.h"
 
