@@ -130,12 +130,16 @@ private:
         }
 
         bool done = false;
-        components_.run_system<Rotateable>([&done, &event](const ecs::Entity&, Rotateable& r) {
+        components_.run_system<Rotateable>([&](const ecs::Entity& e, Rotateable& r) {
             if (!r.rotating) return false;
 
             r.rotation += 0.1 * event.delta_position.y();
             r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
             done = true;
+
+            // TODO I don't really like this for every tick, maybe just at the start/end for undoing?
+            events_.trigger<SetValue>({e, r.rotation});
+
             return true;
         });
 
@@ -199,8 +203,9 @@ private:
     }
 
     std::optional<ecs::Entity> get_box_under_mouse(const Eigen::Vector2f& mouse) {
+        // TODO There needs to be some Z sorting here...
         std::optional<ecs::Entity> selected;
-        components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) -> bool {
+        components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) {
             const Eigen::Vector2f bottom_left = world_position(box.bottom_left, components_);
             if (engine::is_in_rectangle(mouse, bottom_left, bottom_left + box.dim)) {
                 selected = e;

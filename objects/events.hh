@@ -19,7 +19,11 @@ struct Despawn {
 struct Connect {
     ecs::Entity entity;
 };
+struct SetValue {
+    ecs::Entity entity;
+    float value;
+};
 
-using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
+using EventManager = ecs::EventManager<Spawn, Despawn, Connect, SetValue>;
 
 }  // namespace objects

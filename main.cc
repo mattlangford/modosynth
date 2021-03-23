@@ -51,6 +51,13 @@ void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, obje
     bridge.connect(hacky_get_port(cable.start.parent.value()), hacky_get_port(cable.end.parent.value()));
 }
 
+void handle_set_value(const objects::SetValue& set, synth::Bridge& bridge, objects::Manager& manager) {
+    // Hacky way to get parents
+    const auto& box = manager.components().get<objects::TexturedBox>(set.entity);
+    const auto& parent = manager.components().get<objects::SynthNode>(box.bottom_left.parent.value());
+    bridge.set_value(parent.id, set.value / M_PI);  // remap between -1 and 1
+}
+
 int main() {
     synth::Bridge bridge;
     bridge.start_processing_thread();
@@ -67,6 +74,8 @@ int main() {
         [&](const objects::Spawn& spawn) { handle_spawn(spawn, bridge, *manager); });
     manager->events().add_handler<objects::Connect>(
         [&](const objects::Connect& connect) { handle_connect(connect, bridge, *manager); });
+    manager->events().add_handler<objects::SetValue>(
+        [&](const objects::SetValue& set) { handle_set_value(set, bridge, *manager); });
 
     object_manager.add_manager(std::make_shared<engine::renderer::Grid>(25, 25));
     object_manager.add_manager(manager);
