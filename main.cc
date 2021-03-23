@@ -35,8 +35,6 @@ void handle_spawn(const objects::Spawn& spawn, synth::Bridge& bridge, objects::M
 }
 
 void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, objects::Manager& manager) {
-    // TODO
-    return;
     const auto& cable = manager.components().get<objects::Cable>(connect.entity);
 
     auto hacky_get_port = [&](const ecs::Entity& entity) -> synth::Identifier {

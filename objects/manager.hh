@@ -81,8 +81,6 @@ public:
     }
 
     void handle_mouse_event(const engine::MouseEvent& event) override {
-        if (event.any_modifiers()) return;
-
         if (event.pressed()) {
             if (auto entity = get_box_under_mouse(event.mouse_position)) mouse_click(event, *entity);
         } else if (event.held()) {
@@ -111,7 +109,11 @@ private:
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
-        if (auto ptr = components_.get_ptr<Selectable>(entity)) {
+        if (event.shift) {
+            if (auto ptr = components_.get_ptr<Rotateable>(entity)) {
+                ptr->rotating = true;
+            }
+        } else if (auto ptr = components_.get_ptr<Selectable>(entity)) {
             ptr->selected = true;
         } else if (components_.has<CableSource>(entity)) {
             drawing_rope_ = spawn_cable_from(entity, event);
@@ -126,6 +128,18 @@ private:
             });
             return;
         }
+
+        bool done = false;
+        components_.run_system<Rotateable>([&done, &event](const ecs::Entity&, Rotateable& r) {
+            if (!r.rotating) return false;
+
+            r.rotation += 0.1 * event.delta_position.y();
+            r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
+            done = true;
+            return true;
+        });
+
+        if (done) return;
 
         // Move any objects which are selected
         components_.run_system<TexturedBox, Moveable, Selectable>(
@@ -146,9 +160,9 @@ private:
     void mouse_released(const engine::MouseEvent&, const std::optional<ecs::Entity>& entity) {
         if (!drawing_rope_) {
             auto [ptr, size] = components_.raw_view<Selectable>();
-            for (size_t i = 0; i < size; ++i) {
-                ptr[i].selected = false;
-            }
+            for (size_t i = 0; i < size; ++i) ptr[i].selected = false;
+            auto [rptr, rsize] = components_.raw_view<Rotateable>();
+            for (size_t i = 0; i < rsize; ++i) rptr[i].rotating = false;
             return;
         }
 
@@ -190,9 +204,7 @@ private:
             const Eigen::Vector2f bottom_left = world_position(box.bottom_left, components_);
             if (engine::is_in_rectangle(mouse, bottom_left, bottom_left + box.dim)) {
                 selected = e;
-                return true;
             }
-            return false;
         });
         return selected;
     }

@@ -30,6 +30,7 @@ struct Selectable {
     bool selected = false;
 };
 struct Rotateable {
+    bool rotating;
     float rotation;
 };
 
