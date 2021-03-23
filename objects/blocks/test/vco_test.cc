@@ -5,7 +5,7 @@
 #include <chrono>
 #include <cmath>
 
-namespace object::blocks {
+namespace objects::blocks {
 
 using Shape = VoltageControlledOscillator::Shape;
 
@@ -94,4 +94,4 @@ TEST(VoltageControlledOscillatorTest, mixed) {
         ASSERT_NEAR(output[i], expected, 1E-5) << "iteration: " << i;
     }
 }
-}  // namespace object::blocks
+}  // namespace objects::blocks

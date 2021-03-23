@@ -2,9 +2,11 @@
 
 #include <tuple>
 
+#include "objects/blocks.hh"
 #include "synth/node.hh"
 
-namespace object::blocks {
+namespace objects::blocks {
+
 float remap(float raw, const std::tuple<float, float>& from, const std::tuple<float, float>& to);
 
 class VoltageControlledOscillator final : public synth::AbstractNode<2, 1> {
@@ -32,4 +34,22 @@ private:
     std::tuple<float, float> frequency_;
     double phase_ = 0.0;
 };
-}  // namespace object::blocks
+
+//
+// #############################################################################
+//
+
+class VCOFactory : public objects::Factory {
+public:
+    ~VCOFactory() override = default;
+
+    void load_config(const Config& config) override;
+
+    std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const override;
+
+    void spawn_node() const override;
+
+private:
+    Config::BlockConfig config_;
+};
+}  // namespace objects::blocks

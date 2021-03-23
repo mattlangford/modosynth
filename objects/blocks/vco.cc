@@ -8,7 +8,7 @@
 #include "objects/blocks/knob.hh"
 #include "synth/debug.hh"
 
-namespace object::blocks {
+namespace objects::blocks {
 
 //
 // #############################################################################
@@ -83,4 +83,42 @@ float VoltageControlledOscillator::sample(float frequency, float shape) {
 double VoltageControlledOscillator::phase_increment(float frequency) {
     return 2.0 * M_PI * static_cast<double>(frequency) / synth::Samples::kSampleRate;
 }
-}  // namespace object::blocks
+
+//
+// #############################################################################
+//
+
+void VCOFactory::load_config(const Config& config) { config_ = config.get("VoltageControlledOscillator"); }
+
+//
+// #############################################################################
+//
+
+std::vector<ecs::Entity> VCOFactory::spawn_entities(objects::ComponentManager& manager) const {
+    std::vector<ecs::Entity> entities;
+
+    const Eigen::Vector2f location{100, 200};
+    const Eigen::Vector2f dim = config_.dim.cast<float>();
+    const Eigen::Vector2f uv = config_.uv.cast<float>();
+    ecs::Entity block = manager.spawn(TexturedBox{Transform{std::nullopt, location}, dim, uv, 0}, Selectable{},
+                                      Moveable{location, true}, SynthNode{"InvalidName", 777});
+
+    entities.push_back(block);
+    for (auto e : spawn_ports(block, true, 2, manager)) {
+        entities.push_back(e);
+    }
+
+    for (auto e : spawn_ports(block, false, 1, manager)) {
+        entities.push_back(e);
+    }
+
+    return entities;
+}
+
+//
+// #############################################################################
+//
+
+void VCOFactory::spawn_node() const { throw std::runtime_error("Not implemented yet."); }
+
+}  // namespace objects::blocks

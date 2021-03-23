@@ -21,9 +21,12 @@ struct Config {
     std::string port_texture_path;
 
     struct BlockConfig {
+        std::string name;
         Eigen::Vector2i uv;
         Eigen::Vector2i dim;
     };
+
+    const BlockConfig& get(const std::string& name) const;
 
     std::unordered_map<std::string, BlockConfig> blocks;
 };
@@ -55,7 +58,8 @@ protected:
     ///
     /// @brief Helper function to spawn ports
     ///
-    ecs::Entity spawn_port(const ecs::Entity& parent, const Eigen::Vector2f& position) const;
+    std::vector<ecs::Entity> spawn_ports(const ecs::Entity& parent, bool is_input, size_t count,
+                                         objects::ComponentManager& manager) const;
 };
 
 //
@@ -82,4 +86,11 @@ private:
     Config config_;
     std::map<std::string, std::unique_ptr<Factory>> factories_;
 };
+
+//
+// #############################################################################
+//
+
+BlockLoader default_loader();
+
 }  // namespace objects

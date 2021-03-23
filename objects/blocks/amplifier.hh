@@ -2,7 +2,7 @@
 
 #include "synth/node.hh"
 
-namespace object::blocks {
+namespace objects::blocks {
 class Amplifier final : public synth::AbstractNode<2, 1> {
 public:
     inline static const std::string kName = "Amplifier";
@@ -18,4 +18,4 @@ public:
         outputs[0].populate_samples([&](size_t i) { return 10 * level.samples[i] * input.samples[i]; });
     }
 };
-}  // namespace object::blocks
+}  // namespace objects::blocks

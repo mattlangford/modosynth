@@ -2,7 +2,7 @@
 
 #include "synth/node.hh"
 
-namespace object::blocks {
+namespace objects::blocks {
 class Speaker final : public synth::EjectorNode {
 public:
     inline static const std::string kName = "Speaker";
@@ -11,4 +11,4 @@ public:
 public:
     Speaker(size_t count) : EjectorNode{kName + std::to_string(count), kStreamName} {}
 };
-}  // namespace object::blocks
+}  // namespace objects::blocks

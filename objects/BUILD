@@ -12,29 +12,17 @@ filegroup(
 
 cc_library(
     name = "objects",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.hh"]),
+    srcs = glob(["*.cc", "blocks/*.cc"]),
+    hdrs = glob(["*.hh", "blocks/*.hh"]),
     visibility = ["//visibility:public"],
     data = [":config", ":textures"],
     deps = [
-        ":blocks",
         "//ecs",
         "//engine",
         "//synth",
         "@glfw//:glfw",
         "@eigen//:eigen",
         "@yaml-cpp",
-    ]
-)
-
-cc_library(
-    name = "blocks",
-    srcs = glob(["blocks/*.cc"]),
-    hdrs = glob(["blocks/*.hh"]),
-    deps = [
-        "@eigen//:eigen",
-        "//engine",
-        "//synth"
     ]
 )
 
