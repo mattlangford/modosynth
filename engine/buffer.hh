@@ -13,53 +13,6 @@
 
 namespace engine {
 
-//
-// #############################################################################
-//
-
-template <typename T, int Dim>
-struct Point {
-    using Storage = Eigen::Matrix<T, Dim, 1>;
-    Storage point;
-};
-
-template <typename T, int Dim>
-struct Line {
-    using Storage = Eigen::Matrix<T, Dim, 1>;
-    Storage start;
-    Storage end;
-};
-
-template <typename T, int Dim>
-struct Triangle {
-    using Storage = Eigen::Matrix<T, Dim, 1>;
-    Storage p0;
-    Storage p1;
-    Storage p2;
-};
-
-template <typename T, int Dim>
-struct Quad {
-    using Storage = Eigen::Matrix<T, Dim, 1>;
-    Storage top_left;
-    Storage top_right;
-    Storage bottom_left;
-    Storage bottom_right;
-};
-
-template <typename T, int Dim>
-using Primitive = std::variant<Point<T, Dim>, Line<T, Dim>, Triangle<T, Dim>, Quad<T, Dim>>;
-
-#define define_for(type, type_short, dim)                     \
-    using Point##dim##D##type_short = Point<type, dim>;       \
-    using Line##dim##D##type_short = Line<type, dim>;         \
-    using Triangle##dim##D##type_short = Triangle<type, dim>; \
-    using Quad##dim##D##type_short = Quad<type, dim>;         \
-    using Primitive##dim##D##type_short = Primitive<type, dim>;
-
-define_for(float, f, 2);
-define_for(float, f, 3);
-
 ///
 /// @brief Handles getting data to the GPU
 ///
@@ -195,7 +148,6 @@ private:
     static constexpr GLenum enum_type<double> = GL_DOUBLE;
     template <>
     static constexpr GLenum enum_type<unsigned int> = GL_UNSIGNED_INT;
-    // TODO The rest of the types
 
 public:
     void reserve(size_t new_size) { batched_updater().reserve(new_size); }
