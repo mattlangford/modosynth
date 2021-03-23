@@ -36,34 +36,70 @@ const Config::BlockConfig& Config::get(const std::string& name) const {
 // #############################################################################
 //
 
-std::vector<ecs::Entity> Factory::spawn_ports(const ecs::Entity& parent, bool is_input, size_t count,
-                                              objects::ComponentManager& manager) const {
-    // TODO
-    const float width = 32;
-    const float height = 16;
+SimpleBlockFactory::SimpleBlockFactory(Config config) : config_(std::move(config)) {}
 
-    if (count > height) throw std::runtime_error("Too many ports for the given object!");
+//
+// #############################################################################
+//
 
-    const size_t spacing = height / (count + 1);
+void SimpleBlockFactory::load_config(const objects::Config& config) {
+    auto& block_config = config.get(config_.name);
+    uv_ = block_config.uv.cast<float>();
+    dim_ = block_config.dim.cast<float>();
+}
+
+//
+// #############################################################################
+//
+
+std::vector<ecs::Entity> SimpleBlockFactory::spawn_entities(objects::ComponentManager& manager) const {
+    std::vector<ecs::Entity> entities;
+
+    const Eigen::Vector2f location{100, 200};
+    ecs::Entity block = manager.spawn(TexturedBox{Transform{std::nullopt, location}, dim_, uv_, 0}, Selectable{},
+                                      Moveable{location, true}, SynthNode{"InvalidName", 777});
+
+    entities.push_back(block);
+    for (auto e : spawn_ports(block, manager)) {
+        entities.push_back(e);
+    }
+
+    return entities;
+}
+//
+// #############################################################################
+//
+
+std::vector<ecs::Entity> SimpleBlockFactory::spawn_ports(const ecs::Entity& parent, ComponentManager& manager) const {
+    const float width = dim_.x();
+    const float height = dim_.y();
+
+    const size_t input_spacing = height / (config_.inputs + 1);
+    const size_t output_spacing = height / (config_.outputs + 1);
 
     const Eigen::Vector2f dim = Eigen::Vector2f{3.0, 3.0};
     const Eigen::Vector2f uv = Eigen::Vector2f{0.0, 0.0};
 
     std::vector<ecs::Entity> entities;
-    entities.reserve(count);
+    entities.reserve(config_.inputs + config_.outputs);
 
-    for (size_t i = 0; i < count; ++i) {
-        if (is_input) {
-            Eigen::Vector2f offset{-3.0, height - (i + 1) * spacing - 1.5};
-            entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableSink{i}));
-        } else {
-            Eigen::Vector2f offset{width, height - (i + 1) * spacing - 1.5};
-            entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableSource{i}));
-        }
+    for (size_t i = 0; i < config_.inputs; ++i) {
+        Eigen::Vector2f offset{-3.0, height - (i + 1) * input_spacing - 1.5};
+        entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableSink{i}));
+    }
+    for (size_t i = 0; i < config_.outputs; ++i) {
+        Eigen::Vector2f offset{width, height - (i + 1) * output_spacing - 1.5};
+        entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableSource{i}));
     }
 
     return entities;
 }
+
+//
+// #############################################################################
+//
+
+void SimpleBlockFactory::spawn_node() { return config_.synth_factory(counter_++); }
 
 //
 // #############################################################################

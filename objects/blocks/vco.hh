@@ -39,17 +39,9 @@ private:
 // #############################################################################
 //
 
-class VCOFactory : public objects::Factory {
+class VCOFactory : public SimpleBlockFactory {
 public:
+    VCOFactory();
     ~VCOFactory() override = default;
-
-    void load_config(const Config& config) override;
-
-    std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const override;
-
-    void spawn_node() const override;
-
-private:
-    Config::BlockConfig config_;
 };
 }  // namespace objects::blocks

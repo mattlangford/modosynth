@@ -52,14 +52,41 @@ public:
     ///
     /// @brief Spawn the synth node
     ///
-    virtual void spawn_node() const = 0;
+    virtual void spawn_node() = 0;
+};
 
-protected:
-    ///
-    /// @brief Helper function to spawn ports
-    ///
-    std::vector<ecs::Entity> spawn_ports(const ecs::Entity& parent, bool is_input, size_t count,
-                                         objects::ComponentManager& manager) const;
+//
+// #############################################################################
+//
+
+class SimpleBlockFactory : public Factory {
+public:
+    struct Config {
+        std::string name;
+        size_t inputs;
+        size_t outputs;
+        std::function<void(size_t)> synth_factory;
+    };
+
+public:
+    SimpleBlockFactory(Config config);
+    ~SimpleBlockFactory() override = default;
+
+public:
+    void load_config(const objects::Config& config) override;
+    std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const override;
+    void spawn_node() override;
+
+private:
+    std::vector<ecs::Entity> spawn_ports(const ecs::Entity& parent, objects::ComponentManager& manager) const;
+
+private:
+    Config config_;
+
+    Eigen::Vector2f uv_;
+    Eigen::Vector2f dim_;
+
+    size_t counter_ = 0;
 };
 
 //
