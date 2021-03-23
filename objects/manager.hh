@@ -8,6 +8,7 @@
 #include "objects/catenary.hh"
 #include "objects/components.hh"
 #include "objects/events.hh"
+#include "synth/bridge.hh"
 
 namespace objects {
 //
@@ -16,7 +17,7 @@ namespace objects {
 
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager(const BlockLoader& loader) : loader_(loader) {
+    Manager(const BlockLoader& loader, synth::Bridge& bridge) : loader_(loader), bridge_(bridge) {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
 
@@ -55,6 +56,8 @@ public:
     }
 
 public:
+    synth::Bridge& bridge() { return bridge_; }
+    const synth::Bridge& bridge() const { return bridge_; }
     ComponentManager& components() { return components_; };
     const ComponentManager& components() const { return components_; };
     EventManager& events() { return events_; };
@@ -217,6 +220,7 @@ private:
 private:
     const BlockLoader& loader_;
 
+    synth::Bridge& bridge_;
     ComponentManager components_;
     EventManager events_;
 

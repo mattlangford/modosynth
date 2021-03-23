@@ -23,18 +23,18 @@ void audio_loop(synth::Bridge& bridge, bool& shutdown) {
     }
 }
 
-void handle_spawn(const objects::Spawn& spawn, synth::Bridge& bridge, objects::Manager& manager) {
+void handle_spawn(const objects::Spawn& spawn, objects::Manager& manager) {
     // TODO This doesn't really work with saving
     for (const auto& entity : spawn.entities) {
         if (auto ptr = manager.components().get_ptr<objects::SynthNode>(entity)) {
-            ptr->id = bridge.spawn(spawn.factory->spawn_synth_node());
+            ptr->id = manager.bridge().spawn(spawn.factory->spawn_synth_node());
             return;
         }
     }
     throw std::runtime_error("Unable to spawn node");
 }
 
-void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, objects::Manager& manager) {
+void handle_connect(const objects::Connect& connect, objects::Manager& manager) {
     const auto& cable = manager.components().get<objects::Cable>(connect.entity);
 
     auto hacky_get_port = [&](const ecs::Entity& entity) -> synth::Identifier {
@@ -48,14 +48,14 @@ void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, obje
         }
     };
 
-    bridge.connect(hacky_get_port(cable.start.parent.value()), hacky_get_port(cable.end.parent.value()));
+    manager.bridge().connect(hacky_get_port(cable.start.parent.value()), hacky_get_port(cable.end.parent.value()));
 }
 
-void handle_set_value(const objects::SetValue& set, synth::Bridge& bridge, objects::Manager& manager) {
+void handle_set_value(const objects::SetValue& set, objects::Manager& manager) {
     // Hacky way to get parents
     const auto& box = manager.components().get<objects::TexturedBox>(set.entity);
     const auto& parent = manager.components().get<objects::SynthNode>(box.bottom_left.parent.value());
-    bridge.set_value(parent.id, set.value / M_PI);  // remap between -1 and 1
+    manager.bridge().set_value(parent.id, set.value / M_PI);  // remap between -1 and 1
 }
 
 int main() {
@@ -68,14 +68,14 @@ int main() {
     engine::GlobalObjectManager object_manager;
 
     objects::BlockLoader loader = objects::default_loader();
-    auto manager = std::make_shared<objects::Manager>(loader);
+    auto manager = std::make_shared<objects::Manager>(loader, bridge);
 
     manager->events().add_handler<objects::Spawn>(
-        [&](const objects::Spawn& spawn) { handle_spawn(spawn, bridge, *manager); });
+        [&manager](const objects::Spawn& spawn) { handle_spawn(spawn, *manager); });
     manager->events().add_handler<objects::Connect>(
-        [&](const objects::Connect& connect) { handle_connect(connect, bridge, *manager); });
+        [&manager](const objects::Connect& connect) { handle_connect(connect, *manager); });
     manager->events().add_handler<objects::SetValue>(
-        [&](const objects::SetValue& set) { handle_set_value(set, bridge, *manager); });
+        [&manager](const objects::SetValue& set) { handle_set_value(set, *manager); });
 
     object_manager.add_manager(std::make_shared<engine::renderer::Grid>(25, 25));
     object_manager.add_manager(manager);
