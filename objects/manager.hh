@@ -43,7 +43,7 @@ public:
             r_box.uv = box.uv;
             r_box.texture_index = box.texture_index;
 
-            if (auto ptr = components_.get_ptr<Rotateable>(e)) r_box.rotation = ptr->rotation;
+            if (auto ptr = components_.get_ptr<Rotateable>(e)) r_box.rotation = ptr->rotation * 0.8;
 
             box_renderer_.draw(r_box, screen_from_world);
         });
