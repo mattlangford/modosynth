@@ -158,6 +158,8 @@ size_t BlockLoader::size() const { return factories_.size(); }
 BlockLoader default_loader() {
     BlockLoader loader("objects/blocks.yml");
     loader.add_factory("VCO", std::make_unique<blocks::VCOFactory>());
+    loader.add_factory("Speaker", std::make_unique<blocks::SpeakerFactory>());
+    loader.add_factory("Knob", std::make_unique<blocks::KnobFactory>());
     return loader;
 }
 

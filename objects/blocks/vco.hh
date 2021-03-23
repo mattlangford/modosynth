@@ -11,9 +11,6 @@ float remap(float raw, const std::tuple<float, float>& from, const std::tuple<fl
 
 class VoltageControlledOscillator final : public synth::AbstractNode<2, 1> {
 public:
-    inline static const std::string kName = "Voltage Controlled Oscillator";
-
-public:
     VoltageControlledOscillator(float f_min, float f_max, size_t count = 0);
 
 public:
