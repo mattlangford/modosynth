@@ -48,7 +48,6 @@ struct Cable {
 };
 
 struct SynthNode {
-    std::string name;
     size_t id;
 };
 

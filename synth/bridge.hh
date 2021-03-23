@@ -32,36 +32,26 @@ public:
     static_assert(Samples::batches_from_time(kOutputBufferTime) > 0);
 
 public:
-    using NodeFactory = std::function<std::unique_ptr<GenericNode>()>;
-
-    void add_factory(const std::string& name, NodeFactory factory) { factories_[name] = std::move(factory); }
-
-    NodeFactory* get_factory(const std::string& name) {
-        auto it = factories_.find(name);
-        return it == factories_.end() ? nullptr : &it->second;
-    }
-
-public:
-    size_t spawn(const std::string& name) {
+    ///
+    /// @brief Spawn the new node and retrieve an identifier that can be used for connecting and removing
+    ///
+    size_t spawn(std::unique_ptr<GenericNode> node) {
         std::lock_guard lock(mutex_);
-        if (auto* f_ptr = get_factory(name)) {
-            std::unique_ptr<GenericNode> node = (*f_ptr)();
-            GenericNode* node_ptr = node.get();
-            size_t id = runner_.spawn(std::move(node));
 
-            // We'll save input and output nodes here
-            if (auto ptr = dynamic_cast<InjectorNode*>(node_ptr)) {
-                injectors_[id] = ptr;
-            } else if (auto ptr = dynamic_cast<EjectorNode*>(node_ptr)) {
-                auto& stream_ptr = streams_[ptr->stream_name()];
-                if (!stream_ptr) stream_ptr = std::make_unique<Stream>();
-                std::cout << "Loaded stream: '" << ptr->stream_name() << "'" << std::endl;
-                ptr->set_stream(*stream_ptr);
-            }
+        GenericNode* node_ptr = node.get();
+        size_t id = runner_.spawn(std::move(node));
 
-            return id;
+        // We'll save input and output nodes here
+        if (auto ptr = dynamic_cast<InjectorNode*>(node_ptr)) {
+            injectors_[id] = ptr;
+        } else if (auto ptr = dynamic_cast<EjectorNode*>(node_ptr)) {
+            auto& stream_ptr = streams_[ptr->stream_name()];
+            if (!stream_ptr) stream_ptr = std::make_unique<Stream>();
+            std::cout << "Loaded stream: '" << ptr->stream_name() << "'" << std::endl;
+            ptr->set_stream(*stream_ptr);
         }
-        throw std::runtime_error(name + " factory not found!");
+
+        return id;
     }
 
     void connect(const Identifier& from, const Identifier& to) {
@@ -69,7 +59,10 @@ public:
         runner_.connect(from.id, from.port, to.id, to.port);
     }
 
-    void set_value(size_t index, float value) { queued_values_.emplace(index, value); }
+    void set_value(size_t index, float value) {
+        std::scoped_lock lock{mutex_};
+        queued_values_.emplace(index, value);
+    }
 
     ThreadSafeBuffer& get_stream_output(const std::string& stream_name) {
         if (auto it = streams_.find(stream_name); it != streams_.end()) return streams_[stream_name]->output();
@@ -172,13 +165,9 @@ private:
 
     std::chrono::nanoseconds timestamp_{0};
 
-    std::unordered_map<std::string, NodeFactory> factories_;
-
+    // Save the inputs and outputs as non-generic nodes
     std::unordered_map<size_t, InjectorNode*> injectors_;
-
     std::unordered_map<std::string, std::unique_ptr<Stream>> streams_;
-
-    // std::vector<EjectorNode*> ejectors_;
 };
 
 }  // namespace synth

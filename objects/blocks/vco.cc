@@ -94,8 +94,15 @@ VCOFactory::VCOFactory()
           config.name = "VoltageControlledOscillator";
           config.inputs = 2;
           config.outputs = 1;
-          config.synth_factory = [](size_t) {};
           return config;
       }()) {}
 
+//
+// #############################################################################
+//
+
+std::unique_ptr<synth::GenericNode> VCOFactory::spawn_synth_node() const {
+    static size_t counter = 0;
+    return std::make_unique<VoltageControlledOscillator>(10, 1000, counter++);
+}
 }  // namespace objects::blocks

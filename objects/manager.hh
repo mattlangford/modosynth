@@ -164,8 +164,11 @@ private:
 
 private:
     void spawn_block(size_t index) {
+        auto& factory = loader_.get(loader_.names().at(index));
+
         Spawn spawn;
-        spawn.entities = loader_.get(loader_.names().at(index)).spawn_entities(components_);
+        spawn.entities = factory.spawn_entities(components_);
+        spawn.factory = &factory;
         events_.trigger(spawn);
     }
 

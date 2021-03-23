@@ -43,5 +43,8 @@ class VCOFactory : public SimpleBlockFactory {
 public:
     VCOFactory();
     ~VCOFactory() override = default;
+
+public:
+    std::unique_ptr<synth::GenericNode> spawn_synth_node() const override;
 };
 }  // namespace objects::blocks

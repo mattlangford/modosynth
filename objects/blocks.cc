@@ -57,7 +57,7 @@ std::vector<ecs::Entity> SimpleBlockFactory::spawn_entities(objects::ComponentMa
 
     const Eigen::Vector2f location{100, 200};
     ecs::Entity block = manager.spawn(TexturedBox{Transform{std::nullopt, location}, dim_, uv_, 0}, Selectable{},
-                                      Moveable{location, true}, SynthNode{"InvalidName", 777});
+                                      Moveable{location, true}, SynthNode{777});
 
     entities.push_back(block);
     for (auto e : spawn_ports(block, manager)) {
@@ -94,12 +94,6 @@ std::vector<ecs::Entity> SimpleBlockFactory::spawn_ports(const ecs::Entity& pare
 
     return entities;
 }
-
-//
-// #############################################################################
-//
-
-void SimpleBlockFactory::spawn_node() { return config_.synth_factory(counter_++); }
 
 //
 // #############################################################################

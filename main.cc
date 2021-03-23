@@ -15,18 +15,6 @@
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
 
-void populate(synth::Bridge& bridge) {
-    using namespace objects::blocks;
-    int i = 0;
-    bridge.add_factory(Speaker::kName, [i]() mutable { return std::make_unique<Speaker>(i++); });
-    bridge.add_factory(Knob::kName, [i]() mutable { return std::make_unique<Knob>(i++); });
-    bridge.add_factory(Amplifier::kName, [i]() mutable { return std::make_unique<Amplifier>(i++); });
-    bridge.add_factory(VoltageControlledOscillator::kName,
-                       [i]() mutable { return std::make_unique<VoltageControlledOscillator>(10, 10'000, i++); });
-    bridge.add_factory("Low Frequency Oscillator",
-                       [i]() mutable { return std::make_unique<VoltageControlledOscillator>(1E-3, 10, i++); });
-}
-
 void audio_loop(synth::Bridge& bridge, bool& shutdown) {
     synth::AudioDriver driver{bridge.get_stream_output("/speaker")};
     while (!shutdown) {
@@ -36,13 +24,14 @@ void audio_loop(synth::Bridge& bridge, bool& shutdown) {
 }
 
 void handle_spawn(const objects::Spawn& spawn, synth::Bridge& bridge, objects::Manager& manager) {
-    // TODO
-    return;
+    // TODO This doesn't really work with saving
     for (const auto& entity : spawn.entities) {
         if (auto ptr = manager.components().get_ptr<objects::SynthNode>(entity)) {
-            ptr->id = bridge.spawn(ptr->name);
+            ptr->id = bridge.spawn(spawn.factory->spawn_synth_node());
+            return;
         }
     }
+    throw std::runtime_error("Unable to spawn node");
 }
 
 void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, objects::Manager& manager) {
@@ -66,8 +55,6 @@ void handle_connect(const objects::Connect& connect, synth::Bridge& bridge, obje
 
 int main() {
     synth::Bridge bridge;
-    populate(bridge);
-
     bridge.start_processing_thread();
 
     bool shutdown = false;
