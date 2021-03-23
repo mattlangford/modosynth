@@ -135,8 +135,8 @@ private:
             const size_t min_buffered_batches = min_buffered_samples / Samples::kBatchSize;
 
             constexpr size_t kOutputBufferSize = Samples::batches_from_time(kOutputBufferTime);
-            if (min_buffered_batches > kOutputBufferSize) {
-                std::this_thread::sleep_for(0.3 * kOutputBufferTime);
+            if (min_buffered_batches >= kOutputBufferSize) {
+                std::this_thread::sleep_for(0.5 * kOutputBufferTime);
                 continue;
             }
 
