@@ -130,17 +130,19 @@ private:
             return;
         }
 
-        components_.run_system<Selectable, Rotateable>(
-            [&](const ecs::Entity& e, const Selectable& selectable, Rotateable& r) {
-                if (selectable.selected) rotate(event, e, r);
-                return selectable.selected;
-            });
-
-        components_.run_system<Selectable, TexturedBox, Moveable>(
-            [&](const ecs::Entity&, const Selectable& selectable, TexturedBox& box, Moveable& moveable) {
-                if (selectable.selected) move(event, box, moveable);
-                return selectable.selected;
-            });
+        if (event.shift) {
+            components_.run_system<Selectable, Rotateable>(
+                [&](const ecs::Entity& e, const Selectable& selectable, Rotateable& r) {
+                    if (selectable.selected) rotate(event, e, r);
+                    return selectable.selected;
+                });
+        } else if (!event.any_modifiers()) {
+            components_.run_system<Selectable, TexturedBox, Moveable>(
+                [&](const ecs::Entity&, const Selectable& selectable, TexturedBox& box, Moveable& moveable) {
+                    if (selectable.selected) move(event, box, moveable);
+                    return selectable.selected;
+                });
+        }
     }
 
     void mouse_released(const engine::MouseEvent&, const std::optional<ecs::Entity>& entity) {
@@ -185,8 +187,11 @@ private:
         const auto& start = cable.start.parent.value();
         const auto& end = cable.end.parent.value();
 
-        const size_t start_id = components_.get<SynthNode>(start).id;
-        const size_t end_id = components_.get<SynthNode>(end).id;
+        const auto& start_parent = components_.get<TexturedBox>(start).bottom_left.parent.value();
+        const auto& end_parent = components_.get<TexturedBox>(end).bottom_left.parent.value();
+        const size_t start_id = components_.get<SynthNode>(start_parent).id;
+        const size_t end_id = components_.get<SynthNode>(end_parent).id;
+
         const size_t start_port = components_.get<CableSource>(start).index;
         const size_t end_port = components_.get<CableSink>(end).index;
         bridge_.connect({start_id, start_port}, {end_id, end_port});

@@ -26,6 +26,16 @@
 
 template <typename Repr, typename Period>
 std::ostream& operator<<(std::ostream& os, const std::chrono::duration<Repr, Period>& d) {
-    os << std::chrono::duration<double>(d).count() << "s";
+    using namespace std::chrono;
+    if (duration_cast<duration<double>>(d).count() > 0.1) {
+        os << duration<double>(d).count() << "s";
+    } else if (duration_cast<duration<double, std::milli>>(d).count() > 0.1) {
+        os << duration<double, std::milli>(d).count() << "ms";
+    } else if (duration_cast<duration<double, std::micro>>(d).count() > 0.1) {
+        os << duration<double, std::micro>(d).count() << "us";
+    } else {
+        os << duration<double, std::nano>(d).count() << "ns";
+    }
+
     return os;
 }

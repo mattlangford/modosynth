@@ -84,8 +84,9 @@ Runner::ScopedPrinter::~ScopedPrinter() {
     constexpr std::chrono::seconds kInc{10};
 
     if (start < next_) return;
-    std::cout << "Runner::next() " << Samples::kBatchIncrement << " simulated in "
-              << (std::chrono::steady_clock::now() - start) << "\n";
+    auto d = std::chrono::steady_clock::now() - start;
+    std::cout << "Runner::next() " << Samples::kBatchIncrement << " simulated in " << d << " ("
+              << (Samples::kBatchIncrement / d) << "x realtime)\n";
 
     next_ = start + kInc;
 }
