@@ -3,19 +3,28 @@
 #include <memory>
 #include <queue>
 #include <vector>
+#include <unordered_map>
 
 #include "synth/node.hh"
 
 namespace synth {
 
+struct NodeWrapper {
+    std::unique_ptr<GenericNode> node;
+
+    using InputAndNode = std::pair<size_t, GenericNode*>;
+    std::vector<std::vector<InputAndNode>> outputs;
+};
+
+struct NodeWrappers
+{
+    std::unordered_map<size_t, NodeWrapper> id_wrapper_map;
+};
+
 class Runner {
 public:
-    size_t spawn(std::unique_ptr<GenericNode> node);
-    void despawn(size_t index);
-
-    void connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index);
-
-    void next(const std::chrono::nanoseconds& now);
+    void run_for_at_least(const std::chrono::nanoseconds& duration, NodeWrappers& wrappers);
+    void next(NodeWrappers& wrappers);
 
 private:
     struct ScopedPrinter {
@@ -23,17 +32,7 @@ private:
         static std::chrono::steady_clock::time_point next_;
         ~ScopedPrinter();
     };
-
-    struct NodeWrapper {
-        std::unique_ptr<GenericNode> node;
-
-        using InputAndNode = std::pair<size_t, GenericNode*>;
-        std::vector<std::vector<InputAndNode>> outputs;
-    };
-
-    std::queue<size_t> free_;
-
-    std::vector<NodeWrapper> wrappers_;
+    std::chrono::nanoseconds now_;
     std::vector<size_t> order_;
 };
 }  // namespace synth

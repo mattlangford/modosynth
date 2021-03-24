@@ -38,7 +38,7 @@ public:
 
         const auto now = Clock::now();
         auto duration = now - previous_;
-        // runner_.run_for(duration, flatten_wrappers(nodes_));
+        runner_.run_for_at_least(duration, wrappers_);
         previous_ = now;
 
         // TODO Right now this assumes there's at max one speaker which breaks down pretty quickly
@@ -51,18 +51,8 @@ public:
     }
 
 private:
-    struct NodeWrapper {
-        size_t id;
-        std::unique_ptr<synth::GenericNode> node;
-
-        using InputAndNode = std::pair<size_t, synth::GenericNode*>;
-        std::vector<std::vector<InputAndNode>> outputs;
-    };
-    using Wrappers = std::unordered_map<size_t, NodeWrapper>;
-
-    void add_node(const SynthNode& node, Wrappers& previous) {
-        auto& wrapper = wrappers_[node.id];
-        wrapper.id = node.id;
+    void add_node(const SynthNode& node, synth::NodeWrappers& previous) {
+        auto& wrapper = wrappers_.id_wrapper_map[node.id];
         wrapper.node = from_previous_or_spawn(node, previous);
         wrapper.outputs.resize(wrapper.node->num_outputs());
     }
@@ -89,7 +79,10 @@ private:
         auto& wrapper = wrapper_from_node(output.parent);
         // TODO probably could get rid of this dynamic cast, but that'd add complexity
         synth::EjectorNode& ejector = *dynamic_cast<synth::EjectorNode*>(wrapper.node.get());
-        for (auto sample : ejector.stream().flush_new()) audio_buffer_.push(sample);
+        for (float sample : ejector.stream().flush_new()) {
+            if (sample > 0) throw;
+            audio_buffer_.push(0.1 * sample);
+        }
     }
 
     void flush_empty(const std::chrono::nanoseconds& duration) {
@@ -99,9 +92,9 @@ private:
     ///
     /// @brief Load the node from the previous node map or generate it from scratch
     ///
-    std::unique_ptr<synth::GenericNode> from_previous_or_spawn(const SynthNode& node, Wrappers& previous_wrappers) {
-        auto it = previous_wrappers.find(node.id);
-        if (it == previous_wrappers.end()) {
+    std::unique_ptr<synth::GenericNode> from_previous_or_spawn(const SynthNode& node, synth::NodeWrappers& previous_wrappers) {
+        auto it = previous_wrappers.id_wrapper_map.find(node.id);
+        if (it == previous_wrappers.id_wrapper_map.end()) {
             return loader_.get(node.name).spawn_synth_node();
         }
 
@@ -111,8 +104,8 @@ private:
         return std::move(wrapper.node);
     }
 
-    NodeWrapper& wrapper_from_node(const ecs::Entity& entity) {
-        auto& wrapper = wrappers_[component_.get<SynthNode>(entity).id];
+    synth::NodeWrapper& wrapper_from_node(const ecs::Entity& entity) {
+        auto& wrapper = wrappers_.id_wrapper_map[component_.get<SynthNode>(entity).id];
         if (wrapper.node == nullptr) throw std::runtime_error("Found a nullptr when updating node values.");
         return wrapper;
     }
@@ -126,7 +119,7 @@ private:
 
     synth::ThreadSafeBuffer audio_buffer_;
 
-    std::unordered_map<size_t, NodeWrapper> wrappers_;
+    synth::NodeWrappers wrappers_;
     // TODO Stream support
     // std::unordered_map<std::string, synth::Stream> streams_;
 
