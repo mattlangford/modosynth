@@ -21,7 +21,7 @@ public:
     SpeakerFactory()
         : SimpleBlockFactory([] {
               SimpleBlockFactory::Config config;
-              config.name = "Speaker";
+              config.name = Speaker::kName;
               config.inputs = 1;
               config.outputs = 0;
               return config;
@@ -39,8 +39,5 @@ public:
         static size_t counter = 0;
         return std::make_unique<Speaker>(counter++);
     }
-
-private:
-    Eigen::Vector2f foreground_uv_;
 };
 }  // namespace objects::blocks
