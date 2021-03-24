@@ -70,8 +70,7 @@ private:
 ///
 class EjectorNode : public GenericNode {
 public:
-    EjectorNode(std::string node_name, const std::string& stream_name)
-        : GenericNode{node_name}, stream_name_(stream_name) {}
+    EjectorNode(std::string node_name) : GenericNode{node_name} {}
     ~EjectorNode() override = default;
 
 public:
@@ -82,9 +81,7 @@ public:
         if (input_counter_ > 0) return false;
         input_counter_ = default_counter_;
 
-        if (stream_) {
-            stream_->add_samples(context.timestamp, samples_);
-        }
+        stream_.add_samples(context.timestamp, samples_);
 
         samples_ = Samples{0};
 
@@ -99,17 +96,14 @@ public:
     Samples get_output(size_t) const final { throw std::runtime_error("EjectorNode::get_output()"); }
 
 public:
-    const std::string& stream_name() const { return stream_name_; }
-    void set_stream(Stream& stream) { stream_ = &stream; }
+    Stream& stream() { return stream_; }
 
 private:
-    const std::string stream_name_;
-
     int default_counter_ = 0;
     int input_counter_ = 0;
 
     Samples samples_;
-    Stream* stream_ = nullptr;
+    Stream stream_;
 };
 
 //

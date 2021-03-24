@@ -8,8 +8,6 @@
 #include "ecs/components.hh"
 #include "ecs/entity.hh"
 #include "objects/catenary.hh"
-#include "synth/bridge.hh"
-
 namespace objects {
 
 struct Transform {
@@ -60,7 +58,10 @@ struct SynthInput {
 };
 struct SynthOutput {
     ecs::Entity parent;
-    std::vector<float> values;
+    std::string stream_name;
+
+    // This is updated with the values from the previous synth cycle
+    std::vector<float> samples;
 };
 struct SynthConnection {
     ecs::Entity from;

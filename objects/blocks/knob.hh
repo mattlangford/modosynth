@@ -16,7 +16,7 @@ public:
 // #############################################################################
 //
 
-class KnobFactory : public SimpleBlockFactory {
+class KnobFactory final : public SimpleBlockFactory {
 public:
     KnobFactory()
         : SimpleBlockFactory([] {

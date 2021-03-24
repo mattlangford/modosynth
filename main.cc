@@ -7,21 +7,17 @@
 #include "objects/bridge.hh"
 #include "objects/manager.hh"
 #include "synth/audio.hh"
-#include "synth/bridge.hh"
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
 
 int main() {
     objects::BlockLoader loader = objects::default_loader();
-    objects::ComponentManager components;
-    objects::EventManager events;
-    auto manager = std::make_shared<objects::Manager>(loader, components, events);
+    objects::Bridge bridge{loader};
 
-    synth::Bridge bridge;
-    bridge.start_processing_thread();
+    auto manager = std::make_shared<objects::Manager>(loader, bridge.component_manager(), bridge.event_manager());
 
-    synth::AudioDriver driver{bridge.get_stream_output("/speaker")};
+    synth::AudioDriver driver{bridge.audio_buffer()};
     driver.start_thread();
 
     engine::GlobalObjectManager object_manager;
@@ -34,6 +30,7 @@ int main() {
     window.init();
 
     while (window.render_loop()) {
+        bridge.process();
     }
 
     exit(EXIT_SUCCESS);
