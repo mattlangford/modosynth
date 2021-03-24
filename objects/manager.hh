@@ -8,7 +8,6 @@
 #include "objects/catenary.hh"
 #include "objects/components.hh"
 #include "objects/events.hh"
-#include "synth/bridge.hh"
 
 namespace objects {
 //
@@ -17,7 +16,8 @@ namespace objects {
 
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager(const BlockLoader& loader, synth::Bridge& bridge) : loader_(loader), bridge_(bridge) {
+    Manager(const BlockLoader& loader, ComponentManager& components, EventManager& events)
+        : loader_(loader), components_(components), events_(events) {
         events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
         events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
 
@@ -54,14 +54,6 @@ public:
             line_renderer_.draw(line, screen_from_world);
         });
     }
-
-public:
-    synth::Bridge& bridge() { return bridge_; }
-    const synth::Bridge& bridge() const { return bridge_; }
-    ComponentManager& components() { return components_; };
-    const ComponentManager& components() const { return components_; };
-    EventManager& events() { return events_; };
-    const EventManager& events() const { return events_; };
 
 public:
     void update(float) override {
@@ -156,7 +148,6 @@ private:
         }
 
         finialize_connection(drawing_rope, *entity);
-        events_.trigger<Connect>({drawing_rope});
     }
 
 private:
@@ -169,7 +160,7 @@ private:
         // Create the synth node and store it's id
         auto& node = components_.get<objects::SynthNode>(spawn.primary);
         node.name = std::move(name);
-        node.id = bridge_.spawn(factory.spawn_synth_node());
+        node.id = id_++;
 
         events_.trigger(spawn);
     }
@@ -190,8 +181,7 @@ private:
         auto& cable = components_.get<Cable>(cable_entity);
         cable.end = Transform{end_entity, 0.5 * end_box.dim};
         cable.to = synth_identifier(end_entity);
-
-        bridge_.connect(cable.from, *cable.to);
+        events_.trigger(Connect{cable_entity});
     }
 
     void move(const engine::MouseEvent& event, TexturedBox& box, Moveable& moveable) {
@@ -212,7 +202,7 @@ private:
         const auto& box = components_.get<objects::TexturedBox>(entity);
         const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
         // Set the value so it's between -1 and 1
-        bridge_.set_value(parent.id, r.rotation / M_PI);
+        // bridge_.set_value(parent.id, r.rotation / M_PI);
     }
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
@@ -238,10 +228,8 @@ private:
 
 private:
     const BlockLoader& loader_;
-
-    synth::Bridge& bridge_;
-    ComponentManager components_;
-    EventManager events_;
+    ComponentManager& components_;
+    EventManager& events_;
 
     engine::renderer::BoxRenderer box_renderer_;
     engine::renderer::LineRenderer line_renderer_;

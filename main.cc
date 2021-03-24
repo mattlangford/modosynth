@@ -16,6 +16,11 @@ constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
 
 int main() {
+    objects::BlockLoader loader = objects::default_loader();
+    objects::ComponentManager components;
+    objects::EventManager events;
+    auto manager = std::make_shared<objects::Manager>(loader, components, events);
+
     synth::Bridge bridge;
     bridge.start_processing_thread();
 
@@ -23,9 +28,6 @@ int main() {
     driver.start_thread();
 
     engine::GlobalObjectManager object_manager;
-
-    objects::BlockLoader loader = objects::default_loader();
-    auto manager = std::make_shared<objects::Manager>(loader, bridge);
 
     object_manager.add_manager(std::make_shared<engine::renderer::Grid>(25, 25));
     object_manager.add_manager(manager);
