@@ -28,6 +28,12 @@ struct Moveable {
 };
 struct Selectable {
     bool selected = false;
+
+    bool shift = false;
+    bool control = false;
+
+    static Selectable require_shift() { return {false, true, false}; }
+    static Selectable require_control() { return {false, false, true}; }
 };
 struct Rotateable {
     bool rotating;

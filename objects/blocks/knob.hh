@@ -38,8 +38,9 @@ public:
         std::vector<ecs::Entity> result = SimpleBlockFactory::spawn_entities(manager);
         auto& parent = result.front();
 
-        result.push_back(manager.spawn(
-            TexturedBox{Transform{parent, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0}, Rotateable{false, 0.0}));
+        result.push_back(
+            manager.spawn(TexturedBox{Transform{parent, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0},
+                          Rotateable{false, 0.0}, Selectable::require_shift()));
 
         return result;
     }

@@ -85,11 +85,13 @@ public:
 
     void handle_mouse_event(const engine::MouseEvent& event) override {
         if (event.pressed()) {
-            if (auto entity = get_box_under_mouse(event.mouse_position)) mouse_click(event, *entity);
+            for (const auto& entity : get_boxes_under_mouse(event.mouse_position)) mouse_click(event, entity);
         } else if (event.held()) {
             mouse_drag(event);
         } else if (event.released()) {
-            mouse_released(event, get_box_under_mouse(event.mouse_position));
+            auto boxes = get_boxes_under_mouse(event.mouse_position);
+            if (boxes.empty()) mouse_released(event, std::nullopt);
+            for (const auto& entity : get_boxes_under_mouse(event.mouse_position)) mouse_released(event, entity);
         }
     }
 
@@ -112,12 +114,8 @@ private:
     void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
-        if (event.shift) {
-            if (auto ptr = components_.get_ptr<Rotateable>(entity)) {
-                ptr->rotating = true;
-            }
-        } else if (auto ptr = components_.get_ptr<Selectable>(entity)) {
-            ptr->selected = true;
+        if (auto ptr = components_.get_ptr<Selectable>(entity)) {
+            if (!(ptr->shift xor event.shift) && !(ptr->control xor event.control)) ptr->selected = true;
         } else if (components_.has<CableSource>(entity)) {
             drawing_rope_ = spawn_cable_from(entity, event);
         }
@@ -132,34 +130,16 @@ private:
             return;
         }
 
-        bool done = false;
-        components_.run_system<Rotateable>([&](const ecs::Entity& e, Rotateable& r) {
-            if (r.rotating) {
-                // Scale the changes back a bit
-                r.rotation += 0.1 * event.delta_position.y();
-                // And then clamp to be in the -pi to pi range
-                r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
-                set_value(e, r.rotation / M_PI);
-                done = true;
-            }
-            return done;
-        });
+        components_.run_system<Selectable, Rotateable>(
+            [&](const ecs::Entity& e, const Selectable& selectable, Rotateable& r) {
+                if (selectable.selected) rotate(event, e, r);
+                return selectable.selected;
+            });
 
-        if (done) return;
-
-        // Move any objects which are selected
-        components_.run_system<TexturedBox, Moveable, Selectable>(
-            [&event](const ecs::Entity&, TexturedBox& box, Moveable& moveable, const Selectable& selectable) {
-                if (!selectable.selected) {
-                    return;
-                }
-
-                moveable.position += event.delta_position;
-
-                if (moveable.snap_to_pixel)
-                    box.bottom_left.from_parent = moveable.position.cast<int>().cast<float>();
-                else
-                    box.bottom_left.from_parent = moveable.position;
+        components_.run_system<Selectable, TexturedBox, Moveable>(
+            [&](const ecs::Entity&, const Selectable& selectable, TexturedBox& box, Moveable& moveable) {
+                if (selectable.selected) move(event, box, moveable);
+                return selectable.selected;
             });
     }
 
@@ -180,8 +160,7 @@ private:
             return;
         }
 
-        components_.get<Cable>(drawing_rope).end = Transform{entity, 0.5 * components_.get<TexturedBox>(*entity).dim};
-
+        finialize_connection(drawing_rope, *entity);
         events_.trigger<Connect>({drawing_rope});
     }
 
@@ -213,6 +192,24 @@ private:
         bridge_.connect({start_id, start_port}, {end_id, end_port});
     }
 
+    void move(const engine::MouseEvent& event, TexturedBox& box, Moveable& moveable) {
+        moveable.position += event.delta_position;
+
+        if (moveable.snap_to_pixel)
+            box.bottom_left.from_parent = moveable.position.cast<int>().cast<float>();
+        else
+            box.bottom_left.from_parent = moveable.position;
+    }
+
+    void rotate(const engine::MouseEvent& event, const ecs::Entity& entity, Rotateable& r) {
+        // Scale the changes back a bit
+        r.rotation += 0.1 * event.delta_position.y();
+        // And then clamp to be in the -pi to pi range
+        r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
+        // Set the value so it's between -1 and 1
+        set_value(entity, r.rotation / M_PI);
+    }
+
     void set_value(const ecs::Entity& e, float value) {
         const auto& box = components_.get<objects::TexturedBox>(e);
         const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
@@ -228,13 +225,13 @@ private:
                                          Eigen::Vector2f::Zero()});
     }
 
-    std::optional<ecs::Entity> get_box_under_mouse(const Eigen::Vector2f& mouse) {
+    std::vector<ecs::Entity> get_boxes_under_mouse(const Eigen::Vector2f& mouse) {
         // TODO There needs to be some Z sorting here...
-        std::optional<ecs::Entity> selected;
+        std::vector<ecs::Entity> selected;
         components_.run_system<TexturedBox>([&](const ecs::Entity& e, const TexturedBox& box) {
             const Eigen::Vector2f bottom_left = world_position(box.bottom_left, components_);
             if (engine::is_in_rectangle(mouse, bottom_left, bottom_left + box.dim)) {
-                selected = e;
+                selected.push_back(e);
             }
         });
         return selected;
