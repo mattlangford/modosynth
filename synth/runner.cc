@@ -60,7 +60,7 @@ void Runner::connect(size_t from_id, size_t from_output_index, size_t to_id, siz
     if (from.node == nullptr || to.node == nullptr)
         throw std::runtime_error("Trying to connect to or from an empty node");
 
-    info("from=" << from.node->name() << " (" << from_id << "), from_output_index=" << from_output_index
+    debug("from=" << from.node->name() << " (" << from_id << "), from_output_index=" << from_output_index
                  << " to=" << to.node->name() << " (" << to_id << "), to_input_index: " << to_input_index);
 
     from.outputs.at(from_output_index).push_back(std::make_pair(to_input_index, to.node.get()));

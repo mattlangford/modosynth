@@ -8,7 +8,7 @@ class CatenarySolver {
 public:
     CatenarySolver();
 
-    void reset(Eigen::Vector2f start, Eigen::Vector2f end, float length);
+    bool maybe_reset(Eigen::Vector2f start, Eigen::Vector2f end, float length);
 
     bool solve(double tol = 1E-3, size_t max_iter = 100);
 
@@ -23,7 +23,7 @@ private:
 
     bool flipped_ = false;
     Eigen::Vector2f start_;
-    Eigen::Vector2d diff_;
+    Eigen::Vector2f end_;
     double length_;
     double alpha_;
     double beta_;

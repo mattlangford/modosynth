@@ -69,17 +69,8 @@ public:
             const Eigen::Vector2f start = world_position(rope.start, components_);
             const Eigen::Vector2f end = world_position(rope.end, components_);
 
-            // No change
-            if (start == rope.previous_start && end == rope.previous_end) {
-                return;
-            }
-
             double min_length = 1.01 * (end - start).norm();
-            rope.solver.reset(start, end, std::max(min_length, rope.solver.length()));
-            rope.solver.solve();
-
-            rope.previous_start = start;
-            rope.previous_end = end;
+            if (rope.solver.maybe_reset(start, end, std::max(min_length, rope.solver.length()))) rope.solver.solve();
         });
     }
 
@@ -116,11 +107,7 @@ private:
             components_.despawn(entity);
         };
     }
-    void undo_connect(const Connect& connect) {
-        auto& cable = components_.get<Cable>(connect.entity);
-        bridge_.disconnect(identifier(cable.start.parent.value()), identifier(cable.end.parent.value()));
-        components_.despawn(connect.entity);
-    }
+    void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
 
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
         if (auto ptr = components_.get_ptr<Selectable>(entity)) {
@@ -188,7 +175,7 @@ private:
         events_.trigger(spawn);
     }
 
-    synth::Identifier identifier(const ecs::Entity& entity) {
+    synth::Identifier synth_identifier(const ecs::Entity& entity) {
         const auto& parent = components_.get<TexturedBox>(entity).bottom_left.parent.value();
         const size_t id = components_.get<SynthNode>(parent).id;
 
@@ -203,10 +190,9 @@ private:
         const auto& end_box = components_.get<TexturedBox>(end_entity);
         auto& cable = components_.get<Cable>(cable_entity);
         cable.end = Transform{end_entity, 0.5 * end_box.dim};
+        cable.to = synth_identifier(end_entity);
 
-        const auto& start = cable.start.parent.value();
-        const auto& end = cable.end.parent.value();
-        bridge_.connect(identifier(start), identifier(end));
+        bridge_.connect(cable.from, *cable.to);
     }
 
     void move(const engine::MouseEvent& event, TexturedBox& box, Moveable& moveable) {
@@ -238,8 +224,8 @@ private:
         return components_.spawn<Cable>({{entity, 0.5 * box.dim},
                                          {std::nullopt, event.mouse_position},
                                          {},
-                                         Eigen::Vector2f::Zero(),
-                                         Eigen::Vector2f::Zero()});
+                                         synth_identifier(entity),
+                                         std::nullopt});
     }
 
     std::vector<ecs::Entity> get_boxes_under_mouse(const Eigen::Vector2f& mouse) {

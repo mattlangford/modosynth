@@ -1,5 +1,7 @@
 #include "objects/catenary.hh"
 
+#include <iostream>
+
 namespace objects {
 
 //
@@ -12,18 +14,23 @@ CatenarySolver::CatenarySolver() {}
 // #############################################################################
 //
 
-void CatenarySolver::reset(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
+bool CatenarySolver::maybe_reset(Eigen::Vector2f start, Eigen::Vector2f end, float length) {
     flipped_ = start.x() > end.x();
     if (flipped_) {
         std::swap(start, end);
     }
+
+    if (start == start_ && end == end_) {
+        return false;
+    }
+
     start_ = start;
-    diff_.x() = end.x() - start.x();
-    diff_.y() = end.y() - start.y();
+    end_ = end;
     beta_ = 10.0;
     length_ = length;
     x_offset_ = 0;
     y_offset_ = 0;
+    return true;
 }
 
 //
@@ -33,11 +40,13 @@ void CatenarySolver::reset(Eigen::Vector2f start, Eigen::Vector2f end, float len
 bool CatenarySolver::solve(double tol, size_t max_iter) {
     size_t iter = 0;
 
+    const Eigen::Vector2f diff = end_ - start_;
+
     // Function we're optimizing which relates the free parameter (b) to the size of the opening we need.
     // [1] https://foggyhazel.wordpress.com/2018/02/12/catenary-passing-through-2-points/
-    auto y = [this](double b) {
+    auto y = [this, &diff](double b) {
         return 1.0 / std::sqrt(2 * sq(b) * std::sinh(1 / (2 * sq(b))) - 1) -
-               1.0 / std::sqrt(std::sqrt(sq(length_) - sq(diff_.y())) / diff_.x() - 1);
+               1.0 / std::sqrt(std::sqrt(sq(length_) - sq(diff.y())) / diff.x() - 1);
     };
     // Derivative according to sympy
     auto dy = [](double b) {
@@ -53,8 +62,8 @@ bool CatenarySolver::solve(double tol, size_t max_iter) {
     }
 
     // Since b = sqrt(h / a), we can solve easily for a
-    alpha_ = diff_.x() * sq(beta_);
-    x_offset_ = 0.5 * (diff_.x() + alpha_ * std::log((length_ - diff_.y()) / (length_ + diff_.y())));
+    alpha_ = diff.x() * sq(beta_);
+    x_offset_ = 0.5 * (diff.x() + alpha_ * std::log((length_ - diff.y()) / (length_ + diff.y())));
     y_offset_ = -f(0);
     return iter < max_iter;
 }
@@ -68,7 +77,9 @@ std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
     std::vector<Eigen::Vector2f> result;
     result.reserve(points);
 
-    double step_size = diff_.x() / (points - 1);
+    const Eigen::Vector2f diff = end_ - start_;
+
+    double step_size = diff.x() / (points - 1);
     double x = 0;
     for (size_t point = 0; point < points; ++point, x += step_size) {
         result.push_back({x + start_.x(), f(x) + start_.y()});

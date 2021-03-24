@@ -8,6 +8,7 @@
 #include "ecs/components.hh"
 #include "ecs/entity.hh"
 #include "objects/catenary.hh"
+#include "synth/bridge.hh"
 
 namespace objects {
 
@@ -52,9 +53,8 @@ struct Cable {
 
     objects::CatenarySolver solver;
 
-    // A sort of cache so we don't have recompute the catenary
-    Eigen::Vector2f previous_start;
-    Eigen::Vector2f previous_end;
+    synth::Identifier from;
+    std::optional<synth::Identifier> to;
 };
 
 struct SynthNode {
