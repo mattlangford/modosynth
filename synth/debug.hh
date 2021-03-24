@@ -4,6 +4,8 @@
 
 //#define DEBUG_MODE
 
+#define info(s) std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << "(...) [INFO]: " << s << "\n"
+
 #ifdef DEBUG_MODE
 #define debug(s) std::cerr << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << "(...) [DEBUG]: " << s << "\n"
 #else
