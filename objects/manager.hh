@@ -151,8 +151,8 @@ private:
     }
 
 private:
-    void spawn_block(size_t index) {
-        std::string name = loader_.names().at(index);
+    void spawn_block(size_t index) { spawn_block(loader_.names().at(index)); }
+    void spawn_block(std::string name) {
         auto& factory = loader_.get(name);
 
         Spawn spawn = factory.spawn_entities(components_);
@@ -199,8 +199,8 @@ private:
         // And then clamp to be in the -pi to pi range
         r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
 
-        const auto& box = components_.get<objects::TexturedBox>(entity);
-        const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
+        // const auto& box = components_.get<objects::TexturedBox>(entity);
+        // const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
         // Set the value so it's between -1 and 1
         // bridge_.set_value(parent.id, r.rotation / M_PI);
     }

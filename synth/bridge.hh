@@ -65,8 +65,6 @@ public:
         runner_.connect(from.id, from.port, to.id, to.port);
     }
 
-    void disconnect(const Identifier& from, const Identifier& to) { std::lock_guard lock(mutex_); }
-
     void set_value(size_t index, float value) {
         std::scoped_lock lock{mutex_};
         queued_values_.emplace(index, value);

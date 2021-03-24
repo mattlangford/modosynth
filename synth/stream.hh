@@ -18,6 +18,7 @@ public:
 
     /// Returns the number of elements flushed to the output
     size_t flush();
+    std::vector<float> flush_new();
 
     size_t buffered_batches() const;
 

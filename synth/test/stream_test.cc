@@ -22,17 +22,13 @@ TEST(Stream, basic_flush) {
     EXPECT_EQ(s.index_of_timestamp(1 * inc), 1);
 
     // Flush samples, this should flush the first and second set of samples added above
-    s.flush();
-    ASSERT_EQ(s.output().size(), 2 * Samples::kBatchSize);
+    auto result = s.flush_new();
+    ASSERT_EQ(result.size(), 2 * Samples::kBatchSize);
     for (size_t i = 0; i < 2 * Samples::kBatchSize; ++i) {
         size_t batch_number = i / Samples::kBatchSize;
         float expected = 100.f * (batch_number + 1);
-
-        float value;
-        ASSERT_TRUE(s.output().pop(value)) << "i=" << i;
-        EXPECT_EQ(value, expected);
+        EXPECT_EQ(result[i], expected);
     }
-    EXPECT_EQ(s.output().size(), 0);
 }
 
 //

@@ -30,15 +30,31 @@ void Stream::add_samples(const std::chrono::nanoseconds& timestamp, const Sample
 //
 
 size_t Stream::flush() {
+    size_t batches = buffered_batches();
+    for (float sample : flush_new()) {
+        output_.push(sample);
+    }
+    return batches;
+}
+
+//
+// #############################################################################
+//
+
+std::vector<float> Stream::flush_new() {
     const size_t batches = buffered_batches();
+
+    std::vector<float> output;
+    output.resize(Samples::kBatchSize * batches);
     for (size_t i = 0; i < batches; ++i) {
         auto element = batches_.pop();
-        for (auto sample : element->samples) {
-            output().push(0.1 * sample);  // TODO it makes a super annoying noise, so I'm scaling this down
-        }
+
+        void* destination = output.data() + i * Samples::kBatchSize;
+        const void* source = element->samples.data();
+        std::memcpy(destination, source, sizeof(float) * Samples::kBatchSize);
     }
 
-    return batches;
+    return output;
 }
 
 //

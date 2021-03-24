@@ -38,6 +38,8 @@ public:
         undo_.pop();
     }
 
+    void clear_undo() { undo_.clear(); }
+
 private:
     template <typename E>
     static constexpr size_t kIndexOf = Index<E, Event...>::value;
