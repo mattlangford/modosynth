@@ -54,10 +54,18 @@ public:
         return id;
     }
 
+    void despawn(size_t id) {
+        std::lock_guard lock(mutex_);
+        if (auto it = injectors_.find(id); it != injectors_.end()) injectors_.erase(it);
+        runner_.despawn(id);
+    }
+
     void connect(const Identifier& from, const Identifier& to) {
         std::lock_guard lock(mutex_);
         runner_.connect(from.id, from.port, to.id, to.port);
     }
+
+    void disconnect(const Identifier& from, const Identifier& to) { std::lock_guard lock(mutex_); }
 
     void set_value(size_t index, float value) {
         std::scoped_lock lock{mutex_};

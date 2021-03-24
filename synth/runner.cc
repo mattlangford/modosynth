@@ -10,12 +10,40 @@ namespace synth {
 //
 
 size_t Runner::spawn(std::unique_ptr<GenericNode> node) {
-    size_t id = wrappers_.size();
-    auto& wrapper = wrappers_.emplace_back();
+    size_t index = wrappers_.size();
+
+    if (!free_.empty()) {
+        index = free_.front();
+        free_.pop();
+    }
+
+    auto& wrapper = index == wrappers_.size() ? wrappers_.emplace_back() : wrappers_.at(index);
     wrapper.node = std::move(node);
     wrapper.outputs.resize(wrapper.node->num_outputs());
-    order_.push_back(id);
-    return id;
+    order_.push_back(index);
+    return index;
+}
+
+//
+// #############################################################################
+//
+
+void Runner::despawn(size_t index) {
+    auto& wrapper = wrappers_.at(index);
+    if (wrapper.node == nullptr) throw std::runtime_error("Trying to despawn an empty node.");
+
+    auto node = std::move(wrapper.node);
+    wrapper.node = nullptr;
+    wrapper.outputs.clear();
+    free_.push(index);
+
+    // Remove all references to this node
+    for (auto& wrapper : wrappers_) {
+        // No need to check for nullptr since the outputs here will be empty for invalid nodes
+        for (auto& output : wrapper.outputs)
+            for (auto it = output.begin(); it != output.end(); ++it)
+                if (it->second == node.get()) output.erase(it);
+    }
 }
 
 //
@@ -25,6 +53,9 @@ size_t Runner::spawn(std::unique_ptr<GenericNode> node) {
 void Runner::connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index) {
     auto& from = wrappers_.at(from_id);
     const auto& to = wrappers_.at(to_id);
+
+    if (from.node == nullptr || to.node == nullptr)
+        throw std::runtime_error("Trying to connect to or from an empty node");
 
     debug("from=" << from.node->name() << " (" << from_id << "), from_output_index=" << from_output_index
                   << " to=" << to.node->name() << " (" << to_id << "), to_input_index: " << to_input_index);
@@ -52,6 +83,8 @@ void Runner::next(const std::chrono::nanoseconds& now) {
         order.pop();
 
         NodeWrapper& wrapper = wrappers_[index];
+        if (wrapper.node == nullptr) continue;
+
         GenericNode& node = *wrapper.node;
         const auto& outputs = wrapper.outputs;
 

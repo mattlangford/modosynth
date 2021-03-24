@@ -34,7 +34,7 @@ size_t Stream::flush() {
     for (size_t i = 0; i < batches; ++i) {
         auto element = batches_.pop();
         for (auto sample : element->samples) {
-            output().push(sample);
+            output().push(0.1 * sample);  // TODO it makes a super annoying noise, so I'm scaling this down
         }
     }
 

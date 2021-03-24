@@ -100,8 +100,7 @@ public:
             static int i = 0;
             spawn_block(i++ % loader_.size());
         } else if (event.clicked && event.control && event.key == 'z') {
-            std::cout << "Unable to undo.\n";
-            // events_.undo();
+            events_.undo();
         } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
         }
@@ -109,9 +108,19 @@ public:
 
 private:
     void undo_spawn(const Spawn& spawn) {
-        for (const auto& entity : spawn.entities) components_.despawn(entity);
+        for (const auto& entity : spawn.entities) {
+            if (auto ptr = components_.get_ptr<SynthNode>(entity)) {
+                bridge_.despawn(ptr->id);
+            }
+
+            components_.despawn(entity);
+        };
     }
-    void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
+    void undo_connect(const Connect& connect) {
+        auto& cable = components_.get<Cable>(connect.entity);
+        bridge_.disconnect(identifier(cable.start.parent.value()), identifier(cable.end.parent.value()));
+        components_.despawn(connect.entity);
+    }
 
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
         if (auto ptr = components_.get_ptr<Selectable>(entity)) {
@@ -179,6 +188,17 @@ private:
         events_.trigger(spawn);
     }
 
+    synth::Identifier identifier(const ecs::Entity& entity) {
+        const auto& parent = components_.get<TexturedBox>(entity).bottom_left.parent.value();
+        const size_t id = components_.get<SynthNode>(parent).id;
+
+        if (auto ptr = components_.get_ptr<CableSource>(entity)) {
+            return {id, ptr->index};
+        }
+        const size_t port = components_.get<CableSink>(entity).index;
+        return {id, port};
+    }
+
     void finialize_connection(const ecs::Entity& cable_entity, const ecs::Entity& end_entity) {
         const auto& end_box = components_.get<TexturedBox>(end_entity);
         auto& cable = components_.get<Cable>(cable_entity);
@@ -186,15 +206,7 @@ private:
 
         const auto& start = cable.start.parent.value();
         const auto& end = cable.end.parent.value();
-
-        const auto& start_parent = components_.get<TexturedBox>(start).bottom_left.parent.value();
-        const auto& end_parent = components_.get<TexturedBox>(end).bottom_left.parent.value();
-        const size_t start_id = components_.get<SynthNode>(start_parent).id;
-        const size_t end_id = components_.get<SynthNode>(end_parent).id;
-
-        const size_t start_port = components_.get<CableSource>(start).index;
-        const size_t end_port = components_.get<CableSink>(end).index;
-        bridge_.connect({start_id, start_port}, {end_id, end_port});
+        bridge_.connect(identifier(start), identifier(end));
     }
 
     void move(const engine::MouseEvent& event, TexturedBox& box, Moveable& moveable) {

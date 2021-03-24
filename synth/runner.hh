@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <mutex>
+#include <queue>
 #include <vector>
 
 #include "synth/node.hh"
@@ -11,6 +11,7 @@ namespace synth {
 class Runner {
 public:
     size_t spawn(std::unique_ptr<GenericNode> node);
+    void despawn(size_t index);
 
     void connect(size_t from_id, size_t from_output_index, size_t to_id, size_t to_input_index);
 
@@ -29,6 +30,8 @@ private:
         using InputAndNode = std::pair<size_t, GenericNode*>;
         std::vector<std::vector<InputAndNode>> outputs;
     };
+
+    std::queue<size_t> free_;
 
     std::vector<NodeWrapper> wrappers_;
     std::vector<size_t> order_;
