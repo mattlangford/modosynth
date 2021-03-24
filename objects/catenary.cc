@@ -20,7 +20,7 @@ bool CatenarySolver::maybe_reset(Eigen::Vector2f start, Eigen::Vector2f end, flo
         std::swap(start, end);
     }
 
-    if (start == start_ && end == end_) {
+    if (start == start_ && end == end_ && length == length_) {
         return false;
     }
 
@@ -96,7 +96,7 @@ std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
 // #############################################################################
 //
 
-double& CatenarySolver::length() { return length_; }
+const double& CatenarySolver::length() const { return length_; }
 bool CatenarySolver::flipped() const { return flipped_; }
 
 //

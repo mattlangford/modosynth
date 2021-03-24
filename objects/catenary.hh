@@ -14,7 +14,7 @@ public:
 
     std::vector<Eigen::Vector2f> trace(size_t points) const;
 
-    double& length();
+    const double& length()const ;
     bool flipped() const;
 
 private:
@@ -22,11 +22,11 @@ private:
     constexpr static double sq(double in) { return in * in; }
 
     bool flipped_ = false;
-    Eigen::Vector2f start_;
-    Eigen::Vector2f end_;
-    double length_;
-    double alpha_;
-    double beta_;
+    Eigen::Vector2f start_ = Eigen::Vector2f::Zero();
+    Eigen::Vector2f end_ = Eigen::Vector2f::Zero();
+    double length_ = -1.0;
+    double alpha_ = 0.0;
+    double beta_ = 0.0;
     float x_offset_ = 0;
     float y_offset_ = 0;
 };
