@@ -63,8 +63,11 @@ struct SynthOutput {
     std::vector<float> values;
 };
 struct SynthConnection {
-    synth::Identifier from;
-    synth::Identifier to;
+    ecs::Entity from;
+    size_t from_port;
+
+    ecs::Entity to;
+    size_t to_port;
 };
 
 using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable,
@@ -74,9 +77,11 @@ using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable
 // #############################################################################
 //
 
-inline Eigen::Vector2f world_position(const Transform& tf, ComponentManager& manager) {
-    if (!tf.parent) return tf.from_parent;
-    const auto& parent_tf = manager.get<TexturedBox>(*tf.parent).bottom_left;
-    return tf.from_parent + world_position(parent_tf, manager);
-}
+Eigen::Vector2f world_position(const Transform& tf, ComponentManager& manager);
+
+//
+// #############################################################################
+//
+
+SynthConnection connection_from_cable(const Cable& cable, ComponentManager& manager);
 }  // namespace objects

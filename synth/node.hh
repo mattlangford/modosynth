@@ -54,7 +54,7 @@ public:
     // always ready
     bool invoke(const Context&) final { return true; }
 
-    void connect(size_t) final { throw std::runtime_error("InjectorNode::add_input()"); }
+    void connect(size_t) final { throw std::runtime_error("InjectorNode::connect()"); }
     void add_input(size_t, const Samples&) final { throw std::runtime_error("InjectorNode::set_input()"); };
     Samples get_output(size_t) const final { return Samples{value_.load()}; }
 

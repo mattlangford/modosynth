@@ -164,22 +164,12 @@ private:
         events_.trigger(spawn);
     }
 
-    synth::Identifier synth_identifier(const ecs::Entity& entity) {
-        const auto& parent = components_.get<TexturedBox>(entity).bottom_left.parent.value();
-        const size_t id = components_.get<SynthNode>(parent).id;
-
-        if (auto ptr = components_.get_ptr<CableSource>(entity)) {
-            return {id, ptr->index};
-        }
-        const size_t port = components_.get<CableSink>(entity).index;
-        return {id, port};
-    }
-
     void finialize_connection(const ecs::Entity& cable_entity, const ecs::Entity& end_entity) {
         const auto& end_box = components_.get<TexturedBox>(end_entity);
         auto& cable = components_.get<Cable>(cable_entity);
         cable.end = Transform{end_entity, 0.5 * end_box.dim};
-        cable.to = synth_identifier(end_entity);
+
+        components_.add(cable_entity, connection_from_cable(cable, components_));
         events_.trigger(Connect{cable_entity});
     }
 
@@ -192,7 +182,7 @@ private:
             box.bottom_left.from_parent = moveable.position;
     }
 
-    void rotate(const engine::MouseEvent& event, const ecs::Entity& entity, SynthInput& input) {
+    void rotate(const engine::MouseEvent& event, const ecs::Entity&, SynthInput& input) {
         // Scale the changes back a bit
         input.value += 0.1 * event.delta_position.y();
         // And then clamp to be in the -pi to pi range
@@ -206,11 +196,7 @@ private:
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
         const auto& box = components_.get<TexturedBox>(entity);
-        return components_.spawn<Cable>({{entity, 0.5 * box.dim},
-                                         {std::nullopt, event.mouse_position},
-                                         {},
-                                         synth_identifier(entity),
-                                         std::nullopt});
+        return components_.spawn<Cable>({{entity, 0.5 * box.dim}, {std::nullopt, event.mouse_position}, {}});
     }
 
     std::vector<ecs::Entity> get_boxes_under_mouse(const Eigen::Vector2f& mouse) {
