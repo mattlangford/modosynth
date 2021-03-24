@@ -11,7 +11,6 @@ class Factory;
 
 struct Spawn {
     std::vector<ecs::Entity> entities;
-    const Factory* factory;  // factory used to spawn these entities
 };
 struct Despawn {
     ecs::Entity entity;
@@ -19,11 +18,7 @@ struct Despawn {
 struct Connect {
     ecs::Entity entity;
 };
-struct SetValue {
-    ecs::Entity entity;
-    float value;
-};
 
-using EventManager = ecs::EventManager<Spawn, Despawn, Connect, SetValue>;
+using EventManager = ecs::EventManager<Spawn, Despawn, Connect>;
 
 }  // namespace objects

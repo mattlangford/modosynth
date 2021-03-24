@@ -134,16 +134,15 @@ private:
 
         bool done = false;
         components_.run_system<Rotateable>([&](const ecs::Entity& e, Rotateable& r) {
-            if (!r.rotating) return false;
-
-            r.rotation += 0.1 * event.delta_position.y();
-            r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
-            done = true;
-
-            // TODO I don't really like this for every tick, maybe just at the start/end for undoing?
-            events_.trigger<SetValue>({e, r.rotation});
-
-            return true;
+            if (r.rotating) {
+                // Scale the changes back a bit
+                r.rotation += 0.1 * event.delta_position.y();
+                // And then clamp to be in the -pi to pi range
+                r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
+                set_value(e, r.rotation / M_PI);
+                done = true;
+            }
+            return done;
         });
 
         if (done) return;
@@ -192,8 +191,32 @@ private:
 
         Spawn spawn;
         spawn.entities = factory.spawn_entities(components_);
-        spawn.factory = &factory;
+
+        // Create the synth node and store it's ID mapping
+        components_.get<objects::SynthNode>(spawn.entities.front()).id = bridge_.spawn(factory.spawn_synth_node());
+
         events_.trigger(spawn);
+    }
+
+    void finialize_connection(const ecs::Entity& cable_entity, const ecs::Entity& end_entity) {
+        const auto& end_box = components_.get<TexturedBox>(end_entity);
+        auto& cable = components_.get<Cable>(cable_entity);
+        cable.end = Transform{end_entity, 0.5 * end_box.dim};
+
+        const auto& start = cable.start.parent.value();
+        const auto& end = cable.end.parent.value();
+
+        const size_t start_id = components_.get<SynthNode>(start).id;
+        const size_t end_id = components_.get<SynthNode>(end).id;
+        const size_t start_port = components_.get<CableSource>(start).index;
+        const size_t end_port = components_.get<CableSink>(end).index;
+        bridge_.connect({start_id, start_port}, {end_id, end_port});
+    }
+
+    void set_value(const ecs::Entity& e, float value) {
+        const auto& box = components_.get<objects::TexturedBox>(e);
+        const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
+        bridge_.set_value(parent.id, value);
     }
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {

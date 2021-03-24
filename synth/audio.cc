@@ -151,13 +151,15 @@ void AudioDriver::write_callback(SoundIoOutStream *outstream, int frame_count_mi
         }
         const struct SoundIoChannelLayout *layout = &outstream->layout;
 
-        static std::ofstream output("/tmp/out.txt", std::ios::out);
-
         for (int frame = 0; frame < frame_count; frame++) {
             float sample = 0.0;
+
+            static bool have_ever_gotten_data = false;
             if (!instance.buffer_.pop(sample)) {
-                throttled(1.0, "No data left in buffer! " << frame);
+                throttled(have_ever_gotten_data ? 1.f : 10.f, "No data left in buffer! " << frame);
                 sample = 0.0;
+            } else {
+                have_ever_gotten_data = true;
             }
 
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
