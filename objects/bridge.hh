@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <chrono>
 #include <vector>
 
 #include "objects/components.hh"
@@ -16,17 +17,43 @@ public:
     const EventManager& events_manager() const { return events_; };
 
 public:
-    void handle_spawn(const Spawn& spawn);
-    void handle_undo_spawn(const Spawn& spawn);
-    void handle_connect(const Connect& spawn);
-    void handle_undo_connect(const Connect& spawn);
+    void update()
+    {
+        auto now = Clock::now();
+    }
 
-    void buffer_samples();
+private:
+    void update_node(const ecs::Entity& entity, const SynthNode& node)
+    {
+    }
+    void update_node(const ecs::Entity& entity, const SynthInput& input)
+    {
+    }
+
+    void update_connection(const ecs::Entity& entity, const Cable& cable)
+    {
+    }
+
+    void push_output(const ecs::Entity& entity, const SynthOutput& output)
+    {
+    }
 
 private:
     ComponentManager components_;
     EventManager events_;
 
-    std::vector<std::unique_ptr<GenericNode>> nodes_;
+    struct NodeWrapper
+    {
+        size_t id;
+
+        std::unique_ptr<GenericNode> node;
+
+        using InputAndNode = std::pair<size_t, GenericNode*>;
+        std::vector<std::vector<InputAndNode>> outputs;
+    };
+    std::vector<NodeWrapper> nodes_;
+
+    using Clock = std::chrono::steady_clock;
+    Clock::time_point previous_;
 };
 }  // namespace objects

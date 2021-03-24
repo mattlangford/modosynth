@@ -48,9 +48,6 @@ struct Cable {
     Transform end;
 
     objects::CatenarySolver solver;
-
-    synth::Identifier from;
-    std::optional<synth::Identifier> to;
 };
 
 struct SynthNode {
@@ -65,9 +62,13 @@ struct SynthOutput {
     ecs::Entity parent;
     std::vector<float> values;
 };
+struct SynthConnection {
+    synth::Identifier from;
+    synth::Identifier to;
+};
 
 using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable,
-                                               SynthNode, SynthInput, SynthOutput>;
+                                               SynthNode, SynthInput, SynthOutput, SynthConnection>;
 
 //
 // #############################################################################
