@@ -10,6 +10,7 @@ namespace objects {
 class Factory;
 
 struct Spawn {
+    ecs::Entity primary;
     std::vector<ecs::Entity> entities;
 };
 struct Despawn {

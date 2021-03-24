@@ -34,15 +34,12 @@ public:
         foreground_uv_ = config.get("KnobForeground").uv.cast<float>();
     }
 
-    std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const override {
-        std::vector<ecs::Entity> result = SimpleBlockFactory::spawn_entities(manager);
-        auto& parent = result.front();
-
-        result.push_back(
-            manager.spawn(TexturedBox{Transform{parent, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0},
+    Spawn spawn_entities(objects::ComponentManager& manager) const override {
+        Spawn spawn = SimpleBlockFactory::spawn_entities(manager);
+        spawn.entities.push_back(
+            manager.spawn(TexturedBox{Transform{spawn.primary, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0},
                           Rotateable{false, 0.0}, Selectable::require_shift()));
-
-        return result;
+        return spawn;
     }
 
     std::unique_ptr<synth::GenericNode> spawn_synth_node() const override {

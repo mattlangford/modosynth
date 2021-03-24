@@ -99,11 +99,8 @@ public:
 
 private:
     void undo_spawn(const Spawn& spawn) {
+        components_.despawn(spawn.primary);
         for (const auto& entity : spawn.entities) {
-            if (auto ptr = components_.get_ptr<SynthNode>(entity)) {
-                bridge_.despawn(ptr->id);
-            }
-
             components_.despawn(entity);
         };
     }
@@ -164,13 +161,15 @@ private:
 
 private:
     void spawn_block(size_t index) {
-        auto& factory = loader_.get(loader_.names().at(index));
+        std::string name = loader_.names().at(index);
+        auto& factory = loader_.get(name);
 
-        Spawn spawn;
-        spawn.entities = factory.spawn_entities(components_);
+        Spawn spawn = factory.spawn_entities(components_);
 
-        // Create the synth node and store it's ID mapping
-        components_.get<objects::SynthNode>(spawn.entities.front()).id = bridge_.spawn(factory.spawn_synth_node());
+        // Create the synth node and store it's id
+        auto& node = components_.get<objects::SynthNode>(spawn.primary);
+        node.name = std::move(name);
+        node.id = bridge_.spawn(factory.spawn_synth_node());
 
         events_.trigger(spawn);
     }
@@ -209,14 +208,11 @@ private:
         r.rotation += 0.1 * event.delta_position.y();
         // And then clamp to be in the -pi to pi range
         r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
-        // Set the value so it's between -1 and 1
-        set_value(entity, r.rotation / M_PI);
-    }
 
-    void set_value(const ecs::Entity& e, float value) {
-        const auto& box = components_.get<objects::TexturedBox>(e);
+        const auto& box = components_.get<objects::TexturedBox>(entity);
         const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
-        bridge_.set_value(parent.id, value);
+        // Set the value so it's between -1 and 1
+        bridge_.set_value(parent.id, r.rotation / M_PI);
     }
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
@@ -251,6 +247,7 @@ private:
     engine::renderer::LineRenderer line_renderer_;
 
     std::optional<ecs::Entity> drawing_rope_;
+    size_t id_ = 0;
 };
 
 }  // namespace objects

@@ -7,6 +7,7 @@
 
 #include "ecs/entity.hh"
 #include "objects/components.hh"
+#include "objects/events.hh"
 #include "synth/node.hh"
 
 namespace objects {
@@ -48,7 +49,7 @@ public:
     ///
     /// @brief Spawn this block and all associated entities
     ///
-    virtual std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const = 0;
+    virtual Spawn spawn_entities(objects::ComponentManager& manager) const = 0;
 
     ///
     /// @brief Spawn the synth node
@@ -74,7 +75,7 @@ public:
 
 public:
     void load_config(const objects::Config& config) override;
-    std::vector<ecs::Entity> spawn_entities(objects::ComponentManager& manager) const override;
+    Spawn spawn_entities(objects::ComponentManager& manager) const override;
 
 private:
     std::vector<ecs::Entity> spawn_ports(const ecs::Entity& parent, objects::ComponentManager& manager) const;

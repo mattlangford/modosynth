@@ -89,9 +89,12 @@ public:
     template <typename C>
     C& get(const Entity& entity) {
         auto ptr = get_ptr<C>(entity);
-        if (ptr == nullptr)
-            throw std::runtime_error(
-                "Call to ComponentManager::get() with an entity that doesn't have that component.");
+        if (ptr == nullptr) {
+            std::stringstream ss;
+            ss << "In Component::get(), entity " << entity.id() << " doesn't have component type '" << typeid(C).name()
+               << "'";
+            throw std::runtime_error(ss.str());
+        }
         return *ptr;
     }
     template <typename... C>

@@ -54,19 +54,17 @@ void SimpleBlockFactory::load_config(const objects::Config& config) {
 // #############################################################################
 //
 
-std::vector<ecs::Entity> SimpleBlockFactory::spawn_entities(objects::ComponentManager& manager) const {
-    std::vector<ecs::Entity> entities;
-
+Spawn SimpleBlockFactory::spawn_entities(objects::ComponentManager& manager) const {
     const Eigen::Vector2f location{100, 200};
-    ecs::Entity block = manager.spawn(TexturedBox{Transform{std::nullopt, location}, dim_, uv_, 0}, Selectable{},
-                                      Moveable{location, true}, SynthNode{777});
+    auto block = manager.spawn(TexturedBox{Transform{std::nullopt, location}, dim_, uv_, 0}, Selectable{},
+                               Moveable{location, true}, SynthNode{});
 
-    entities.push_back(block);
+    std::vector<ecs::Entity> entities;
     for (auto e : spawn_ports(block, manager)) {
         entities.push_back(e);
     }
 
-    return entities;
+    return {block, std::move(entities)};
 }
 //
 // #############################################################################

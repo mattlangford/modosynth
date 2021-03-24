@@ -58,7 +58,8 @@ struct Cable {
 };
 
 struct SynthNode {
-    size_t id;
+    size_t id = -1;
+    std::string name = "unknown";
 };
 
 using ComponentManager =
