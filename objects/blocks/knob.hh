@@ -38,7 +38,7 @@ public:
         Spawn spawn = SimpleBlockFactory::spawn_entities(manager);
         spawn.entities.push_back(
             manager.spawn(TexturedBox{Transform{spawn.primary, Eigen::Vector2f::Zero()}, dim(), foreground_uv_, 0},
-                          Rotateable{false, 0.0}, Selectable::require_shift()));
+                          SynthInput{spawn.primary, 0.0}, Selectable::require_shift()));
         return spawn;
     }
 

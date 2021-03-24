@@ -44,7 +44,8 @@ public:
             r_box.uv = box.uv;
             r_box.texture_index = box.texture_index;
 
-            if (auto ptr = components_.get_ptr<Rotateable>(e)) r_box.rotation = ptr->rotation * 0.8;
+            // TODO I'm assuming all values are rotations, but that's probably not true
+            if (auto ptr = components_.get_ptr<SynthInput>(e)) r_box.rotation = ptr->value * 0.8;
 
             box_renderer_.draw(r_box, screen_from_world);
         });
@@ -116,9 +117,9 @@ private:
         }
 
         if (event.shift) {
-            components_.run_system<Selectable, Rotateable>(
-                [&](const ecs::Entity& e, const Selectable& selectable, Rotateable& r) {
-                    if (selectable.selected) rotate(event, e, r);
+            components_.run_system<Selectable, SynthInput>(
+                [&](const ecs::Entity& e, const Selectable& selectable, SynthInput& input) {
+                    if (selectable.selected) rotate(event, e, input);
                     return selectable.selected;
                 });
         } else if (!event.any_modifiers()) {
@@ -134,8 +135,6 @@ private:
         if (!drawing_rope_) {
             auto [ptr, size] = components_.raw_view<Selectable>();
             for (size_t i = 0; i < size; ++i) ptr[i].selected = false;
-            auto [rptr, rsize] = components_.raw_view<Rotateable>();
-            for (size_t i = 0; i < rsize; ++i) rptr[i].rotating = false;
             return;
         }
 
@@ -193,11 +192,11 @@ private:
             box.bottom_left.from_parent = moveable.position;
     }
 
-    void rotate(const engine::MouseEvent& event, const ecs::Entity& entity, Rotateable& r) {
+    void rotate(const engine::MouseEvent& event, const ecs::Entity& entity, SynthInput& input) {
         // Scale the changes back a bit
-        r.rotation += 0.1 * event.delta_position.y();
+        input.value += 0.1 * event.delta_position.y();
         // And then clamp to be in the -pi to pi range
-        r.rotation = std::clamp(r.rotation, static_cast<float>(-M_PI), static_cast<float>(M_PI));
+        input.value = std::clamp(input.value, static_cast<float>(-M_PI), static_cast<float>(M_PI));
 
         // const auto& box = components_.get<objects::TexturedBox>(entity);
         // const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());

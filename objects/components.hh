@@ -36,10 +36,6 @@ struct Selectable {
     static Selectable require_shift() { return {false, true, false}; }
     static Selectable require_control() { return {false, false, true}; }
 };
-struct Rotateable {
-    bool rotating;
-    float rotation;
-};
 
 struct CableSource {
     size_t index;
@@ -61,9 +57,17 @@ struct SynthNode {
     size_t id = -1;
     std::string name = "unknown";
 };
+struct SynthInput {
+    ecs::Entity parent;
+    float value;
+};
+struct SynthOutput {
+    ecs::Entity parent;
+    std::vector<float> values;
+};
 
-using ComponentManager =
-    ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable, SynthNode, Rotateable>;
+using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable,
+                                               SynthNode, SynthInput, SynthOutput>;
 
 //
 // #############################################################################
