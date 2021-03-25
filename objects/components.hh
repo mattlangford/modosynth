@@ -78,11 +78,11 @@ using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable
 // #############################################################################
 //
 
-Eigen::Vector2f world_position(const Transform& tf, ComponentManager& manager);
+Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& manager);
 
 //
 // #############################################################################
 //
 
-SynthConnection connection_from_cable(const Cable& cable, ComponentManager& manager);
+SynthConnection connection_from_cable(const Cable& cable, const ComponentManager& manager);
 }  // namespace objects

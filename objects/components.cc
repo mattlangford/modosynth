@@ -5,7 +5,7 @@ namespace objects {
 // #############################################################################
 //
 
-Eigen::Vector2f world_position(const Transform& tf, ComponentManager& manager) {
+Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& manager) {
     if (!tf.parent) return tf.from_parent;
     const auto& parent_tf = manager.get<TexturedBox>(*tf.parent).bottom_left;
     return tf.from_parent + world_position(parent_tf, manager);
@@ -15,14 +15,16 @@ Eigen::Vector2f world_position(const Transform& tf, ComponentManager& manager) {
 // #############################################################################
 //
 
-SynthConnection connection_from_cable(const Cable& cable, ComponentManager& manager) {
+SynthConnection connection_from_cable(const Cable& cable, const ComponentManager& manager) {
     const auto& start = cable.start.parent.value();
-    ecs::Entity from = manager.get<TexturedBox>(start).bottom_left.parent.value();
-    size_t from_port = manager.get<CableSource>(start).index;
+    auto [from_box, from_cable] = manager.get<TexturedBox, CableSource>(start);
+    const ecs::Entity& from = from_box.bottom_left.parent.value();
+    const size_t& from_port = from_cable.index;
 
     const auto& end = cable.end.parent.value();
-    ecs::Entity to = manager.get<TexturedBox>(end).bottom_left.parent.value();
-    size_t to_port = manager.get<CableSink>(end).index;
+    auto [to_box, to_cable] = manager.get<TexturedBox, CableSource>(end);
+    const ecs::Entity& to = to_box.bottom_left.parent.value();
+    const size_t& to_port = to_cable.index;
 
     return {from, from_port, to, to_port};
 }
