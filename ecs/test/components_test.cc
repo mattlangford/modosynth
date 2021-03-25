@@ -158,4 +158,56 @@ TEST(ComponentManager, multiple) {
     EXPECT_TRUE(b);
     EXPECT_FALSE(bc);
 }
+
+//
+// #############################################################################
+//
+
+TEST(ComponentManager, const_access) {
+    MyManager manager;
+
+    // No component
+    auto entity = manager.spawn<TestComponentA, TestComponentB>();
+
+    const MyManager& const_manager = manager;
+
+    {
+        auto [a, b, c] = const_manager.get_ptr<TestComponentA, TestComponentB, TestComponentC>(entity);
+        EXPECT_NE(a, nullptr);
+        EXPECT_NE(b, nullptr);
+        EXPECT_EQ(c, nullptr);
+
+        bool is_const = std::is_const_v<std::remove_pointer_t<decltype(a)>>;
+        EXPECT_TRUE(is_const);
+    }
+
+    {
+        auto a = const_manager.get_ptr<TestComponentA>(entity);
+        EXPECT_NE(a, nullptr);
+
+        bool is_const = std::is_const_v<std::remove_pointer_t<decltype(a)>>;
+        EXPECT_TRUE(is_const);
+    }
+
+    manager.get<TestComponentA>(entity).value = 100;
+
+    {
+        auto [a, b] = const_manager.get<TestComponentA, TestComponentB>(entity);
+        EXPECT_EQ(a.value, 100);
+        bool is_const = std::is_const_v<std::remove_reference_t<decltype(a)>>;
+        EXPECT_TRUE(is_const);
+    }
+
+    {
+        auto& a = const_manager.get<TestComponentA>(entity);
+        EXPECT_EQ(a.value, 100);
+        bool is_const = std::is_const_v<std::remove_reference_t<decltype(a)>>;
+        EXPECT_TRUE(is_const);
+    }
+
+    {
+        bool ab = const_manager.has<TestComponentA, TestComponentB>(entity);
+        EXPECT_TRUE(ab);
+    }
+}
 }  // namespace ecs

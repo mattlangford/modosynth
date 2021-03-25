@@ -99,12 +99,32 @@ public:
         const auto& proxy = lookup(entity);
         return {get_impl<C>(proxy)...};
     }
+    template <typename C>
+    const C* get_ptr(const Entity& entity) const {
+        const auto& proxy = lookup(entity);
+        return get_ptr_impl<C>(proxy);
+    }
+    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
+    std::tuple<const C*...> get_ptr(const Entity& entity) const {
+        const auto& proxy = lookup(entity);
+        return {get_ptr<C>(proxy)...};
+    }
+    template <typename C>
+    const C& get(const Entity& entity) const {
+        const auto& proxy = lookup(entity);
+        return get_impl<C>(proxy);
+    }
+    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
+    std::tuple<const C&...> get(const Entity& entity) const {
+        const auto& proxy = lookup(entity);
+        return {get_impl<C>(proxy)...};
+    }
 
     ///
     /// @brief Does the given entity have the given components associated with it
     ///
     template <typename... C>
-    bool has(const Entity& entity) {
+    bool has(const Entity& entity) const {
         return has_impl<C...>(lookup(entity));
     }
 
@@ -193,7 +213,7 @@ private:
     }
 
     template <typename... C>
-    bool has_impl(const EntityProxy& proxy) {
+    bool has_impl(const EntityProxy& proxy) const {
         static_assert(sizeof...(C) > 0, "has_impl requires at least one type.");
         return ((proxy.index[kIndexOf<C>] != kInvalidIndex) && ...);
     }
@@ -202,10 +222,25 @@ private:
     C* get_ptr_impl(const EntityProxy& proxy) {
         return has_impl<C>(proxy) ? &std::get<kIndexOf<C>>(components_).at(proxy.index[kIndexOf<C>]) : nullptr;
     }
+    template <typename C>
+    const C* get_ptr_impl(const EntityProxy& proxy) const {
+        return has_impl<C>(proxy) ? &std::get<kIndexOf<C>>(components_).at(proxy.index[kIndexOf<C>]) : nullptr;
+    }
 
     template <typename C>
     C& get_impl(const EntityProxy& proxy) {
         C* ptr = get_ptr_impl<C>(proxy);
+        if (ptr == nullptr) {
+            std::stringstream ss;
+            ss << "In Component::get(), entity " << proxy.id() << " doesn't have component type '" << typeid(C).name()
+               << "'";
+            throw std::runtime_error(ss.str());
+        }
+        return *ptr;
+    }
+    template <typename C>
+    const C& get_impl(const EntityProxy& proxy) const {
+        const C* ptr = get_ptr_impl<C>(proxy);
         if (ptr == nullptr) {
             std::stringstream ss;
             ss << "In Component::get(), entity " << proxy.id() << " doesn't have component type '" << typeid(C).name()
@@ -234,6 +269,7 @@ private:
     }
 
     EntityProxy& lookup(const Entity& entity) { return entities_[entity.id()]; }
+    const EntityProxy& lookup(const Entity& entity) const { return entities_[entity.id()]; }
 
 private:
     std::tuple<std::vector<Component>...> components_;
