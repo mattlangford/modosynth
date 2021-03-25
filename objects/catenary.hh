@@ -14,7 +14,7 @@ public:
 
     std::vector<Eigen::Vector2f> trace(size_t points) const;
 
-    const double& length()const ;
+    const double& length() const;
     bool flipped() const;
 
 private:

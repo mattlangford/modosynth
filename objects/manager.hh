@@ -75,7 +75,7 @@ public:
         } else if (event.released()) {
             auto boxes = get_boxes_under_mouse(event.mouse_position);
             if (boxes.empty()) mouse_released(event, std::nullopt);
-            for (const auto& entity : get_boxes_under_mouse(event.mouse_position)) mouse_released(event, entity);
+            for (const auto& entity : boxes) mouse_released(event, entity);
         }
     }
 

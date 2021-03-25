@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -62,7 +63,9 @@ public:
     ///
     template <typename C>
     void add(const Entity& entity, C c = {}) {
-        add(std::move(c), lookup(entity).index);
+        auto& proxy = lookup(entity);
+        proxy.active.set(kIndexOf<C>);
+        add(std::move(c), proxy.index);
     }
 
     ///

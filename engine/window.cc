@@ -3,6 +3,21 @@
 #include "engine/gl.hh"
 
 namespace engine {
+template <typename Repr, typename Period>
+static std::ostream& operator<<(std::ostream& os, const std::chrono::duration<Repr, Period>& d) {
+    using namespace std::chrono;
+    if (duration_cast<duration<double>>(d).count() > 0.1) {
+        os << duration<double>(d).count() << "s";
+    } else if (duration_cast<duration<double, std::milli>>(d).count() > 0.1) {
+        os << duration<double, std::milli>(d).count() << "ms";
+    } else if (duration_cast<duration<double, std::micro>>(d).count() > 0.1) {
+        os << duration<double, std::micro>(d).count() << "us";
+    } else {
+        os << duration<double, std::nano>(d).count() << "ns";
+    }
+
+    return os;
+}
 
 //
 // #############################################################################
@@ -45,14 +60,16 @@ void Window::init() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
+    // glfwWindowHint(GLFW_DOUBLEBUFFER, GL_FALSE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    window_ = glfwCreateWindow(kWindowDim.x(), kWindowDim.y(), "ModoSynth", NULL, NULL);
+    window_ = glfwCreateWindow(kWindowDim.x(), kWindowDim.y(), "ModoSynth", nullptr, nullptr);
     if (!window_) {
         std::cerr << "Unable to create window_!\n";
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(window_);
+    // glfwSwapInterval(0);
 
     setup_glfw_callbacks(window_);
 
@@ -74,17 +91,19 @@ void Window::init() {
 //
 
 bool Window::render_loop() {
-    glfwPollEvents();
-    // glfwWaitEvents();  // only need to rerender when something changes
+    {
+        std::lock_guard lock{mutex()};
+        glfwPollEvents();
+        // glfwWaitEvents();  // only need to rerender when something changes
 
-    gl_check(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    gl_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
+        gl_check(glClear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        gl_check(glClearColor, 0.1f, 0.2f, 0.2f, 1.0f);
 
-    // Assume this is expensive
-    object_manager_.update(0.f);
-    object_manager_.render(get_screen_from_world());
+        object_manager_.update(0.f);
+        object_manager_.render(get_screen_from_world());
+    }
 
-    glfwSwapBuffers(window_);
+    glfwSwapBuffers(window_);  // sleeps for 16ms (60hz)
     return !glfwWindowShouldClose(window_);
 }
 
@@ -196,6 +215,12 @@ void Window::reset() {
 //
 
 GlobalObjectManager& Window::manager() { return object_manager_; }
+
+//
+// #############################################################################
+//
+
+std::mutex& Window::mutex() { return mutex_; }
 
 //
 // #############################################################################

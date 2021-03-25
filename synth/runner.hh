@@ -2,8 +2,8 @@
 
 #include <memory>
 #include <queue>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "synth/node.hh"
 
@@ -16,8 +16,7 @@ struct NodeWrapper {
     std::vector<std::vector<InputAndNode>> outputs;
 };
 
-struct NodeWrappers
-{
+struct NodeWrappers {
     std::unordered_map<size_t, NodeWrapper> id_wrapper_map;
 };
 

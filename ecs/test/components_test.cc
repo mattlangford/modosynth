@@ -79,11 +79,13 @@ TEST(ComponentManager, run_system) {
     manager.spawn<TestComponentA>();
     manager.spawn<TestComponentA, TestComponentB>();
     manager.spawn<TestComponentC>();
-    auto entity_ac = manager.spawn<TestComponentA, TestComponentC>();
+    auto entity_ac = manager.spawn<TestComponentA>();
 
     size_t count = 0;
     manager.run_system<TestComponentA>([&](const Entity&, TestComponentA& component) { component.value = count++; });
     EXPECT_EQ(count, 3);
+
+    manager.add<TestComponentC>(entity_ac);
 
     count = 0;
     manager.run_system<TestComponentC>([&](const Entity&, TestComponentC& component) {

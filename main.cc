@@ -29,9 +29,22 @@ int main() {
 
     window.init();
 
+    bool shutdown = false;
+    std::thread process{[&]() {
+        while (!shutdown) {
+            constexpr auto duration = std::chrono::milliseconds(15);
+            std::this_thread::sleep_for(0.3 * duration);
+
+            std::lock_guard lock{window.mutex()};
+            bridge.process(duration);
+        }
+    }};
+
     while (window.render_loop()) {
-        bridge.process();
     }
+
+    shutdown = true;
+    process.join();
 
     exit(EXIT_SUCCESS);
 }

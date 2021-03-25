@@ -4,7 +4,6 @@
 #include <iostream>
 #include <string>
 
-#include "synth///debug.hh"
 #include "synth/samples.hh"
 #include "synth/stream.hh"
 
@@ -29,7 +28,9 @@ public:
     virtual size_t num_inputs() const = 0;
     virtual size_t num_outputs() const = 0;
 
+    virtual void reset_connections() = 0;
     virtual void connect(size_t input_index) = 0;
+
     virtual void add_input(size_t index, const Samples& input) = 0;
     virtual Samples get_output(size_t index) const = 0;
 
@@ -54,15 +55,16 @@ public:
     // always ready
     bool invoke(const Context&) final { return true; }
 
+    void reset_connections() final {}
     void connect(size_t) final { throw std::runtime_error("InjectorNode::connect()"); }
     void add_input(size_t, const Samples&) final { throw std::runtime_error("InjectorNode::set_input()"); };
-    Samples get_output(size_t) const final { return Samples{value_.load()}; }
+    Samples get_output(size_t) const final { return Samples{value_}; }
 
 public:
-    void set_value(float value) { value_.store(value); }
+    void set_value(float value) { value_ = value; }
 
 private:
-    std::atomic<float> value_ = {0};
+    float value_ = 0.f;
 };
 
 ///
@@ -88,6 +90,10 @@ public:
         return true;
     }
 
+    void reset_connections() final {
+        default_counter_ = 0;
+        input_counter_ = default_counter_;
+    }
     void connect(size_t) final { default_counter_++; }
     void add_input(size_t, const Samples& data) final {
         input_counter_--;
@@ -117,27 +123,24 @@ public:
     using Outputs = std::array<Samples, kOutputs>;
 
 public:
-    AbstractNode(std::string name) : GenericNode(std::move(name)) {
-        std::fill(initial_counters_.begin(), initial_counters_.end(), 0);
-        counters_ = initial_counters_;
-    }
+    AbstractNode(std::string name) : GenericNode(std::move(name)) { reset_connections(); }
     ~AbstractNode() override = default;
 
 public:
     size_t num_inputs() const final { return kInputs; }
     size_t num_outputs() const final { return kOutputs; }
 
+    void reset_connections() final {
+        initial_counters_.fill(0);
+        counters_ = initial_counters_;
+    }
     void connect(size_t input_index) final {
-        // debug(name() << "::add_input(input_index=" << input_index << ")");
         initial_counters_.at(input_index)++;
         counters_.at(input_index)++;
     }
 
     bool invoke(const Context& context) final {
-        // debug(name() << "::invoke()");
-
         if (!ready()) {
-            // debug(name() << "::invoke() not ready");
             return false;
         }
 
@@ -151,8 +154,6 @@ public:
     }
 
     void add_input(size_t input_index, const Samples& incoming_samples) final {
-        // debug(name() << "::set_input(input_index=" << input_index << ") counter: " << counters_[input_index]);
-
         auto& next_input = next_inputs_[input_index];
         for (size_t i = 0; i < next_input.samples.size(); ++i) {
             // Sum new inputs with the current inputs
@@ -171,8 +172,6 @@ protected:
 private:
     bool ready() const {
         for (auto& count : counters_) {
-            // debug(name() << "::ready() count:" << count);
-
             if (count < 0) throw std::runtime_error(name() + "::ready() found a negative counter!");
 
             if (count != 0) return false;

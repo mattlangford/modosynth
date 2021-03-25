@@ -1,17 +1,15 @@
 #include "synth/runner.hh"
-#include <cassert>
 
+#include <cassert>
 #include <queue>
 
 #include "synth/debug.hh"
 
 namespace synth {
 
-void Runner::run_for_at_least(const std::chrono::nanoseconds& duration, NodeWrappers& wrappers)
-{
+void Runner::run_for_at_least(const std::chrono::nanoseconds& duration, NodeWrappers& wrappers) {
     auto end = now_ + duration;
-    while (now_ < end)
-    {
+    while (now_ < end) {
         next(wrappers);
     }
 }

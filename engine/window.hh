@@ -5,6 +5,7 @@
 
 #include <Eigen/Dense>
 #include <iostream>
+#include <mutex>
 
 #include "engine/gl.hh"
 #include "engine/object_global.hh"
@@ -22,6 +23,7 @@ public:
     void reset();
 
     GlobalObjectManager& manager();
+    std::mutex& mutex();
 
 public:
     void update_mouse_position_incremental(Eigen::Vector2f increment);
@@ -51,6 +53,7 @@ private:
     std::optional<Eigen::Vector3f> previous_screen_mouse_;
 
     GlobalObjectManager object_manager_;
+    std::mutex mutex_;
 };
 
 }  // namespace engine

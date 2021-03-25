@@ -1,8 +1,8 @@
 #include <random>
 
 #include "engine/object_global.hh"
+#include "engine/renderer/grid.hh"
 #include "engine/window.hh"
-#include "objects/manager.hh"
 
 //
 // #############################################################################
@@ -11,8 +11,7 @@
 int main() {
     engine::GlobalObjectManager object_manager;
 
-    auto manager = std::make_shared<objects::Manager>("objects/blocks.yml");
-    object_manager.add_manager(manager);
+    object_manager.add_manager(std::make_shared<engine::renderer::Grid>(25, 25));
 
     engine::Window window{800, 600, std::move(object_manager)};
 
