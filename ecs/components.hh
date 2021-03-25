@@ -1,5 +1,4 @@
 #include <array>
-#include <bitset>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -31,8 +30,8 @@ private:
         EntityIndex index;
         bool empty;
 
+        /// Sets the Proxy into a valid state that's ready to use
         void reset() {
-            // Sets the Proxy into a valid state that's ready to use
             index.fill(kInvalidIndex);
             empty = false;
         }
@@ -54,10 +53,15 @@ public:
     ///
     /// @brief Add the given component to the already constructed entity
     ///
-    template <typename C>
-    void add(const Entity& entity, C c = {}) {
+    template <typename... C>
+    void add(const Entity& entity) {
         auto& proxy = lookup(entity);
-        add_impl(proxy.index, std::move(c));
+        (add_impl(proxy.index, C{}), ...);
+    }
+    template <typename... C>
+    void add(const Entity& entity, C... c) {
+        auto& proxy = lookup(entity);
+        (add_impl(proxy.index, std::move(c)), ...);
     }
 
     ///
@@ -77,32 +81,39 @@ public:
     ///
     template <typename C>
     C* get_ptr(const Entity& entity) {
-        const auto& index = lookup(entity).index[kIndexOf<C>];
-        return index == kInvalidIndex ? nullptr : &std::get<kIndexOf<C>>(components_).at(index);
+        const auto& proxy = lookup(entity);
+        return get_ptr_impl<C>(proxy);
+    }
+    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
+    std::tuple<C*...> get_ptr(const Entity& entity) {
+        const auto& proxy = lookup(entity);
+        return {get_ptr<C>(proxy)...};
     }
     template <typename C>
     C& get(const Entity& entity) {
-        auto ptr = get_ptr<C>(entity);
-        if (ptr == nullptr) {
-            std::stringstream ss;
-            ss << "In Component::get(), entity " << entity.id() << " doesn't have component type '" << typeid(C).name()
-               << "'";
-            throw std::runtime_error(ss.str());
-        }
-        return *ptr;
+        const auto& proxy = lookup(entity);
+        return get_impl<C>(proxy);
     }
+    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
+    std::tuple<C&...> get(const Entity& entity) {
+        const auto& proxy = lookup(entity);
+        return {get_impl<C>(proxy)...};
+    }
+
+    ///
+    /// @brief Does the given entity have the given components associated with it
+    ///
     template <typename... C>
     bool has(const Entity& entity) {
-        return ((get_ptr<C>(entity) != nullptr) && ...);
+        return has_impl<C...>(lookup(entity));
     }
 
     ///
     /// @brief Despawn the given object
     ///
     void despawn(const Entity& entity) {
-        // We're going to be destroying proxy, so keep the index around
         auto& proxy = lookup(entity);
-        auto index = proxy.index;
+        auto& index = proxy.index;
 
         // Clear the proxy
         proxy.empty = true;
@@ -114,15 +125,16 @@ public:
     ///
     /// @brief Execute the given function on entities with at least the given required components
     ///
-    template <typename C0, typename... ReqComponent, typename System>
+    template <typename... ReqComponent, typename System>
     void run_system(System&& system) {
-        auto target = bitset_of<C0, ReqComponent...>();
+        static_assert(sizeof...(ReqComponent) > 0, "Need at least one required component.");
+
         for (const auto& proxy : entities_) {
-            if (proxy.empty || (target & bitset_of(proxy.index)) != target) {
+            if (proxy.empty || (!has_impl<ReqComponent>(proxy) || ...)) {
                 continue;
             }
 
-            const auto run = [&]() { return run_system<C0, ReqComponent...>(system, proxy); };
+            const auto run = [&]() { return run_system<ReqComponent...>(system, proxy); };
 
             if constexpr (std::is_same_v<decltype(run()), bool>) {
                 if (run()) {
@@ -135,7 +147,7 @@ public:
     }
 
     ///
-    /// @brief Gives raw access to the component data
+    /// @brief Gives raw access to the component data. Returns a pointer to the data and the size of the vector.
     ///
     template <typename C>
     std::pair<C*, size_t> raw_view() {
@@ -144,21 +156,6 @@ public:
     }
 
 private:
-    template <typename... C>
-    static constexpr std::bitset<kNumComponents> bitset_of() {
-        std::bitset<kNumComponents> result{0};
-        (result.set(kIndexOf<C>), ...);
-        return result;
-    }
-
-    static constexpr std::bitset<kNumComponents> bitset_of(const EntityIndex& index) {
-        std::bitset<kNumComponents> result{0};
-        for (size_t i = 0; i < kNumComponents; ++i) {
-            if (index[i] != kInvalidIndex) result.set(i);
-        }
-        return result;
-    }
-
     template <typename C>
     static constexpr size_t kIndexOf = Index<C, Component...>::value;
 
@@ -193,6 +190,29 @@ private:
 
         // Then actually add the new component to the appropriate element in the component vector
         std::get<kIndexOf<C>>(components_).emplace_back(std::move(c));
+    }
+
+    template <typename... C>
+    bool has_impl(const EntityProxy& proxy) {
+        static_assert(sizeof...(C) > 0, "has_impl requires at least one type.");
+        return ((proxy.index[kIndexOf<C>] != kInvalidIndex) && ...);
+    }
+
+    template <typename C>
+    C* get_ptr_impl(const EntityProxy& proxy) {
+        return has_impl<C>(proxy) ? &std::get<kIndexOf<C>>(components_).at(proxy.index[kIndexOf<C>]) : nullptr;
+    }
+
+    template <typename C>
+    C& get_impl(const EntityProxy& proxy) {
+        C* ptr = get_ptr_impl<C>(proxy);
+        if (ptr == nullptr) {
+            std::stringstream ss;
+            ss << "In Component::get(), entity " << proxy.id() << " doesn't have component type '" << typeid(C).name()
+               << "'";
+            throw std::runtime_error(ss.str());
+        }
+        return *ptr;
     }
 
     template <typename C>

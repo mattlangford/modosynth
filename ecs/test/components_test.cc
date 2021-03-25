@@ -122,4 +122,40 @@ TEST(ComponentManager, dynamic) {
     manager.run_system<TestComponentA>([](const Entity&, TestComponentA& a) { a.value = 100; });
     EXPECT_EQ(a->value, 100);  // ptr should still be valid since we didn't remove anything
 }
+
+//
+// #############################################################################
+//
+
+TEST(ComponentManager, multiple) {
+    MyManager manager;
+
+    // No component
+    auto entity = manager.spawn();
+    manager.add<TestComponentA, TestComponentB>(entity);
+
+    {
+        auto [a, b, c] = manager.get_ptr<TestComponentA, TestComponentB, TestComponentC>(entity);
+        a->value = 100;
+        EXPECT_NE(a, nullptr);
+        EXPECT_NE(b, nullptr);
+        EXPECT_EQ(c, nullptr);
+    }
+
+    {
+        auto [a, b] = manager.get<TestComponentA, TestComponentB>(entity);
+        EXPECT_EQ(a.value, 100);
+    }
+
+    // Can't use templates in macros for the next few calls
+    auto get = [&]() { manager.get<TestComponentA, TestComponentC>(entity); };
+    EXPECT_THROW(get(), std::runtime_error);
+
+    bool ab = manager.has<TestComponentA, TestComponentB>(entity);
+    bool b = manager.has<TestComponentB>(entity);
+    bool bc = manager.has<TestComponentB, TestComponentC>(entity);
+    EXPECT_TRUE(ab);
+    EXPECT_TRUE(b);
+    EXPECT_FALSE(bc);
+}
 }  // namespace ecs
