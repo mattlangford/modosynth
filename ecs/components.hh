@@ -76,48 +76,48 @@ public:
     }
 
     ///
-    /// @brief If the entity has the component attached, retrieve a pointer to it. This will return nullptr if the
-    /// entity doesn't have the component registered
+    /// @brief If the entity has the component attached, retrieve a pointer to it.
+    /// @returns Either a pointer to the component (null if the entity doesn't have it) or a tuple to pointers if
+    /// multiple Components are requested.
     ///
-    template <typename C>
-    C* get_ptr(const Entity& entity) {
+    template <typename C, typename... Cs>
+    auto get_ptr(const Entity& entity) {
         const auto& proxy = lookup(entity);
-        return get_ptr_impl<C>(proxy);
+        if constexpr (sizeof...(Cs) == 0)
+            return get_ptr_impl<C>(proxy);
+        else
+            return std::make_tuple(get_ptr_impl<C>(proxy), get_ptr_impl<Cs>(proxy)...);
     }
-    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
-    std::tuple<C*...> get_ptr(const Entity& entity) {
+    template <typename C, typename... Cs>
+    auto get_ptr(const Entity& entity) const {
         const auto& proxy = lookup(entity);
-        return {get_ptr<C>(proxy)...};
+        if constexpr (sizeof...(Cs) == 0)
+            return get_ptr_impl<C>(proxy);
+        else
+            return std::make_tuple(get_ptr_impl<C>(proxy), get_ptr_impl<Cs>(proxy)...);
     }
-    template <typename C>
-    C& get(const Entity& entity) {
+
+    ///
+    /// @brief If the entity has the component attached, retrieve a reference to it. Throws if the entity isn't attached
+    /// @returns Either a reference to the object, or a tuple of references if multiple components are requested.
+    ///
+    template <typename C, typename... Cs>
+    using GetReturn = std::conditional_t<sizeof...(Cs) == 0, C&, std::tuple<C&, Cs&...>>;
+    template <typename C, typename... Cs>
+    GetReturn<C, Cs...> get(const Entity& entity) {
         const auto& proxy = lookup(entity);
-        return get_impl<C>(proxy);
+        if constexpr (sizeof...(Cs) == 0)
+            return get_impl<C>(proxy);
+        else
+            return std::make_tuple(std::ref(get_impl<C>(proxy)), std::ref(get_impl<Cs>(proxy))...);
     }
-    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
-    std::tuple<C&...> get(const Entity& entity) {
+    template <typename C, typename... Cs>
+    GetReturn<const C, const Cs...> get(const Entity& entity) const {
         const auto& proxy = lookup(entity);
-        return {get_impl<C>(proxy)...};
-    }
-    template <typename C>
-    const C* get_ptr(const Entity& entity) const {
-        const auto& proxy = lookup(entity);
-        return get_ptr_impl<C>(proxy);
-    }
-    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
-    std::tuple<const C*...> get_ptr(const Entity& entity) const {
-        const auto& proxy = lookup(entity);
-        return {get_ptr<C>(proxy)...};
-    }
-    template <typename C>
-    const C& get(const Entity& entity) const {
-        const auto& proxy = lookup(entity);
-        return get_impl<C>(proxy);
-    }
-    template <typename... C, typename = std::enable_if_t<(sizeof...(C) > 1)>>
-    std::tuple<const C&...> get(const Entity& entity) const {
-        const auto& proxy = lookup(entity);
-        return {get_impl<C>(proxy)...};
+        if constexpr (sizeof...(Cs) == 0)
+            return get_impl<C>(proxy);
+        else
+            return std::make_tuple(std::cref(get_impl<C>(proxy)), std::cref(get_impl<Cs>(proxy))...);
     }
 
     ///
