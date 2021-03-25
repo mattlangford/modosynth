@@ -108,7 +108,7 @@ TEST(ComponentManager, run_system) {
 // #############################################################################
 //
 
-TEST(ComponentManager, dynmamic) {
+TEST(ComponentManager, dynamic) {
     MyManager manager;
 
     // No component

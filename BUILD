@@ -18,17 +18,17 @@ cc_binary(
     ]
 )
 
-cc_test(
-    name = "test",
-    srcs = glob(["test/*.cc"]),
-    size = "small",
-    linkstatic = 1, # important so GLFW can find it's functions
-    data = ["//objects:config", "//objects:textures"],
-    deps = [
-        "//engine",
-        "//synth",
-        "//objects",
-        "@gtest",
-        "@gtest//:gtest_main",
-    ]
-)
+# cc_test(
+#     name = "test",
+#     srcs = glob(["test/*.cc"]),
+#     size = "small",
+#     linkstatic = 1, # important so GLFW can find it's functions
+#     data = ["//objects:config", "//objects:textures"],
+#     deps = [
+#         "//engine",
+#         "//synth",
+#         "//objects",
+#         "@gtest",
+#         "@gtest//:gtest_main",
+#     ]
+# )
