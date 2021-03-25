@@ -1,7 +1,7 @@
 #include "ecs/serialization.hh"
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace ::testing;
 
@@ -18,7 +18,7 @@ struct TestComponentC {
 };
 
 using MyManager = ComponentManager<TestComponentA, TestComponentB, TestComponentC>;
-}
+}  // namespace ecs
 
 template <>
 struct Serializer<ecs::TestComponentA> {
@@ -38,18 +38,21 @@ template <>
 struct Serializer<ecs::TestComponentC> {
     virtual std::string name() const { return "C"; }
     virtual std::string serialize(const ecs::TestComponentC& c) { return c.set ? "1" : "0"; };
-    virtual ecs::TestComponentC deserialize(const std::string& s) { return ecs::TestComponentC{s == "1" ? true : false}; };
+    virtual ecs::TestComponentC deserialize(const std::string& s) {
+        return ecs::TestComponentC{s == "1" ? true : false};
+    };
 };
 
-namespace ecs
-{
+//
+// #############################################################################
+//
 
-struct SerializationFixture : ::testing::Test
-{
+namespace ecs {
+
+struct SerializationFixture : ::testing::Test {
     MyManager manager;
 
-    SerializationFixture()
-    {
+    SerializationFixture() {
         manager.spawn(TestComponentA{100}, TestComponentB{"B"});
         auto to_remove = manager.spawn(TestComponentC{false});
         manager.spawn(TestComponentA{1000});
@@ -57,8 +60,7 @@ struct SerializationFixture : ::testing::Test
         manager.despawn(to_remove);
     }
 
-    void validate(const std::string& data)
-    {
+    void validate(const std::string& data) {
         YAML::Node result = YAML::Load(data);
         const auto& e = result["entities"];
         const auto& c = result["components"];
@@ -76,22 +78,22 @@ struct SerializationFixture : ::testing::Test
         EXPECT_THAT(c[1]["data"].as<std::vector<std::string>>(), ElementsAre("B"));
         EXPECT_THAT(c[2]["data"].as<std::vector<std::string>>(), ElementsAre());
     }
-
 };
 
 //
 // #############################################################################
 //
 
-TEST_F(SerializationFixture, basic_serialize) {
-    ASSERT_NO_FATAL_FAILURE(validate(ecs::serialize(manager)));
-}
+TEST_F(SerializationFixture, basic_serialize) { ASSERT_NO_FATAL_FAILURE(validate(ecs::serialize(manager))); }
 
 //
 // #############################################################################
 //
 
 TEST_F(SerializationFixture, basic_deserialize) {
-    ASSERT_NO_FATAL_FAILURE(validate(ecs::serialize(ecs::deserialize(ecs::serialize(manager)))));
+    auto s = ecs::serialize(manager);
+    MyManager deserialized;
+    ecs::deserialize(s, deserialized);
+    ASSERT_NO_FATAL_FAILURE(validate(ecs::serialize(deserialized)));
 }
 }  // namespace ecs

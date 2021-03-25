@@ -39,10 +39,12 @@ struct Serializer {
 
 namespace ecs {
 struct CompomentSerializer {
+    /// Does a specialized serializer exist for the given component?
+    template <typename C>
+    static constexpr bool kExists = !std::is_abstract_v<Serializer<C>>;
+
     template <typename Component>
-    void serialize(const std::vector<Component>& vector) {
-        static_assert(!std::is_abstract_v<Serializer<Component>>,
-                      "::Serializer<> hasn't been specialized for a component.");
+    std::enable_if_t<kExists<Component>> serialize(const std::vector<Component>& vector) {
         Serializer<Component> s;
 
         YAML::Node component;
@@ -57,12 +59,55 @@ struct CompomentSerializer {
         components.push_back(component);
     }
 
+    template <typename Component>
+    std::enable_if_t<kExists<Component>> deserialize(std::vector<Component>& vector) {
+        Serializer<Component> s;
+
+        const std::string name = s.name();
+        for (const auto& node : components) {
+            if (node["name"].as<std::string>() != name) {
+                continue;
+            }
+
+            std::vector<std::string> data = node["data"].as<std::vector<std::string>>();
+            vector.reserve(data.size());
+            for (const std::string& element : data) {
+                vector.push_back(s.deserialize(element));
+            }
+            return;
+        }
+
+        throw std::runtime_error("Unable to find '" + name +
+                                 "' component in the serialized data.  Has there been more components added to the "
+                                 "ComponentManager since saving?");
+    }
+
+    // These two exist just so that the compiler won't complain when kExists is false.
+    template <typename Component>
+    std::enable_if_t<!kExists<Component>> serialize(const std::vector<Component>&) {}
+    template <typename Component, typename = std::enable_if_t<!kExists<Component>>>
+    std::enable_if_t<!kExists<Component>> deserialize(std::vector<Component>&) {}
+
+    template <typename Component>
+    static void assert_serializer_exists() {
+        static_assert(
+            kExists<Component>,
+            "::Serializer<> struct hasn't been specialized for a component. Please specialize the struct in the global "
+            "namespace and define all virtual functions. See 'ecs/test/components_test.cc' for an example.");
+    }
+
     YAML::Node components;
 };
+
+//
+// #############################################################################
+//
 
 template <typename... Component>
 std::string serialize(const ComponentManager<Component...>& manager) {
     using Manager = ComponentManager<Component...>;
+
+    (CompomentSerializer::assert_serializer_exists<Component>(), ...);
 
     YAML::Node result;
 
@@ -89,11 +134,41 @@ std::string serialize(const ComponentManager<Component...>& manager) {
 // #############################################################################
 //
 
-// template <typename... Component>
-// ComponentManager<Component...> deserialize(const std::string& serialized)
-// {
-//     return {};
-// }
+template <typename... Component>
+void deserialize(const std::string& serialized, ComponentManager<Component...>& output) {
+    (CompomentSerializer::assert_serializer_exists<Component>(), ...);
+
+    // Make sure we start from scratch.
+    // TODO: I only take the output by value so the template deduction works
+    output = ComponentManager<Component...>{};
+
+    const auto root = YAML::Load(serialized);
+    const auto& entities = root["entities"];
+    const auto& components = root["components"];
+
+    for (size_t i = 0; i < entities.size(); ++i) {
+        std::vector<int> data = entities[i]["index"].as<std::vector<int>>();
+        auto& proxy = output.entities_.emplace_back(i);
+
+        proxy.empty = data.empty();
+        if (proxy.empty) {
+            output.free_.push(i);
+            proxy.index.fill(static_cast<size_t>(-1));
+            continue;
+        }
+
+        if (data.size() != proxy.index.size())
+            throw std::runtime_error(
+                "Can't deserialize, saved index doesn't match the size of current index. Has there been more "
+                "components added to the ComponentManager since saving?");
+
+        for (size_t index = 0; index < data.size(); ++index) proxy.index[index] = static_cast<size_t>(data[index]);
+    }
+
+    CompomentSerializer serializer{components};
+    std::apply([&](std::vector<Component>&... component) { (serializer.deserialize(component), ...); },
+               output.components_);
+}
 
 //
 // #############################################################################

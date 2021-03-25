@@ -275,7 +275,8 @@ private:
     // Serialization friends
     template <typename... C>
     friend std::string serialize(const ComponentManager<C...>&);
-    // friend ComponentManager<Component...> deserialize(const std::string&);
+    template <typename... C>
+    friend void deserialize(const std::string&, ComponentManager<C...>& output);
 
 private:
     std::queue<size_t> free_;
