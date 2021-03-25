@@ -1,3 +1,4 @@
+#pragma once
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -271,10 +272,14 @@ private:
     EntityProxy& lookup(const Entity& entity) { return entities_[entity.id()]; }
     const EntityProxy& lookup(const Entity& entity) const { return entities_[entity.id()]; }
 
-private:
-    std::tuple<std::vector<Component>...> components_;
+    // Serialization friends
+    template <typename... C>
+    friend std::string serialize(const ComponentManager<C...>&);
+    // friend ComponentManager<Component...> deserialize(const std::string&);
 
+private:
     std::queue<size_t> free_;
     std::vector<EntityProxy> entities_;
+    std::tuple<std::vector<Component>...> components_;
 };
 }  // namespace ecs

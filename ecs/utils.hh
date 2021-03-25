@@ -21,8 +21,13 @@ public:
     ApplyByIndex(Tuple& tuple) : tuple_(tuple) {}
 
     template <typename F>
-    void operator()(size_t index, const F& f) {
-        return apply<F, 0, Ts...>(index, f, tuple_);
+    void operator()(size_t index, F&& f) {
+        apply<F, 0, Ts...>(index, f, tuple_);
+    }
+
+    template <typename F>
+    void operator()(F&& f) {
+        for (size_t i = 0; i < sizeof...(Ts); ++i) apply<F, 0, Ts...>(i, f, tuple_);
     }
 
 private:
@@ -32,7 +37,7 @@ private:
     }
 
     template <typename F, size_t I, typename T, typename... Rest>
-    static void apply(size_t index, const F& f, Tuple& tuple) {
+    static void apply(size_t index, F& f, Tuple& tuple) {
         if (index == I) {
             f(std::get<I>(tuple));
             return;
@@ -42,4 +47,5 @@ private:
 
     Tuple& tuple_;
 };
+
 }  // namespace ecs

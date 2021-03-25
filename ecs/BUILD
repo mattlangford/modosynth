@@ -3,7 +3,7 @@ cc_library(
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.hh"]),
     visibility = ["//visibility:public"],
-    deps = []
+    deps = ["@yaml-cpp"],
 )
 
 cc_test(
