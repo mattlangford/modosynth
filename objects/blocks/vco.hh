@@ -38,8 +38,17 @@ private:
 
 class VCOFactory : public SimpleBlockFactory {
 public:
-    VCOFactory();
+    VCOFactory(const std::string& name = "VoltageControlledOscillator");
     ~VCOFactory() override = default;
+
+public:
+    std::unique_ptr<synth::GenericNode> spawn_synth_node() const override;
+};
+
+class LFOFactory : public VCOFactory {
+public:
+    LFOFactory();
+    ~LFOFactory() override = default;
 
 public:
     std::unique_ptr<synth::GenericNode> spawn_synth_node() const override;

@@ -88,10 +88,10 @@ double VoltageControlledOscillator::phase_increment(float frequency) {
 // #############################################################################
 //
 
-VCOFactory::VCOFactory()
-    : SimpleBlockFactory([] {
+VCOFactory::VCOFactory(const std::string& name)
+    : SimpleBlockFactory([&name] {
           SimpleBlockFactory::Config config;
-          config.name = "VoltageControlledOscillator";
+          config.name = name;
           config.inputs = 2;
           config.outputs = 1;
           return config;
@@ -104,5 +104,20 @@ VCOFactory::VCOFactory()
 std::unique_ptr<synth::GenericNode> VCOFactory::spawn_synth_node() const {
     static size_t counter = 0;
     return std::make_unique<VoltageControlledOscillator>(10, 1000, counter++);
+}
+
+//
+// #############################################################################
+//
+
+LFOFactory::LFOFactory() : VCOFactory("LowFrequencyOscillator") {}
+
+//
+// #############################################################################
+//
+
+std::unique_ptr<synth::GenericNode> LFOFactory::spawn_synth_node() const {
+    static size_t counter = 0;
+    return std::make_unique<VoltageControlledOscillator>(0, 100, counter++);
 }
 }  // namespace objects::blocks

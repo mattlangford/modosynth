@@ -29,11 +29,7 @@ public:
     void init() override {
         box_renderer_.init();
         line_renderer_.init();
-
-        auto names = loader_.names();
-        for (size_t i = 0; i < names.size(); ++i) {
-            std::cout << "Press '" << (i + 1) << "' to spawn '" << names[i] << "'\n";
-        }
+        print_help();
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -45,7 +41,7 @@ public:
             r_box.texture_index = box.texture_index;
 
             // TODO I'm assuming all values are rotations, but that's probably not true
-            if (auto ptr = components_.get_ptr<SynthInput>(e)) r_box.rotation = ptr->value * 0.8;
+            if (auto ptr = components_.get_ptr<SynthInput>(e)) r_box.rotation = ptr->value * -1.8 * M_PI;
 
             box_renderer_.draw(r_box, screen_from_world);
         });
@@ -87,6 +83,8 @@ public:
             events_.undo();
         } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
+        } else if (event.pressed() && event.key == 'h') {
+            print_help();
         }
     }
 
@@ -150,6 +148,13 @@ private:
     }
 
 private:
+    void print_help() {
+        auto names = loader_.names();
+        for (size_t i = 0; i < names.size(); ++i) {
+            std::cout << "Press '" << (i + 1) << "' to spawn '" << names[i] << "'\n";
+        }
+    }
+
     void spawn_block(size_t index) { spawn_block(loader_.names().at(index)); }
     void spawn_block(std::string name) {
         auto& factory = loader_.get(name);
@@ -184,14 +189,9 @@ private:
 
     void rotate(const engine::MouseEvent& event, const ecs::Entity&, SynthInput& input) {
         // Scale the changes back a bit
-        input.value += 0.1 * event.delta_position.y();
-        // And then clamp to be in the -pi to pi range
-        input.value = std::clamp(input.value, static_cast<float>(-M_PI), static_cast<float>(M_PI));
-
-        // const auto& box = components_.get<objects::TexturedBox>(entity);
-        // const auto& parent = components_.get<objects::SynthNode>(box.bottom_left.parent.value());
-        // Set the value so it's between -1 and 1
-        // bridge_.set_value(parent.id, r.rotation / M_PI);
+        input.value += 0.05 * event.delta_position.y();
+        // And then clamp to be in the -1 to 1 range
+        input.value = std::clamp(input.value, -1.f, 1.f);
     }
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
