@@ -41,7 +41,7 @@ public:
             r_box.texture_index = box.texture_index;
 
             // TODO I'm assuming all values are rotations, but that's probably not true
-            if (auto ptr = components_.get_ptr<SynthInput>(e)) r_box.rotation = ptr->value * -1.8 * M_PI;
+            if (auto ptr = components_.get_ptr<SynthInput>(e)) r_box.rotation = ptr->value * 0.8 * M_PI;
 
             box_renderer_.draw(r_box, screen_from_world);
         });
