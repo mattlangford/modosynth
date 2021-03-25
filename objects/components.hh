@@ -8,6 +8,7 @@
 #include "ecs/components.hh"
 #include "ecs/entity.hh"
 #include "objects/catenary.hh"
+
 namespace objects {
 
 struct Transform {
@@ -74,15 +75,11 @@ struct SynthConnection {
 using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable,
                                                SynthNode, SynthInput, SynthOutput, SynthConnection>;
 
-//
-// #############################################################################
-//
-
 Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& manager);
 
-//
-// #############################################################################
-//
-
 SynthConnection connection_from_cable(const Cable& cable, const ComponentManager& manager);
+
+void save(const std::filesystem::path& path, const ComponentManager& manager);
+
+void load(const std::filesystem::path& path, ComponentManager& manager);
 }  // namespace objects

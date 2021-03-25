@@ -81,6 +81,10 @@ public:
             spawn_block(i++ % loader_.size());
         } else if (event.clicked && event.control && event.key == 'z') {
             events_.undo();
+        } else if (event.clicked && event.control && event.key == 's') {
+            save("/tmp/save", components_);
+        } else if (event.clicked && event.control && event.key == 'l') {
+            load("/tmp/save", components_);
         } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
         } else if (event.pressed() && event.key == 'h') {

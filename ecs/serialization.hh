@@ -37,6 +37,10 @@ struct Serializer {
     virtual T deserialize(const std::string&) const = 0;
 };
 
+//
+// #############################################################################
+//
+
 namespace ecs {
 struct CompomentSerializer {
     /// Does a specialized serializer exist for the given component?

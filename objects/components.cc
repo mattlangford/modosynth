@@ -1,4 +1,7 @@
 #include "objects/components.hh"
+#include "ecs/serialization.hh"
+#include <fstream>
+#include <iostream>
 
 namespace objects {
 //
@@ -27,5 +30,33 @@ SynthConnection connection_from_cable(const Cable& cable, const ComponentManager
     const size_t& to_port = to_cable.index;
 
     return {from, from_port, to, to_port};
+}
+
+//
+// #############################################################################
+//
+
+void save(const std::filesystem::path& path, const ComponentManager& manager)
+{
+    std::ofstream file;
+    file.open(path, std::ios::out);
+    file << ecs::serialize(manager);
+    file.close();
+
+    std::cout << "Saved manager to " << path << "\n";
+}
+
+//
+// #############################################################################
+//
+
+void load(const std::filesystem::path& path, ComponentManager& manager)
+{
+    std::ofstream file;
+    file.open(path, std::ios::in);
+    ecs::deserialize(file.str(), manager);
+    file.close();
+
+    std::cout << "Loaded manager from " << path << "\n";
 }
 }  // namespace objects
