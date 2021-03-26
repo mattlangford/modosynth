@@ -47,6 +47,11 @@ public:
     virtual void load_config(const Config& config) = 0;
 
     ///
+    /// @brief Human readable name of the element this factory builds
+    ///
+    virtual const std::string& name() const = 0;
+
+    ///
     /// @brief Spawn this block and all associated entities
     ///
     virtual Spawn spawn_entities(objects::ComponentManager& manager) const = 0;
@@ -75,6 +80,7 @@ public:
 
 public:
     void load_config(const objects::Config& config) override;
+    const std::string& name() const override;
     Spawn spawn_entities(objects::ComponentManager& manager) const override;
 
 private:
@@ -99,7 +105,7 @@ public:
     BlockLoader(const std::filesystem::path& config_path);
 
 public:
-    void add_factory(const std::string& name, std::unique_ptr<Factory> factory);
+    void add_factory(std::unique_ptr<Factory> factory);
 
     const Config& config() const;
 

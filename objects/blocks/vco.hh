@@ -7,8 +7,6 @@
 
 namespace objects::blocks {
 
-float remap(float raw, const std::tuple<float, float>& from, const std::tuple<float, float>& to);
-
 class VoltageControlledOscillator final : public synth::AbstractNode<2, 1> {
 public:
     VoltageControlledOscillator(float f_min, float f_max, size_t count = 0);
@@ -19,6 +17,8 @@ public:
         kSquare = 1,
         kMax = 2,
     };
+
+    static float remap(float raw, const std::tuple<float, float>& from, const std::tuple<float, float>& to);
 
     void invoke(const Inputs& inputs, Outputs& outputs) override;
 
@@ -38,12 +38,16 @@ private:
 
 class VCOFactory : public SimpleBlockFactory {
 public:
-    VCOFactory(const std::string& name = "VoltageControlledOscillator");
+    VCOFactory(const std::string& name = "Voltage Controlled Oscillator");
     ~VCOFactory() override = default;
 
 public:
     std::unique_ptr<synth::GenericNode> spawn_synth_node() const override;
 };
+
+//
+// #############################################################################
+//
 
 class LFOFactory : public VCOFactory {
 public:

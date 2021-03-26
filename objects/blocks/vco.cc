@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <iostream>
 
-#include "objects/blocks/knob.hh"
 #include "synth/debug.hh"
 
 namespace objects::blocks {
@@ -13,18 +12,6 @@ namespace objects::blocks {
 //
 // #############################################################################
 //
-
-float remap(float raw, const std::tuple<float, float>& from, const std::tuple<float, float>& to) {
-    const auto& [from_min, from_max] = from;
-    const auto& [to_min, to_max] = to;
-
-    float from_range = from_max - from_min;
-    float to_range = to_max - to_min;
-
-    // between [0, 1]
-    float normalized = (std::clamp(raw, from_min, from_max) - from_min) / from_range;
-    return normalized * to_range + to_min;
-}
 
 //
 // #############################################################################
@@ -46,6 +33,23 @@ void VoltageControlledOscillator::invoke(const Inputs& inputs, Outputs& outputs)
         return sample(remap(frequencies[i], {-1.0, 1.0}, frequency_),
                       remap(shapes[i], {-1.0, 1.0}, {0.0, static_cast<int>(Shape::kMax) - 1}));
     });
+}
+
+//
+// #############################################################################
+//
+
+float VoltageControlledOscillator::remap(float raw, const std::tuple<float, float>& from,
+                                         const std::tuple<float, float>& to) {
+    const auto& [from_min, from_max] = from;
+    const auto& [to_min, to_max] = to;
+
+    float from_range = from_max - from_min;
+    float to_range = to_max - to_min;
+
+    // between [0, 1]
+    float normalized = (std::clamp(raw, from_min, from_max) - from_min) / from_range;
+    return normalized * to_range + to_min;
 }
 
 //
@@ -110,7 +114,7 @@ std::unique_ptr<synth::GenericNode> VCOFactory::spawn_synth_node() const {
 // #############################################################################
 //
 
-LFOFactory::LFOFactory() : VCOFactory("LowFrequencyOscillator") {}
+LFOFactory::LFOFactory() : VCOFactory("Low Frequency Oscillator") {}
 
 //
 // #############################################################################

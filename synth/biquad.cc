@@ -68,24 +68,40 @@ BiQuadFilter::Coeff BiQuadFilter::high_pass_filter(float f0, float gain, float s
 // #############################################################################
 //
 
-void BiQuadFilter::set_coeff(const Coeff& coeff) { coeff_ = coeff; }
+BiQuadFilter::Coeff BiQuadFilter::coeff(const Type type, float f0, float gain, float slope) {
+    switch (type) {
+        case Type::kHpf:
+            return high_pass_filter(f0, gain, slope);
+        case Type::kLpf:
+            return high_pass_filter(f0, gain, slope);
+        default:
+            throw std::runtime_error("Unknown coefficient type in BiQuadFilter::coeff()");
+    }
+}
 
 //
 // #############################################################################
 //
 
-void BiQuadFilter::process(Samples& samples) {
+void BiQuadFilter::set_coeff(const Coeff& coeff) { coeff_ = coeff; }
+void BiQuadFilter::set_coeff(const Type type, float f0, float gain, float slope) {
+    set_coeff(coeff(type, f0, gain, slope));
+}
+
+//
+// #############################################################################
+//
+
+float BiQuadFilter::process(float xn) {
     const auto& [b0, b1, b2, a1, a2] = coeff_;
 
-    for (float& sample : samples.samples) {
-        double xn = sample;
-        double yn = b0 * xn + b1 * xn_1_ + b2 * xn_2_ - a1 * yn_1_ - a2 * yn_2_;
-        sample = yn;
+    double yn = b0 * xn + b1 * xn_1_ + b2 * xn_2_ - a1 * yn_1_ - a2 * yn_2_;
 
-        xn_2_ = xn_1_;
-        yn_2_ = yn_1_;
-        xn_1_ = xn;
-        yn_1_ = yn;
-    }
+    xn_2_ = xn_1_;
+    yn_2_ = yn_1_;
+    xn_1_ = xn;
+    yn_1_ = yn;
+
+    return yn;
 }
 }  // namespace synth

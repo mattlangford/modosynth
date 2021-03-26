@@ -5,6 +5,7 @@
 
 #include "objects/blocks/amplifier.hh"
 #include "objects/blocks/button.hh"
+#include "objects/blocks/filter.hh"
 #include "objects/blocks/knob.hh"
 #include "objects/blocks/speaker.hh"
 #include "objects/blocks/vco.hh"
@@ -51,6 +52,12 @@ void SimpleBlockFactory::load_config(const objects::Config& config) {
     uv_ = block_config.uv.cast<float>();
     dim_ = block_config.dim.cast<float>();
 }
+
+//
+// #############################################################################
+//
+
+const std::string& SimpleBlockFactory::name() const { return config_.name; }
 
 //
 // #############################################################################
@@ -107,9 +114,9 @@ BlockLoader::BlockLoader(const std::filesystem::path& config_path) : config_(con
 // #############################################################################
 //
 
-void BlockLoader::add_factory(const std::string& name, std::unique_ptr<Factory> factory) {
+void BlockLoader::add_factory(std::unique_ptr<Factory> factory) {
     factory->load_config(config_);
-    factories_[name] = std::move(factory);
+    factories_[factory->name()] = std::move(factory);
 }
 
 //
@@ -159,13 +166,14 @@ size_t BlockLoader::size() const { return factories_.size(); }
 
 BlockLoader default_loader() {
     BlockLoader loader("objects/blocks.yml");
-    loader.add_factory("Voltage Controlled Oscillator", std::make_unique<blocks::VCOFactory>());
-    loader.add_factory("Low Frequency Oscillator", std::make_unique<blocks::LFOFactory>());
-    loader.add_factory("Speaker", std::make_unique<blocks::SpeakerFactory>());
-    loader.add_factory("Knob", std::make_unique<blocks::KnobFactory>());
-    loader.add_factory("Button", std::make_unique<blocks::ButtonFactory>());
-    loader.add_factory("Amplifier", std::make_unique<blocks::AmpFactory>());
+    loader.add_factory(std::make_unique<blocks::VCOFactory>());
+    loader.add_factory(std::make_unique<blocks::LFOFactory>());
+    loader.add_factory(std::make_unique<blocks::SpeakerFactory>());
+    loader.add_factory(std::make_unique<blocks::KnobFactory>());
+    loader.add_factory(std::make_unique<blocks::ButtonFactory>());
+    loader.add_factory(std::make_unique<blocks::AmpFactory>());
+    loader.add_factory(std::make_unique<blocks::HPFFactory>());
+    loader.add_factory(std::make_unique<blocks::LPFFactory>());
     return loader;
 }
-
 }  // namespace objects

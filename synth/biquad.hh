@@ -20,13 +20,18 @@ public:
         void normalize();
     };
 
+    enum class Type : uint8_t { kLpf = 0, kHpf = 1 };
+
 public:
     static Coeff low_pass_filter(float f0, float gain, float slope);
     static Coeff high_pass_filter(float f0, float gain, float slope);
 
+    static Coeff coeff(const Type type, float f0, float gain, float slope);
+
 public:
     void set_coeff(const Coeff& coeff);
-    void process(Samples& samples);
+    void set_coeff(const Type type, float f0, float gain, float slope);
+    float process(float xn);
 
 private:
     Coeff coeff_;

@@ -2,21 +2,21 @@
 texture_path: "/Users/mlangford/Downloads/test.bmp"
 port_texture_path: "objects/ports.bmp"
 blocks:
-    - name: "VoltageControlledOscillator"
+    - name: "Voltage Controlled Oscillator"
       uv: [0, 0]
       dim: [32, 16]
-    - name: "LowFrequencyOscillator"
-      uv: [0, 64]
+    - name: "Low Frequency Oscillator"
+      uv: [0, 32]
       dim: [32, 16]
     - name: "Amplifier"
       uv: [0, 16]
       dim: [32, 16]
-    - name: "HighPassFilter"
-      uv: [0, 32]
-      dim: [32, 16]
-    - name: "LowPassFilter"
+    - name: "High Pass Filter"
       uv: [0, 48]
-      dim: [32, 16]
+      dim: [32, 20]
+    - name: "Low Pass Filter"
+      uv: [0, 68]
+      dim: [32, 20]
     - name: "Knob"
       uv: [32, 0]
       dim: [15, 15]
