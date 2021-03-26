@@ -87,7 +87,7 @@ public:
         } else if (event.clicked && event.control && event.key == 's') {
             save("/tmp/save", components_);
         } else if (event.clicked && event.control && event.key == 'l') {
-            load("/tmp/save", components_);
+            load("/tmp/save");
         } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
         } else if (event.pressed() && event.key == 'h') {
@@ -142,7 +142,12 @@ private:
         }
     }
 
-    void mouse_released(const engine::MouseEvent&, const std::optional<ecs::Entity>& entity) {
+    void mouse_released(const engine::MouseEvent& event, const std::optional<ecs::Entity>& entity) {
+        if (event.control && entity) {
+            despawn_block(*entity);
+            return;
+        }
+
         if (!drawing_rope_) {
             auto [ptr, size] = components_.raw_view<Selectable>();
             for (size_t i = 0; i < size; ++i) ptr[i].selected = false;
@@ -180,6 +185,40 @@ private:
         node.id = id_++;
 
         events_.trigger(spawn);
+    }
+    void despawn_block(const ecs::Entity& entity) {
+        // We need to check for any dangling references
+        // TODO: This is quite fragile, probably should think of a better way...
+        std::queue<ecs::Entity> to_despawn;
+        components_.run_system([&](const ecs::Entity& e) {
+            auto [box, cable, input, output, connection] =
+                components_.get_ptr<TexturedBox, Cable, SynthInput, SynthOutput, SynthConnection>(e);
+            if (box && box->bottom_left.parent && box->bottom_left.parent->id() == entity.id())
+                to_despawn.push(entity);
+            else if (cable && cable->start.parent && cable->start.parent->id() == entity.id())
+                to_despawn.push(entity);
+            else if (cable && cable->end.parent && cable->end.parent->id() == entity.id())
+                to_despawn.push(entity);
+            else if (input && input->parent.id() == entity.id())
+                to_despawn.push(entity);
+            else if (output && output->parent.id() == entity.id())
+                to_despawn.push(entity);
+            else if (connection && connection->from.id() == entity.id())
+                to_despawn.push(entity);
+            else if (connection && connection->to.id() == entity.id())
+                to_despawn.push(entity);
+        });
+
+        components_.despawn(entity);
+
+        while (!to_despawn.empty()) {
+            auto e = to_despawn.front();
+            to_despawn.pop();
+
+            if (components_.is_alive(e)) {
+                despawn_block(e);
+            }
+        }
     }
 
     void finialize_connection(const ecs::Entity& cable_entity, const ecs::Entity& end_entity) {
@@ -224,6 +263,17 @@ private:
             }
         });
         return selected;
+    }
+
+    void load(const std::filesystem::path&)
+    {
+        ::objects::load("/tmp/save", components_);
+
+        // Make sure the ID is updated
+        components_.run_system<SynthNode>([&](const ecs::Entity&, const SynthNode& node) {
+            id_ = std::max(node.id, id_);
+        });
+        id_++;
     }
 
 private:

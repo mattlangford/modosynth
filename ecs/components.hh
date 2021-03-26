@@ -148,8 +148,6 @@ public:
     ///
     template <typename... ReqComponent, typename System>
     void run_system(System&& system) {
-        static_assert(sizeof...(ReqComponent) > 0, "Need at least one required component.");
-
         for (const auto& proxy : entities_) {
             if (proxy.empty || (!has_impl<ReqComponent>(proxy) || ...)) {
                 continue;
@@ -174,6 +172,11 @@ public:
     std::pair<C*, size_t> raw_view() {
         auto& components = std::get<kIndexOf<C>>(components_);
         return {components.data(), components.size()};
+    }
+
+    bool is_alive(const Entity& entity) const {
+        if (entity.id() >= entities_.size()) return false;
+        return !lookup(entity).empty;
     }
 
 private:

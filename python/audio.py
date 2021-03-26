@@ -115,6 +115,7 @@ class BiQuadFilter(object):
             for sample in batch:
                 xn = sample
                 yn = b0 * xn + b1 * xn_1 + b2 * xn_2 - a1 * yn_1 - a2 * yn_2
+                print (f"xn: {xn}, yn: {yn}")
 
                 output_batch.append(yn)
 
@@ -130,21 +131,18 @@ class BiQuadFilter(object):
 
 s = Signal()
 
-t = np.linspace(0, 1, SampleRate)
+t = np.linspace(0.0, 1.0, SampleRate)[:5]
 data = np.cos(2 * np.pi * 1000 * t)
-for f in range(10, 1000, 10):
-    data += np.cos(2 * np.pi * f * t)
+#for f in range(100, 2000, 10):
+#    data += np.cos(2 * np.pi * f * t)
 
 s.data.append(data)
 
-f = BiQuadFilter.hpf(SampleRate, 2000, 3, 0.2)
-f = BiQuadFilter.hpf(SampleRate, 5000, 6, 0.5)
-f = BiQuadFilter.lpf(SampleRate, 600, 6, 1.0)
-f = BiQuadFilter.lpf(SampleRate, 2000, 3, 0.1)
+f = BiQuadFilter.hpf(SampleRate, 2000, 3, 1.0)
 s.fft(2000)
 s = f.process(s)
 
-s.write("/tmp/out.wav")
-s.fft(2000)
-plt.show()
+# s.write("/tmp/out.wav")
+# s.fft(2000)
+# plt.show()
 

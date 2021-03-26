@@ -1,6 +1,7 @@
 #include "synth/biquad.hh"
 
 #include <cmath>
+#include <xmmintrin.h>
 
 namespace synth {
 namespace {
@@ -93,6 +94,9 @@ void BiQuadFilter::set_coeff(const Type type, float f0, float gain, float slope)
 //
 
 float BiQuadFilter::process(float xn) {
+    auto mask = _MM_GET_EXCEPTION_MASK();
+    _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
+
     const auto& [b0, b1, b2, a1, a2] = coeff_;
 
     double yn = b0 * xn + b1 * xn_1_ + b2 * xn_2_ - a1 * yn_1_ - a2 * yn_2_;
@@ -102,6 +106,7 @@ float BiQuadFilter::process(float xn) {
     xn_1_ = xn;
     yn_1_ = yn;
 
+    _MM_SET_EXCEPTION_MASK(mask);
     return yn;
 }
 }  // namespace synth

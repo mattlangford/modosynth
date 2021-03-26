@@ -55,7 +55,7 @@ void Filter::invoke(const Inputs& inputs, Outputs& outputs) {
                 type_ == Type::kLpf ? std::make_pair(100.f, 1000.f) : std::make_pair(1000.f, 10000.f);
 
             float f0 = remap(f0s[i], {-1.0, 1.0}, f0_range);
-            float gain = remap(gains[i], {-1.0, 1.0}, {-3, 6});
+            float gain = remap(gains[i], {-1.0, 1.0}, {-3, 12});
             float slope = remap(slopes[i], {-1.0, 1.0}, {0.0, 1.0});
             filter_.set_coeff(type_, f0, gain, slope);
         }
