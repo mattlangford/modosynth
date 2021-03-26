@@ -98,7 +98,7 @@ struct Serializer<objects::Selectable> {
         objects::Selectable out;
         auto data = split(s);
         if (data.size() < 2) throw std::runtime_error("Can't deserialize " + name() + " from string: " + s);
-        out.selected = false; // not deserializing this
+        out.selected = false;  // not deserializing this
         out.shift = static_cast<bool>(std::stoi(data[0]));
         out.control = static_cast<bool>(std::stoi(data[1]));
         return out;
@@ -141,13 +141,14 @@ struct Serializer<objects::Cable> {
     virtual std::string serialize(const objects::Cable& in) {
         std::stringstream ss;
         ss << Serializer<objects::Transform>{}.serialize(in.start) << ",";
-        ss << Serializer<objects::Transform>{}.serialize(in.end);
+        ss << Serializer<objects::Transform>{}.serialize(in.end) << ",";
+        ss << in.solver.length();
         return ss.str();
     }
     virtual objects::Cable deserialize(const std::string& s) {
         objects::Cable out;
         auto data = split(s);
-        if (data.size() < 6) throw std::runtime_error("Can't deserialize " + name() + " from string: " + s);
+        if (data.size() < 7) throw std::runtime_error("Can't deserialize " + name() + " from string: " + s);
 
         if (int id = std::stoi(data[0]); id >= 0) out.start.parent = ecs::Entity::spawn_with(id);
         out.start.from_parent.x() = std::stof(data[1]);
@@ -156,7 +157,7 @@ struct Serializer<objects::Cable> {
         out.end.from_parent.x() = std::stof(data[4]);
         out.end.from_parent.y() = std::stof(data[5]);
 
-        // TODO Might need to do something for bootstrapping the Catenary solver
+        out.solver.set_length(std::stof(data[6]));
         return out;
     }
 };
@@ -260,7 +261,7 @@ SynthConnection connection_from_cable(const Cable& cable, const ComponentManager
     const size_t& from_port = from_cable.index;
 
     const auto& end = cable.end.parent.value();
-    auto [to_box, to_cable] = manager.get<TexturedBox, CableSource>(end);
+    auto [to_box, to_cable] = manager.get<TexturedBox, CableSink>(end);
     const ecs::Entity& to = to_box.bottom_left.parent.value();
     const size_t& to_port = to_cable.index;
 

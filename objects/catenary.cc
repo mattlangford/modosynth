@@ -96,6 +96,7 @@ std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
 // #############################################################################
 //
 
+void CatenarySolver::set_length(double length) { length_ = length; }
 const double& CatenarySolver::length() const { return length_; }
 bool CatenarySolver::flipped() const { return flipped_; }
 
