@@ -49,8 +49,8 @@ BiQuadFilter::Coeff BiQuadFilter::high_pass_filter(float f0, float gain, float s
     const double cos = std::cos(w);
 
     Coeff coeff;
-    coeff.b1 = 1 + cos;
-    coeff.b0 = 0.5 * coeff.b1;
+    coeff.b1 = -(1 + cos);
+    coeff.b0 = -0.5 * coeff.b1;
     coeff.b2 = coeff.b0;
     coeff.a1 = -2 * cos;
     coeff.a2 = 1 - alpha;

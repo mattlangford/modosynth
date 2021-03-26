@@ -16,4 +16,19 @@ TEST(BiQuad, LPF) {
         EXPECT_NEAR(res.a2, 0.885883903715535, 1E-8);
     }
 }
+
+//
+// #############################################################################
+//
+
+TEST(BiQuad, HPF) {
+    {
+        auto res = BiQuadFilter::high_pass_filter(2000.0, 3.0, 0.2);
+        EXPECT_NEAR(res.b0, 0.6607711888045134, 1E-8);
+        EXPECT_NEAR(res.b1, -1.3215423776090267, 1E-8);
+        EXPECT_NEAR(res.b2, 0.6607711888045134, 1E-8);
+        EXPECT_NEAR(res.a1, -1.2942231921461547, 1E-8);
+        EXPECT_NEAR(res.a2, 0.34886156307189853, 1E-8);
+    }
+}
 }  // namespace synth
