@@ -188,7 +188,7 @@ struct Serializer<objects::SynthInput> {
         std::stringstream ss;
         ss << in.parent.id() << ",";
         ss << in.value << ",";
-        ss << static_cast<uint8_t>(in.type) << ",";
+        ss << static_cast<uint16_t>(in.type) << ",";
         return ss.str();
     }
     virtual objects::SynthInput deserialize(const std::string& s) {

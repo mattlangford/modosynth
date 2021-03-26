@@ -76,7 +76,13 @@ struct CompomentSerializer {
             std::vector<std::string> data = node["data"].as<std::vector<std::string>>();
             vector.reserve(data.size());
             for (const std::string& element : data) {
-                vector.push_back(s.deserialize(element));
+                try {
+                    vector.push_back(s.deserialize(element));
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to deserialize " << s.name() << " with serialized string: '" << element
+                              << "'\n";
+                    throw;
+                }
             }
             return;
         }
