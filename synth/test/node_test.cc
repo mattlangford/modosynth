@@ -4,10 +4,9 @@
 
 namespace synth {
 TEST(EjectorNode, basic) {
-    EjectorNode node{"speaker0", "/speaker"};
+    EjectorNode node{"speaker0"};
 
     EXPECT_EQ(node.name(), "speaker0");
-    EXPECT_EQ(node.stream_name(), "/speaker");
 
     // Two mock inputs
     node.connect(0);
@@ -20,14 +19,12 @@ TEST(EjectorNode, basic) {
     EXPECT_TRUE(node.invoke(context));
     EXPECT_FALSE(node.invoke(context));
 
-    Stream stream;
-    node.set_stream(stream);
-
     node.add_input(0, Samples{10.0});
     EXPECT_FALSE(node.invoke(context));
     node.add_input(0, Samples{20.0});
     EXPECT_TRUE(node.invoke(context));
 
+    Stream& stream = node.stream();
     EXPECT_EQ(stream.flush(), 1);
     ASSERT_EQ(stream.output().size(), Samples::kBatchSize);
     for (size_t i = 0; i < Samples::kBatchSize; ++i) {

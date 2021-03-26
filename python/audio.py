@@ -79,6 +79,7 @@ class BiQuadFilter(object):
 
     @staticmethod
     def lpf(fs, f0, db_gain, s):
+        print (f"{f0}, {db_gain}, {s}")
         w, alpha = intermediate(fs, f0, db_gain, s)
         b0 = (1 - np.cos(w)) * 0.5
         b1 = 2 * b0
@@ -90,6 +91,7 @@ class BiQuadFilter(object):
 
     @staticmethod
     def hpf(fs, f0, db_gain, s):
+        print (f"{f0}, {db_gain}, {s}")
         w, alpha = intermediate(fs, f0, db_gain, s)
         b0 = (1 + np.cos(w)) * 0.5
         b1 = -2 * b0
@@ -135,7 +137,10 @@ for f in range(10, 1000, 10):
 
 s.data.append(data)
 
-f = BiQuadFilter.hpf(SampleRate, 600, 6, 0.5)
+f = BiQuadFilter.hpf(SampleRate, 2000, 3, 0.2)
+f = BiQuadFilter.hpf(SampleRate, 5000, 6, 0.5)
+f = BiQuadFilter.lpf(SampleRate, 600, 6, 1.0)
+f = BiQuadFilter.lpf(SampleRate, 2000, 3, 0.1)
 s.fft(2000)
 s = f.process(s)
 
