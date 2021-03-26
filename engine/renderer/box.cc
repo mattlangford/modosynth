@@ -6,9 +6,9 @@ static std::string vertex_shader_text = R"(
 #version 330
 uniform mat3 screen_from_world;
 layout (location = 0) in vec2 world_position;
-layout (location = 1) in vec2 in_uv;
+layout (location = 1) in vec3 in_uv;
 
-out vec2 uv;
+out vec3 uv;
 
 void main()
 {
@@ -21,14 +21,17 @@ void main()
 
 static std::string fragment_shader_text = R"(
 #version 330
-in vec2 uv;
+in vec3 uv;
 out vec4 fragment;
 
 uniform sampler2D sampler;
 
 void main()
 {
-    fragment = texture(sampler, uv);
+    fragment = texture(sampler, uv.xy);
+
+    // If the texture has an alpha less than the threshold, go with that
+    fragment[3] = min(uv[2], fragment[3]);
 }
 )";
 }  // namespace
@@ -62,8 +65,8 @@ void BoxRenderer::init() {
     position_buffer_.init(GL_ARRAY_BUFFER, 0, vao_);
     uv_buffer_.init(GL_ARRAY_BUFFER, 1, vao_);
 
-    position_buffer_.resize(8);
-    uv_buffer_.resize(8);
+    position_buffer_.resize(4 * 2);
+    uv_buffer_.resize(4 * 3);
 
     for (auto& texture : textures_) {
         texture.init();
@@ -85,7 +88,7 @@ void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world)
 
     // The UV texture needs to be normalized between 0 and 1
     Eigen::Vector2f uv_size{texture.bitmap().get_width(), texture.bitmap().get_height()};
-    set_uv(box.uv.cwiseQuotient(uv_size), box.dim.cwiseQuotient(uv_size));
+    set_uv(box.uv.cwiseQuotient(uv_size), box.dim.cwiseQuotient(uv_size), box.alpha.value_or(1.f));
 
     gl_check_with_vao(vao_, glDrawArrays, GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -94,18 +97,21 @@ void BoxRenderer::draw(const Box& box, const Eigen::Matrix3f& screen_from_world)
 // #############################################################################
 //
 
-void BoxRenderer::set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f& dim) {
+void BoxRenderer::set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f& dim, float alpha) {
     auto batch = uv_buffer_.batched_updater();
 
+    // I'm also storing the alpha of the object here
+
     // top left
-    batch.element(0) = top_left;
+    batch.element(0) = Eigen::Vector3f{top_left.x(), top_left.y(), alpha};
     // top right
-    batch.element(1) = top_left + Eigen::Vector2f{dim.x(), 0.f};
+    batch.element(1) = Eigen::Vector3f{top_left.x() + dim.x(), top_left.y(), alpha};
     // bottom left
-    batch.element(2) = top_left + Eigen::Vector2f{0.f, dim.y()};
+    batch.element(2) = Eigen::Vector3f{top_left.x(), top_left.y() + dim.y(), alpha};
     // bottom right
-    batch.element(3) = top_left + dim;
+    batch.element(3) = Eigen::Vector3f{top_left.x() + dim.x(), top_left.y() + dim.y(), alpha};
 }
+
 //
 // #############################################################################
 //

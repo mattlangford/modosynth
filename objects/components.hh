@@ -57,6 +57,9 @@ struct SynthNode {
 struct SynthInput {
     ecs::Entity parent;
     float value;
+
+    enum Type : uint8_t { kKnob = 0, kButton = 1 };
+    Type type;
 };
 struct SynthOutput {
     ecs::Entity parent;

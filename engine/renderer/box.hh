@@ -15,6 +15,7 @@ struct Box {
     size_t texture_index;
 
     std::optional<float> rotation;
+    std::optional<float> alpha;
 };
 
 class BoxRenderer {
@@ -35,7 +36,7 @@ public:
     void draw(const Box& box, const Eigen::Matrix3f& screen_from_world);
 
 private:
-    void set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f& dim);
+    void set_uv(const Eigen::Vector2f& top_left, const Eigen::Vector2f& dim, float alpha);
     void set_position(const Eigen::Vector2f& bottom_left, const Eigen::Vector2f& dim,
                       const std::optional<float>& rotation);
 
@@ -45,7 +46,7 @@ private:
 
     engine::VertexArrayObject vao_;
     engine::Buffer<float, 2> position_buffer_;
-    engine::Buffer<float, 2> uv_buffer_;
+    engine::Buffer<float, 3> uv_buffer_;
 
     std::vector<Texture> textures_;
 };

@@ -26,3 +26,9 @@ blocks:
     - name: "Speaker"
       uv: [32, 16]
       dim: [16, 32]
+    - name: "Button"
+      uv: [32, 48]
+      dim: [16, 16]
+    - name: "ButtonForeground"
+      uv: [48, 48]
+      dim: [16, 16]

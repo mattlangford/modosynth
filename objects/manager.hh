@@ -41,7 +41,10 @@ public:
             r_box.texture_index = box.texture_index;
 
             // TODO I'm assuming all values are rotations, but that's probably not true
-            if (auto ptr = components_.get_ptr<SynthInput>(e)) r_box.rotation = ptr->value * 0.8 * M_PI;
+            if (auto ptr = components_.get_ptr<SynthInput>(e)) {
+                if (ptr->type == SynthInput::kKnob) r_box.rotation = ptr->value * 0.8 * M_PI;
+                if (ptr->type == SynthInput::kButton) r_box.alpha = ptr->value;
+            }
 
             box_renderer_.draw(r_box, screen_from_world);
         });
@@ -103,7 +106,11 @@ private:
 
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
         if (auto ptr = components_.get_ptr<Selectable>(entity)) {
-            if (!(ptr->shift xor event.shift) && !(ptr->control xor event.control)) ptr->selected = true;
+            if ((ptr->shift xor event.shift) || (ptr->control xor event.control)) return;
+            ptr->selected = true;
+
+            if (auto input = components_.get_ptr<SynthInput>(entity); input && input->type == SynthInput::kButton)
+                set_alpha(*input);
         } else if (components_.has<CableSource>(entity)) {
             drawing_rope_ = spawn_cable_from(entity, event);
         }
@@ -120,8 +127,10 @@ private:
 
         if (event.shift) {
             components_.run_system<Selectable, SynthInput>(
-                [&](const ecs::Entity& e, const Selectable& selectable, SynthInput& input) {
-                    if (selectable.selected) rotate(event, e, input);
+                [&](const ecs::Entity&, const Selectable& selectable, SynthInput& input) {
+                    if (selectable.selected) {
+                        if (input.type == SynthInput::kKnob) rotate(event, input);
+                    }
                     return selectable.selected;
                 });
         } else if (!event.any_modifiers()) {
@@ -191,12 +200,14 @@ private:
             box.bottom_left.from_parent = moveable.position;
     }
 
-    void rotate(const engine::MouseEvent& event, const ecs::Entity&, SynthInput& input) {
+    void rotate(const engine::MouseEvent& event, SynthInput& input) {
         // Scale the changes back a bit
         input.value += 0.05 * event.delta_position.y();
         // And then clamp to be in the -1 to 1 range
         input.value = std::clamp(input.value, -1.f, 1.f);
     }
+
+    void set_alpha(SynthInput& input) { input.value = input.value > 0.5 ? 0.f : 1.f; }
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
         const auto& box = components_.get<TexturedBox>(entity);

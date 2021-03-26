@@ -3,6 +3,8 @@
 #include <iostream>
 #include <memory>
 
+#include "objects/blocks/amplifier.hh"
+#include "objects/blocks/button.hh"
 #include "objects/blocks/knob.hh"
 #include "objects/blocks/speaker.hh"
 #include "objects/blocks/vco.hh"
@@ -157,10 +159,12 @@ size_t BlockLoader::size() const { return factories_.size(); }
 
 BlockLoader default_loader() {
     BlockLoader loader("objects/blocks.yml");
-    loader.add_factory("VCO", std::make_unique<blocks::VCOFactory>());
-    loader.add_factory("LFO", std::make_unique<blocks::LFOFactory>());
+    loader.add_factory("Voltage Controlled Oscillator", std::make_unique<blocks::VCOFactory>());
+    loader.add_factory("Low Frequency Oscillator", std::make_unique<blocks::LFOFactory>());
     loader.add_factory("Speaker", std::make_unique<blocks::SpeakerFactory>());
     loader.add_factory("Knob", std::make_unique<blocks::KnobFactory>());
+    loader.add_factory("Button", std::make_unique<blocks::ButtonFactory>());
+    loader.add_factory("Amplifier", std::make_unique<blocks::AmpFactory>());
     return loader;
 }
 

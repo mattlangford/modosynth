@@ -187,15 +187,17 @@ struct Serializer<objects::SynthInput> {
     virtual std::string serialize(const objects::SynthInput& in) {
         std::stringstream ss;
         ss << in.parent.id() << ",";
-        ss << in.value;
+        ss << in.value << ",";
+        ss << static_cast<uint8_t>(in.type) << ",";
         return ss.str();
     }
     virtual objects::SynthInput deserialize(const std::string& s) {
         auto data = split(s);
-        if (data.size() < 2) throw std::runtime_error("Can't deserialize " + name() + " from string: " + s);
+        if (data.size() < 3) throw std::runtime_error("Can't deserialize " + name() + " from string: " + s);
         auto parent = ecs::Entity::spawn_with(std::stoi(data[0]));
         auto value = std::stof(data[1]);
-        return {parent, value};
+        auto type = static_cast<objects::SynthInput::Type>(std::stoi(data[2]));
+        return {parent, value, type};
     }
 };
 
