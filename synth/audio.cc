@@ -90,7 +90,7 @@ AudioDriver::~AudioDriver() {
 // #############################################################################
 //
 
-void AudioDriver::flush_events() { soundio_flush_events(soundio); }
+void AudioDriver::flush_events() { soundio_wait_events(soundio); }
 
 //
 // #############################################################################
