@@ -1,7 +1,8 @@
 #include "synth/biquad.hh"
 
 #include <cmath>
-#include <xmmintrin.h>
+#include <sstream>
+#include <iostream>
 
 namespace synth {
 namespace {
@@ -44,6 +45,7 @@ BiQuadFilter::Coeff BiQuadFilter::low_pass_filter(float f0, float gain, float sl
 //
 
 BiQuadFilter::Coeff BiQuadFilter::high_pass_filter(float f0, float gain, float slope) {
+    slope = std::max(1E-3f, slope);
     const double w = compute_w(f0);
     const double alpha = compute_alpha(w, gain, slope);
 
@@ -62,6 +64,7 @@ BiQuadFilter::Coeff BiQuadFilter::high_pass_filter(float f0, float gain, float s
     coeff.b2 *= inv_a0;
     coeff.a1 *= inv_a0;
     coeff.a2 *= inv_a0;
+
     return coeff;
 }
 
@@ -94,19 +97,23 @@ void BiQuadFilter::set_coeff(const Type type, float f0, float gain, float slope)
 //
 
 float BiQuadFilter::process(float xn) {
-    auto mask = _MM_GET_EXCEPTION_MASK();
-    _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
-
     const auto& [b0, b1, b2, a1, a2] = coeff_;
 
     double yn = b0 * xn + b1 * xn_1_ + b2 * xn_2_ - a1 * yn_1_ - a2 * yn_2_;
+
+    if (std::isnan(yn)) {
+        std::stringstream ss;
+        ss << "BiQuadFilter::process() found nan! ";
+        ss << "xn: " << xn << ", xn_1: " << xn_1_ << ", xn_2: " << xn_2_ << ", yn: " << yn << ", yn_1: " << yn_1_ << ", yn_2: " << yn_2_;
+        ss << "b0: " << b0 << ", b1: " << b1 << ", b2: " << b2 << ", a1: " << a1 << ", a2: " << a2;
+        throw std::runtime_error(ss.str());
+    }
+
 
     xn_2_ = xn_1_;
     yn_2_ = yn_1_;
     xn_1_ = xn;
     yn_1_ = yn;
-
-    _MM_SET_EXCEPTION_MASK(mask);
     return yn;
 }
 }  // namespace synth

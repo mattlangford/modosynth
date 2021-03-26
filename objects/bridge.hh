@@ -89,7 +89,7 @@ private:
         // TODO probably could get rid of this dynamic cast, but that'd add complexity
         synth::EjectorNode& ejector = *dynamic_cast<synth::EjectorNode*>(wrapper.node.get());
         for (float sample : ejector.stream().flush_new()) {
-            audio_buffer_.push(0.1 * sample);
+            audio_buffer_.push(sample);
         }
     }
 
