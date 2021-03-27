@@ -32,7 +32,7 @@ class Signal(object):
         for d in self.data:
             full_data.extend(d.tolist())
 
-        x = np.arange(0, len(full_data)) / SampleTime
+        x = np.arange(0, len(full_data)) / SampleRate
 
         plt.plot(x, np.array(full_data))
 
@@ -44,7 +44,7 @@ class Signal(object):
         fft_wave = np.fft.rfft(full_data)
         fft_freq = np.fft.rfftfreq(len(full_data), d=1.0/SampleRate)
 
-        plt.plot(fft_freq[:max_freq], np.array(fft_wave)[:max_freq])
+        plt.plot(fft_freq[:max_freq], np.abs(np.array(fft_wave)[:max_freq]))
 
     def write(self, name):
         full_data = []
@@ -115,7 +115,6 @@ class BiQuadFilter(object):
             for sample in batch:
                 xn = sample
                 yn = b0 * xn + b1 * xn_1 + b2 * xn_2 - a1 * yn_1 - a2 * yn_2
-                print (f"xn: {xn}, yn: {yn}")
 
                 output_batch.append(yn)
 
@@ -129,20 +128,34 @@ class BiQuadFilter(object):
 
         return output
 
+def fftnoise(f):
+    f = np.array(f, dtype='complex')
+    Np = (len(f) - 1) // 2
+    phases = np.random.rand(Np) * 2 * np.pi
+    phases = np.cos(phases) + 1j * np.sin(phases)
+    f[1:Np+1] *= phases
+    f[-1:-1-Np:-1] = np.conj(f[1:Np+1])
+    return np.fft.ifft(f).real
+
 s = Signal()
 
-t = np.linspace(0.0, 1.0, SampleRate)[:5]
+t = np.linspace(0.0, 1.0, SampleRate)
+raw = np.cos(2 * np.pi * 1000 * t)
+plt.plot(t, fftnoise(raw))
+plt.show()
+exit()
+
 data = np.cos(2 * np.pi * 1000 * t)
-#for f in range(100, 2000, 10):
-#    data += np.cos(2 * np.pi * f * t)
+for f in range(100, 2000, 10):
+    data += np.cos(2 * np.pi * f * t)
 
 s.data.append(data)
 
-f = BiQuadFilter.hpf(SampleRate, 2000, 3, 1.0)
-s.fft(2000)
+f = BiQuadFilter.lpf(SampleRate, 500, 3, 1.0)
+s.fft(3000)
 s = f.process(s)
 
 # s.write("/tmp/out.wav")
-# s.fft(2000)
-# plt.show()
+s.fft(2000)
+plt.show()
 
