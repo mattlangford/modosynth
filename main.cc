@@ -36,7 +36,7 @@ int main() {
             std::this_thread::sleep_for(0.3 * duration);
 
             std::lock_guard lock{window.mutex()};
-            bridge.process(duration);
+            // bridge.process(duration);
         }
     }};
 

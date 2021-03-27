@@ -1,8 +1,8 @@
 #include "synth/biquad.hh"
 
 #include <cmath>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
 namespace synth {
 namespace {
@@ -104,11 +104,11 @@ float BiQuadFilter::process(float xn) {
     if (std::isnan(yn)) {
         std::stringstream ss;
         ss << "BiQuadFilter::process() found nan! ";
-        ss << "xn: " << xn << ", xn_1: " << xn_1_ << ", xn_2: " << xn_2_ << ", yn: " << yn << ", yn_1: " << yn_1_ << ", yn_2: " << yn_2_;
+        ss << "xn: " << xn << ", xn_1: " << xn_1_ << ", xn_2: " << xn_2_ << ", yn: " << yn << ", yn_1: " << yn_1_
+           << ", yn_2: " << yn_2_;
         ss << "b0: " << b0 << ", b1: " << b1 << ", b2: " << b2 << ", a1: " << a1 << ", a2: " << a2;
         throw std::runtime_error(ss.str());
     }
-
 
     xn_2_ = xn_1_;
     yn_2_ = yn_1_;

@@ -104,6 +104,18 @@ struct Serializer<objects::Selectable> {
         return out;
     }
 };
+template <>
+struct Serializer<objects::Removeable> {
+    virtual std::string name() const { return "Removeable"; }
+    virtual std::string serialize(const objects::Removeable& in) {
+        std::stringstream ss;
+        return ss.str();
+    }
+    virtual objects::Removeable deserialize(const std::string& s) {
+        objects::Removeable out;
+        return out;
+    }
+};
 
 template <>
 struct Serializer<objects::CableSource> {

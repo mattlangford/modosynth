@@ -36,6 +36,9 @@ struct Selectable {
     static Selectable require_shift() { return {false, true, false}; }
     static Selectable require_control() { return {false, false, true}; }
 };
+struct Removeable {
+    std::vector<ecs::Entity> childern;
+};
 
 struct CableSource {
     size_t index;
@@ -77,7 +80,7 @@ struct SynthConnection {
 };
 
 using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable,
-                                               SynthNode, SynthInput, SynthOutput, SynthConnection>;
+                                               SynthNode, SynthInput, SynthOutput, SynthConnection, Removeable>;
 
 Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& manager);
 

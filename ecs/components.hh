@@ -136,6 +136,7 @@ public:
         auto& proxy = lookup(entity);
         auto& index = proxy.index;
 
+        std::cerr << "despawning id: " << proxy.id() << "\n";
         // Clear the proxy
         proxy.empty = true;
         free_.push(proxy.id());
