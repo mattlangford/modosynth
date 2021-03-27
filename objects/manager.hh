@@ -18,9 +18,6 @@ class Manager : public engine::AbstractObjectManager {
 public:
     Manager(const BlockLoader& loader, ComponentManager& components, EventManager& events)
         : loader_(loader), components_(components), events_(events) {
-        events_.add_undo_handler<Spawn>([this](const Spawn& s) { undo_spawn(s); });
-        events_.add_undo_handler<Connect>([this](const Connect& s) { undo_connect(s); });
-
         for (const std::string& texture_path : loader_.textures()) {
             box_renderer_.add_texture({texture_path});
         }
@@ -30,6 +27,7 @@ public:
         box_renderer_.init();
         line_renderer_.init();
         print_help();
+        update_undo_state();  // initialize it
     }
 
     void render(const Eigen::Matrix3f& screen_from_world) override {
@@ -83,11 +81,13 @@ public:
             static int i = 0;
             spawn_block(i++ % loader_.size());
         } else if (event.clicked && event.control && event.key == 'z') {
-            events_.undo();
+            undo();
+            reset_id();
         } else if (event.clicked && event.control && event.key == 's') {
             save("/tmp/save", components_);
         } else if (event.clicked && event.control && event.key == 'l') {
-            load("/tmp/save");
+            load("/tmp/save", components_);
+            reset_id();
         } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
         } else if (event.pressed() && event.key == 'h') {
@@ -96,14 +96,6 @@ public:
     }
 
 private:
-    void undo_spawn(const Spawn& spawn) {
-        components_.despawn(spawn.primary);
-        for (const auto& entity : spawn.entities) {
-            components_.despawn(entity);
-        };
-    }
-    void undo_connect(const Connect& connect) { components_.despawn(connect.entity); }
-
     void mouse_click(const engine::MouseEvent& event, const ecs::Entity& entity) {
         if (auto ptr = components_.get_ptr<Selectable>(entity)) {
             if ((ptr->shift xor event.shift) || (ptr->control xor event.control)) return;
@@ -172,6 +164,22 @@ private:
         }
     }
 
+    void undo() {
+        std::cout << "Undoing (" << undo_.size() << ")\n";
+        if (undo_.size() <= 1) {
+            std::cout << "Nothing to undo.\n";
+            return;
+        }
+
+        undo_.pop();  // the top will be the current state, so remove that before restoring the previous
+        components_ = undo_.top();
+    }
+    void update_undo_state() {
+        undo_.push(components_);
+        constexpr size_t kUndoLimit = 10;
+        while (undo_.size() > kUndoLimit) undo_.pop();
+    }
+
     void spawn_block(size_t index) { spawn_block(loader_.names().at(index)); }
     void spawn_block(std::string name) {
         auto& factory = loader_.get(name);
@@ -184,15 +192,14 @@ private:
         node.id = id_++;
 
         components_.add<Removeable>(spawn.primary, {spawn.entities});
-        events_.trigger(spawn);
+        update_undo_state();
     }
     void remove_block(const ecs::Entity& entity, const Removeable& removeable) {
         for (const auto& e : removeable.childern) {
             components_.despawn(e);
         }
         components_.despawn(entity);
-
-        // TODO Events for undoing
+        update_undo_state();
     }
 
     void finialize_connection(const ecs::Entity& cable_entity, const ecs::Entity& end_entity) {
@@ -201,7 +208,7 @@ private:
         cable.end = Transform{end_entity, 0.5 * end_box.dim};
 
         components_.add(cable_entity, connection_from_cable(cable, components_));
-        events_.trigger(Connect{cable_entity});
+        update_undo_state();
     }
 
     void move(const engine::MouseEvent& event, TexturedBox& box, Moveable& moveable) {
@@ -239,9 +246,7 @@ private:
         return selected;
     }
 
-    void load(const std::filesystem::path&) {
-        ::objects::load("/tmp/save", components_);
-
+    void reset_id() {
         // Make sure the ID is updated
         components_.run_system<SynthNode>(
             [&](const ecs::Entity&, const SynthNode& node) { id_ = std::max(node.id, id_); });
@@ -255,6 +260,8 @@ private:
 
     engine::renderer::BoxRenderer box_renderer_;
     engine::renderer::LineRenderer line_renderer_;
+
+    std::stack<ComponentManager> undo_;
 
     std::optional<ecs::Entity> drawing_rope_;
     size_t id_ = 0;
