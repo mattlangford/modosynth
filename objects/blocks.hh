@@ -7,7 +7,6 @@
 
 #include "ecs/entity.hh"
 #include "objects/components.hh"
-#include "objects/events.hh"
 #include "synth/node.hh"
 
 namespace objects {
@@ -31,6 +30,15 @@ struct Config {
     const BlockConfig& get(const std::string& name) const;
 
     std::unordered_map<std::string, BlockConfig> blocks;
+};
+
+//
+// #############################################################################
+//
+
+struct Spawn {
+    ecs::Entity primary;
+    std::vector<ecs::Entity> entities;
 };
 
 //

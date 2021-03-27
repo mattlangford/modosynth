@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "objects/components.hh"
-#include "objects/events.hh"
 #include "synth/debug.hh"
 #include "synth/node.hh"
 #include "synth/runner.hh"
@@ -20,8 +19,6 @@ public:
 public:
     ComponentManager& component_manager() { return component_; };
     const ComponentManager& component_manager() const { return component_; };
-    EventManager& event_manager() { return event_; };
-    const EventManager& event_manager() const { return event_; };
 
     synth::ThreadSafeBuffer& audio_buffer() { return audio_buffer_; }
 
@@ -122,7 +119,6 @@ private:
 private:
     const BlockLoader& loader_;
     ComponentManager component_;
-    EventManager event_;
 
     synth::Runner runner_;
 

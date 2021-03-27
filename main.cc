@@ -15,7 +15,7 @@ int main() {
     objects::BlockLoader loader = objects::default_loader();
     objects::Bridge bridge{loader};
 
-    auto manager = std::make_shared<objects::Manager>(loader, bridge.component_manager(), bridge.event_manager());
+    auto manager = std::make_shared<objects::Manager>(loader, bridge.component_manager());
 
     synth::AudioDriver driver{bridge.audio_buffer()};
     driver.start_thread();

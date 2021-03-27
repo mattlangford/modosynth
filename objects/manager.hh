@@ -7,7 +7,6 @@
 #include "objects/blocks.hh"
 #include "objects/catenary.hh"
 #include "objects/components.hh"
-#include "objects/events.hh"
 
 namespace objects {
 //
@@ -16,8 +15,7 @@ namespace objects {
 
 class Manager : public engine::AbstractObjectManager {
 public:
-    Manager(const BlockLoader& loader, ComponentManager& components, EventManager& events)
-        : loader_(loader), components_(components), events_(events) {
+    Manager(const BlockLoader& loader, ComponentManager& components) : loader_(loader), components_(components) {
         for (const std::string& texture_path : loader_.textures()) {
             box_renderer_.add_texture({texture_path});
         }
@@ -256,7 +254,6 @@ private:
 private:
     const BlockLoader& loader_;
     ComponentManager& components_;
-    EventManager& events_;
 
     engine::renderer::BoxRenderer box_renderer_;
     engine::renderer::LineRenderer line_renderer_;
