@@ -109,10 +109,14 @@ struct Serializer<objects::Removeable> {
     virtual std::string name() const { return "Removeable"; }
     virtual std::string serialize(const objects::Removeable& in) {
         std::stringstream ss;
-        return ss.str();
+        for (const auto& entity : in.childern) ss << entity.id() << ",";
+        std::string s = ss.str();
+        size_t size = s.size();
+        return s.substr(0, size - 1);  // remove the , at the end
     }
     virtual objects::Removeable deserialize(const std::string& s) {
         objects::Removeable out;
+        for (const std::string& id : split(s)) out.childern.push_back(ecs::Entity::spawn_with(std::stoi(id)));
         return out;
     }
 };
