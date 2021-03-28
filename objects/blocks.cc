@@ -94,11 +94,12 @@ std::vector<ecs::Entity> SimpleBlockFactory::spawn_ports(const ecs::Entity& pare
 
     for (size_t i = 0; i < config_.inputs; ++i) {
         Eigen::Vector2f offset{-3.0, height - (i + 1) * input_spacing - 1.5};
-        entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableSink{i}));
+        entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableNode::make_sink(i)));
     }
     for (size_t i = 0; i < config_.outputs; ++i) {
         Eigen::Vector2f offset{width, height - (i + 1) * output_spacing - 1.5};
-        entities.push_back(manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableSource{i}));
+        entities.push_back(
+            manager.spawn(TexturedBox{Transform{parent, offset}, dim, uv, 1}, CableNode::make_source(i)));
     }
 
     return entities;

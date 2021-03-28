@@ -18,6 +18,8 @@ public:
     const double& length() const;
     bool flipped() const;
 
+    Eigen::Vector2f compute_diff() const;
+
 private:
     double f(double x) const;
     constexpr static double sq(double in) { return in * in; }

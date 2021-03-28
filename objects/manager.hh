@@ -100,7 +100,7 @@ private:
             ptr->selected = true;
             if (auto input = components_.get_ptr<SynthInput>(entity); input && input->type == SynthInput::kButton)
                 set_alpha(*input);
-        } else if (components_.has<CableSource>(entity)) {
+        } else if (auto ptr = components_.get_ptr<CableNode>(entity); ptr && ptr->is_source()) {
             drawing_rope_ = spawn_cable_from(entity, event);
         }
     }
@@ -146,12 +146,12 @@ private:
         auto drawing_rope = *drawing_rope_;
         drawing_rope_ = std::nullopt;
 
-        if (!entity || !components_.has<CableSink>(*entity)) {
-            components_.despawn(*drawing_rope_);
+        // If the entity that was released over was a sink we can finalize the connection
+        if (auto ptr = entity ? components_.get_ptr<CableNode>(*entity) : nullptr; ptr && ptr->is_sink()) {
+            finialize_connection(drawing_rope, *entity);
             return;
         }
-
-        finialize_connection(drawing_rope, *entity);
+        components_.despawn(drawing_rope);
     }
 
 private:

@@ -40,11 +40,15 @@ struct Removeable {
     std::vector<ecs::Entity> childern;
 };
 
-struct CableSource {
+struct CableNode {
+    bool source;
     size_t index;
-};
-struct CableSink {
-    size_t index;
+
+    static CableNode make_source(size_t i) { return {true, i}; }
+    static CableNode make_sink(size_t i) { return {false, i}; }
+
+    inline bool is_source() const { return source; }
+    inline bool is_sink() const { return !source; }
 };
 struct Cable {
     Transform start;
@@ -79,8 +83,8 @@ struct SynthConnection {
     size_t to_port;
 };
 
-using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableSource, CableSink, Cable,
-                                               SynthNode, SynthInput, SynthOutput, SynthConnection, Removeable>;
+using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableNode, Cable, SynthNode,
+                                               SynthInput, SynthOutput, SynthConnection, Removeable>;
 
 Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& manager);
 

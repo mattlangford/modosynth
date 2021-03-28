@@ -122,30 +122,16 @@ struct Serializer<objects::Removeable> {
 };
 
 template <>
-struct Serializer<objects::CableSource> {
-    virtual std::string name() const { return "CableSource"; }
-    virtual std::string serialize(const objects::CableSource& in) {
+struct Serializer<objects::CableNode> {
+    virtual std::string name() const { return "CableNode"; }
+    virtual std::string serialize(const objects::CableNode& in) {
         std::stringstream ss;
+        ss << in.source << ",";
         ss << in.index;
         return ss.str();
     }
-    virtual objects::CableSource deserialize(const std::string& s) {
-        objects::CableSource out;
-        out.index = std::stoi(s);
-        return out;
-    }
-};
-
-template <>
-struct Serializer<objects::CableSink> {
-    virtual std::string name() const { return "CableSink"; }
-    virtual std::string serialize(const objects::CableSink& in) {
-        std::stringstream ss;
-        ss << in.index;
-        return ss.str();
-    }
-    virtual objects::CableSink deserialize(const std::string& s) {
-        objects::CableSink out;
+    virtual objects::CableNode deserialize(const std::string& s) {
+        objects::CableNode out;
         out.index = std::stoi(s);
         return out;
     }
@@ -274,12 +260,12 @@ Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& mana
 
 SynthConnection connection_from_cable(const Cable& cable, const ComponentManager& manager) {
     const auto& start = cable.start.parent.value();
-    auto [from_box, from_cable] = manager.get<TexturedBox, CableSource>(start);
+    auto [from_box, from_cable] = manager.get<TexturedBox, CableNode>(start);
     const ecs::Entity& from = from_box.bottom_left.parent.value();
     const size_t& from_port = from_cable.index;
 
     const auto& end = cable.end.parent.value();
-    auto [to_box, to_cable] = manager.get<TexturedBox, CableSink>(end);
+    auto [to_box, to_cable] = manager.get<TexturedBox, CableNode>(end);
     const ecs::Entity& to = to_box.bottom_left.parent.value();
     const size_t& to_port = to_cable.index;
 

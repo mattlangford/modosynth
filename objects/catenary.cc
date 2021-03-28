@@ -40,7 +40,7 @@ bool CatenarySolver::maybe_reset(Eigen::Vector2f start, Eigen::Vector2f end, flo
 bool CatenarySolver::solve(double tol, size_t max_iter) {
     size_t iter = 0;
 
-    const Eigen::Vector2f diff = end_ - start_;
+    const Eigen::Vector2f diff = compute_diff();
 
     // Function we're optimizing which relates the free parameter (b) to the size of the opening we need.
     // [1] https://foggyhazel.wordpress.com/2018/02/12/catenary-passing-through-2-points/
@@ -77,7 +77,7 @@ std::vector<Eigen::Vector2f> CatenarySolver::trace(size_t points) const {
     std::vector<Eigen::Vector2f> result;
     result.reserve(points);
 
-    const Eigen::Vector2f diff = end_ - start_;
+    const Eigen::Vector2f diff = compute_diff();
 
     double step_size = diff.x() / (points - 1);
     double x = 0;
@@ -105,5 +105,16 @@ bool CatenarySolver::flipped() const { return flipped_; }
 //
 
 double CatenarySolver::f(double x) const { return alpha_ * std::cosh((x - x_offset_) / alpha_) + y_offset_; }
+
+//
+// #############################################################################
+//
+
+Eigen::Vector2f CatenarySolver::compute_diff() const
+{
+    Eigen::Vector2f diff = end_ - start_;
+    diff.x() = std::max(1E-3f, diff.x()); // Avoid numerical issue when the X diff is too small
+    return diff;
+}
 
 }  // namespace objects
