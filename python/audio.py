@@ -8,9 +8,6 @@ SampleTime = 1 / SampleRate
 BatchSize = 128
 BatchTime = BatchSize / SampleRate
 
-FadeBatchSize = 200
-FadeBatchTime = FadeBatchSize * BatchTime
-
 class Signal(object):
     def __init__(self):
         self.data = []
@@ -40,11 +37,13 @@ class Signal(object):
         full_data = []
         for d in self.data:
             full_data.extend(d.tolist())
+        full_data.extend(np.zeros(SampleRate))
 
         fft_wave = np.fft.rfft(full_data)
         fft_freq = np.fft.rfftfreq(len(full_data), d=1.0/SampleRate)
 
-        plt.plot(fft_freq[:max_freq], np.abs(np.array(fft_wave)[:max_freq]))
+        print (max(np.abs(fft_wave)), min(np.abs(fft_wave)))
+        plt.plot(fft_freq[:max_freq], np.abs(fft_wave[:max_freq]))
 
     def write(self, name):
         full_data = []
@@ -79,7 +78,6 @@ class BiQuadFilter(object):
 
     @staticmethod
     def lpf(fs, f0, db_gain, s):
-        print (f"{f0}, {db_gain}, {s}")
         w, alpha = intermediate(fs, f0, db_gain, s)
         b0 = (1 - np.cos(w)) * 0.5
         b1 = 2 * b0
@@ -91,7 +89,6 @@ class BiQuadFilter(object):
 
     @staticmethod
     def hpf(fs, f0, db_gain, s):
-        print (f"{f0}, {db_gain}, {s}")
         w, alpha = intermediate(fs, f0, db_gain, s)
         b0 = (1 + np.cos(w)) * 0.5
         b1 = -2 * b0
@@ -128,34 +125,25 @@ class BiQuadFilter(object):
 
         return output
 
-def fftnoise(f):
-    f = np.array(f, dtype='complex')
-    Np = (len(f) - 1) // 2
-    phases = np.random.rand(Np) * 2 * np.pi
-    phases = np.cos(phases) + 1j * np.sin(phases)
-    f[1:Np+1] *= phases
-    f[-1:-1-Np:-1] = np.conj(f[1:Np+1])
-    return np.fft.ifft(f).real
 
 s = Signal()
 
 t = np.linspace(0.0, 1.0, SampleRate)
-raw = np.cos(2 * np.pi * 1000 * t)
-plt.plot(t, fftnoise(raw))
-plt.show()
-exit()
-
+data = np.zeros_like(t)
+#for f in range(100, 10000, 10):
 data = np.cos(2 * np.pi * 1000 * t)
-for f in range(100, 2000, 10):
-    data += np.cos(2 * np.pi * f * t)
+data += np.cos(2 * np.pi * 100 * t)
 
 s.data.append(data)
 
-f = BiQuadFilter.lpf(SampleRate, 500, 3, 1.0)
-s.fft(3000)
+f = BiQuadFilter.hpf(SampleRate, 3000, 3, 0.1)
+s.fft(2000)
+plt.yscale('log',base=10)
+
 s = f.process(s)
+s.fft(2000)
 
 # s.write("/tmp/out.wav")
-s.fft(2000)
+#s.fft(10000)
 plt.show()
 
