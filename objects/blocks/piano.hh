@@ -99,17 +99,17 @@ private:
     }
     std::pair<float, float> fade_info(bool is_enabled, bool was_enabled) const {
         if (is_enabled && was_enabled) {
-            return {1.f, 0.f};
-        }  // on
+            return {1.f, 0.f}; // on
+        }
         if (!is_enabled && !was_enabled) {
-            return {0.f, 0.f};
-        }  // off
+            return {0.f, 0.f}; // off
+            }
         if (is_enabled && !was_enabled) {
-            return {0.f, 1.f / synth::Samples::kBatchSize};
-        }  // fade on
+            return {0.f, 1.f / synth::Samples::kBatchSize}; // fade on
+        }
         if (!is_enabled && was_enabled) {
-            return {1.f, -1.f / synth::Samples::kBatchSize};
-        }  // fade off
+            return {1.f, -1.f / synth::Samples::kBatchSize}; // fade off
+        }
         return {0.0, 0.0};
     }
 

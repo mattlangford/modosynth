@@ -76,10 +76,7 @@ public:
     }
 
     void handle_keyboard_event(const engine::KeyboardEvent& event) override {
-        if (event.pressed() && event.space) {
-            static int i = 0;
-            spawn_block(i++ % loader_.size());
-        } else if (event.clicked && event.control && event.key == 'z') {
+        if (event.clicked && event.control && event.key == 'z') {
             undo();
             reset_id();
         } else if (event.clicked && event.control && event.key == 's') {
