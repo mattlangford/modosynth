@@ -5,6 +5,7 @@
 #include "engine/renderer/line.hh"
 #include "engine/utils.hh"
 #include "objects/blocks.hh"
+#include "objects/blocks/piano.hh"
 #include "objects/catenary.hh"
 #include "objects/components.hh"
 
@@ -88,8 +89,12 @@ public:
             reset_id();
         } else if (event.pressed() && (static_cast<size_t>(event.key - '1') < loader_.size())) {
             spawn_block(event.key - '1');
-        } else if (event.pressed() && event.key == 'h') {
+        } else if (event.pressed() && event.tab) {
             print_help();
+        } else if (!event.any_modifiers()) {
+            piano_.set_key(event.key, event.clicked);
+            components_.run_system<Piano, SynthInput>(
+                [this](const ecs::Entity&, const Piano&, SynthInput& input) { input.value = piano_.as_float(); });
         }
     }
 
@@ -262,6 +267,8 @@ private:
 
     std::optional<ecs::Entity> drawing_rope_;
     size_t id_ = 0;
+
+    blocks::PianoHelper piano_;
 };
 
 }  // namespace objects

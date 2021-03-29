@@ -65,7 +65,7 @@ struct SynthInput {
     ecs::Entity parent;
     float value;
 
-    enum Type : uint8_t { kKnob = 0, kButton = 1 };
+    enum Type : uint8_t { kKnob = 0, kButton = 1, kOther = 2 };
     Type type;
 };
 struct SynthOutput {
@@ -83,8 +83,10 @@ struct SynthConnection {
     size_t to_port;
 };
 
+struct Piano {};
+
 using ComponentManager = ecs::ComponentManager<TexturedBox, Moveable, Selectable, CableNode, Cable, SynthNode,
-                                               SynthInput, SynthOutput, SynthConnection, Removeable>;
+                                               SynthInput, SynthOutput, SynthConnection, Removeable, Piano>;
 
 Eigen::Vector2f world_position(const Transform& tf, const ComponentManager& manager);
 

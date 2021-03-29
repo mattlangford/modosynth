@@ -7,6 +7,7 @@
 #include "objects/blocks/button.hh"
 #include "objects/blocks/filter.hh"
 #include "objects/blocks/knob.hh"
+#include "objects/blocks/piano.hh"
 #include "objects/blocks/speaker.hh"
 #include "objects/blocks/vco.hh"
 #include "yaml-cpp/yaml.h"
@@ -174,6 +175,7 @@ BlockLoader default_loader() {
     loader.add_factory(std::make_unique<blocks::ButtonFactory>());
     loader.add_factory(std::make_unique<blocks::AmpFactory>());
     loader.add_factory(std::make_unique<blocks::HPFFactory>());
+    loader.add_factory(std::make_unique<blocks::PianoFactory>());
     loader.add_factory(std::make_unique<blocks::LPFFactory>());
     return loader;
 }

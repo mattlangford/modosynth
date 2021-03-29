@@ -243,6 +243,13 @@ struct Serializer<objects::SynthConnection> {
     }
 };
 
+template <>
+struct Serializer<objects::Piano> {
+    virtual std::string name() const { return "Piano"; }
+    virtual std::string serialize(const objects::Piano&) { return ""; }
+    virtual objects::Piano deserialize(const std::string&) { return {}; }
+};
+
 namespace objects {
 //
 // #############################################################################

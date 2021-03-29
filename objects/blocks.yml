@@ -32,3 +32,6 @@ blocks:
     - name: "ButtonForeground"
       uv: [48, 48]
       dim: [16, 16]
+    - name: "Piano"
+      uv: [32, 64]
+      dim: [32, 16]

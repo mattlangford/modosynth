@@ -58,10 +58,11 @@ public:
     void reset_connections() final {}
     void connect(size_t) final { throw std::runtime_error("InjectorNode::connect()"); }
     void add_input(size_t, const Samples&) final { throw std::runtime_error("InjectorNode::set_input()"); };
-    Samples get_output(size_t) const final { return Samples{value_}; }
+    Samples get_output(size_t) const override { return Samples{value_}; }
 
 public:
     void set_value(float value) { value_ = value; }
+    float get_value() const { return value_; }
 
 private:
     float value_ = 0.f;

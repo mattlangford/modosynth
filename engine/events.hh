@@ -80,6 +80,10 @@ struct KeyboardEvent {
     bool up_arrow = false;
     bool down_arrow = false;
     bool escape = false;
+    inline bool any_modifiers() const {
+        return control || shift || enter || space || tab || backspace || right_arrow || left_arrow || up_arrow ||
+               down_arrow || escape;
+    }
 };
 
 class KeyboardEventManager {

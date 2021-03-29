@@ -110,10 +110,9 @@ double CatenarySolver::f(double x) const { return alpha_ * std::cosh((x - x_offs
 // #############################################################################
 //
 
-Eigen::Vector2f CatenarySolver::compute_diff() const
-{
+Eigen::Vector2f CatenarySolver::compute_diff() const {
     Eigen::Vector2f diff = end_ - start_;
-    diff.x() = std::max(1E-3f, diff.x()); // Avoid numerical issue when the X diff is too small
+    diff.x() = std::max(1E-3f, diff.x());  // Avoid numerical issue when the X diff is too small
     return diff;
 }
 

@@ -132,7 +132,7 @@ void KeyboardEventManager::key_callback(GLFWwindow* /*window*/, int key, int /*s
     KeyboardEvent event;
     event.was_clicked = was_clicked;
 
-    event.clicked = action == GLFW_PRESS;
+    event.clicked = action == GLFW_PRESS || action == GLFW_REPEAT;
     event.control = (mods & GLFW_MOD_CONTROL) != 0;
     event.shift = (mods & GLFW_MOD_SHIFT) != 0;
 
