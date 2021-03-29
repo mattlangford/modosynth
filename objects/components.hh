@@ -55,6 +55,7 @@ struct Cable {
     Transform end;
 
     objects::CatenarySolver solver;
+    std::vector<Eigen::Vector2f> points;
 };
 
 struct SynthNode {

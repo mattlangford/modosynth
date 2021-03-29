@@ -45,21 +45,24 @@ public:
 
             box_renderer_.draw(r_box, screen_from_world);
         });
-        components_.run_system<Cable>([&](const ecs::Entity&, const Cable& rope) {
+        components_.run_system<Cable>([&](const ecs::Entity&, const Cable& cable) {
             engine::renderer::Line line;
-            line.segments = rope.solver.trace(32);
+            line.segments = cable.points;
             line_renderer_.draw(line, screen_from_world);
         });
     }
 
 public:
     void update(float) override {
-        components_.run_system<Cable>([this](const ecs::Entity&, Cable& rope) {
-            const Eigen::Vector2f start = world_position(rope.start, components_);
-            const Eigen::Vector2f end = world_position(rope.end, components_);
+        components_.run_system<Cable>([this](const ecs::Entity&, Cable& cable) {
+            const Eigen::Vector2f start = world_position(cable.start, components_);
+            const Eigen::Vector2f end = world_position(cable.end, components_);
 
             double min_length = 1.01 * (end - start).norm();
-            if (rope.solver.maybe_reset(start, end, std::max(min_length, rope.solver.length()))) rope.solver.solve();
+            if (cable.solver.maybe_reset(start, end, std::max(min_length, cable.solver.length()))) {
+                cable.solver.solve();
+                cable.points = cable.solver.trace(32);
+            }
         });
     }
 
@@ -69,9 +72,7 @@ public:
         } else if (event.held()) {
             mouse_drag(event);
         } else if (event.released()) {
-            auto boxes = get_boxes_under_mouse(event.mouse_position);
-            if (boxes.empty()) mouse_released(event, std::nullopt);
-            for (const auto& entity : boxes) mouse_released(event, entity);
+            mouse_released(event);
         }
     }
 
@@ -103,12 +104,12 @@ private:
             if (auto input = components_.get_ptr<SynthInput>(entity); input && input->type == SynthInput::kButton)
                 set_alpha(*input);
         } else if (auto ptr = components_.get_ptr<CableNode>(entity); ptr && ptr->is_source()) {
-            drawing_rope_ = spawn_cable_from(entity, event);
+            drawing_cable_ = spawn_cable_from(entity, event);
         }
     }
 
     void mouse_drag(const engine::MouseEvent& event) {
-        if (drawing_rope_) {
+        if (drawing_cable_) {
             components_.run_system<Cable>([&event](const ecs::Entity&, Cable& r) {
                 if (r.end.parent) return;
                 r.end.from_parent = event.mouse_position;
@@ -133,27 +134,31 @@ private:
         }
     }
 
-    void mouse_released(const engine::MouseEvent& event, const std::optional<ecs::Entity>& entity) {
-        if (event.control && entity) {
-            if (auto ptr = components_.get_ptr<Removeable>(*entity)) remove_block(*entity, *ptr);
-            return;
+    void mouse_released(const engine::MouseEvent& event) {
+        if (drawing_cable_) {
+            auto drawing_cable = *drawing_cable_;
+            drawing_cable_ = std::nullopt;
+
+            // If the entity that was released over was a sink we can finalize the connection
+            for (const auto& entity : get_boxes_under_mouse(event.mouse_position)) {
+                if (auto ptr = components_.get_ptr<CableNode>(entity); ptr && ptr->is_sink()) {
+                    finialize_connection(drawing_cable, entity);
+                    return;
+                }
+            }
+
+            // Otherwise just despawn the cable
+            components_.despawn(drawing_cable);
         }
 
-        if (!drawing_rope_) {
-            auto [ptr, size] = components_.raw_view<Selectable>();
-            for (size_t i = 0; i < size; ++i) ptr[i].selected = false;
-            return;
+        if (event.control) {
+            for (const auto& entity : get_boxes_under_mouse(event.mouse_position))
+                if (auto ptr = components_.get_ptr<Removeable>(entity)) remove_block(entity, *ptr);
+            for (const auto& entity : get_cables_under_mouse(event.mouse_position)) remove_cable(entity);
         }
 
-        auto drawing_rope = *drawing_rope_;
-        drawing_rope_ = std::nullopt;
-
-        // If the entity that was released over was a sink we can finalize the connection
-        if (auto ptr = entity ? components_.get_ptr<CableNode>(*entity) : nullptr; ptr && ptr->is_sink()) {
-            finialize_connection(drawing_rope, *entity);
-            return;
-        }
-        components_.despawn(drawing_rope);
+        auto [ptr, size] = components_.raw_view<Selectable>();
+        for (size_t i = 0; i < size; ++i) ptr[i].selected = false;
     }
 
 private:
@@ -201,11 +206,30 @@ private:
         components_.despawn(entity);
         update_undo_state();
     }
+    void remove_cable(const ecs::Entity& entity) {
+        // First we need to remove this cable from the parent blocks.
+        // TODO: Pretty annoying eh?
+        // const auto cable = components_.get<Cable>(entity);
+        // auto& start = components_components_.get<TexturedBox>(cable.start.parent.value()).childern;
+        // auto& end = components_.get<TexturedBox>(cable.end.parent.value()).childern;
+
+        // const auto predicate = [&entity](const ecs::Entity& child) { return child.id() == entity.id(); };
+        // start.erase(std::remove_if(start.begin(), start.end(), predicate), start.end());
+        // end.erase(std::remove_if(end.begin(), end.end(), predicate), end.end());
+
+        components_.despawn(entity);
+        update_undo_state();
+    }
 
     void finialize_connection(const ecs::Entity& cable_entity, const ecs::Entity& end_entity) {
         const auto& end_box = components_.get<TexturedBox>(end_entity);
         auto& cable = components_.get<Cable>(cable_entity);
         cable.end = Transform{end_entity, 0.5 * end_box.dim};
+
+        // Make sure this cable is removed if the parent box is removed
+        const auto& start_box = components_.get<TexturedBox>(cable.start.parent.value());
+        components_.get<Removeable>(start_box.bottom_left.parent.value()).childern.push_back(cable_entity);
+        components_.get<Removeable>(end_box.bottom_left.parent.value()).childern.push_back(cable_entity);
 
         components_.add(cable_entity, connection_from_cable(cable, components_));
         update_undo_state();
@@ -231,7 +255,7 @@ private:
 
     ecs::Entity spawn_cable_from(const ecs::Entity& entity, const engine::MouseEvent& event) {
         const auto& box = components_.get<TexturedBox>(entity);
-        return components_.spawn<Cable>({{entity, 0.5 * box.dim}, {std::nullopt, event.mouse_position}, {}});
+        return components_.spawn<Cable>({{entity, 0.5 * box.dim}, {std::nullopt, event.mouse_position}, {}, {}});
     }
 
     std::vector<ecs::Entity> get_boxes_under_mouse(const Eigen::Vector2f& mouse) {
@@ -241,6 +265,21 @@ private:
             const Eigen::Vector2f bottom_left = world_position(box.bottom_left, components_);
             if (engine::is_in_rectangle(mouse, bottom_left, bottom_left + box.dim)) {
                 selected.push_back(e);
+            }
+        });
+        return selected;
+    }
+
+    std::vector<ecs::Entity> get_cables_under_mouse(const Eigen::Vector2f& mouse) {
+        // TODO There needs to be some Z sorting here...
+        std::vector<ecs::Entity> selected;
+        components_.run_system<Cable>([&](const ecs::Entity& e, const Cable& cable) {
+            for (const Eigen::Vector2f& point : cable.points) {
+                constexpr float kTol = 5.0;
+                if ((mouse - point).squaredNorm() < kTol * kTol) {
+                    selected.push_back(e);
+                    break;
+                }
             }
         });
         return selected;
@@ -262,7 +301,7 @@ private:
 
     std::stack<ComponentManager> undo_;
 
-    std::optional<ecs::Entity> drawing_rope_;
+    std::optional<ecs::Entity> drawing_cable_;
     size_t id_ = 0;
 
     blocks::PianoHelper piano_;
