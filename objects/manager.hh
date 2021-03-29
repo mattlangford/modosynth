@@ -207,16 +207,6 @@ private:
         update_undo_state();
     }
     void remove_cable(const ecs::Entity& entity) {
-        // First we need to remove this cable from the parent blocks.
-        // TODO: Pretty annoying eh?
-        // const auto cable = components_.get<Cable>(entity);
-        // auto& start = components_components_.get<TexturedBox>(cable.start.parent.value()).childern;
-        // auto& end = components_.get<TexturedBox>(cable.end.parent.value()).childern;
-
-        // const auto predicate = [&entity](const ecs::Entity& child) { return child.id() == entity.id(); };
-        // start.erase(std::remove_if(start.begin(), start.end(), predicate), start.end());
-        // end.erase(std::remove_if(end.begin(), end.end(), predicate), end.end());
-
         components_.despawn(entity);
         update_undo_state();
     }

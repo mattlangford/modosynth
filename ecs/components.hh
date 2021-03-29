@@ -136,6 +136,9 @@ public:
         auto& proxy = lookup(entity);
         auto& index = proxy.index;
 
+        // Probably should throw here, but I'm using it to avoid keeping track of things
+        if (proxy.empty) return;
+
         // Clear the proxy
         proxy.empty = true;
         free_.push(proxy.id());
