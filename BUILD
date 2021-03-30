@@ -4,6 +4,7 @@ cc_binary(
     deps = [
         "//ecs",
         "//engine",
+        "//window",
         "//objects",
     ]
 )

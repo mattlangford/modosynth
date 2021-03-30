@@ -2,11 +2,11 @@
 
 #include "engine/object_global.hh"
 #include "engine/renderer/grid.hh"
-#include "engine/window.hh"
 #include "objects/blocks.hh"
 #include "objects/bridge.hh"
 #include "objects/manager.hh"
 #include "synth/audio.hh"
+#include "window/window.hh"
 
 constexpr size_t kWidth = 1280;
 constexpr size_t kHeight = 720;
