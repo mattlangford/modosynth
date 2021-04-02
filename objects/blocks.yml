@@ -1,5 +1,5 @@
 ---
-texture_path: "/Users/mlangford/Downloads/test.bmp"
+texture_path: "objects/texture.bmp"
 port_texture_path: "objects/ports.bmp"
 blocks:
     - name: "Voltage Controlled Oscillator"
