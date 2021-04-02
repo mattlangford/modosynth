@@ -17,8 +17,8 @@ cc_library(
     visibility = ["//visibility:public"],
     data = [":config", ":textures"],
     deps = [
-        "//ecs",
-        "//engine",
+        "@engine//ecs",
+        "@engine//engine",
         "//synth",
         "@glfw//:glfw",
         "@eigen//:eigen",

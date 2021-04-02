@@ -16,6 +16,13 @@ git_repository(
     shallow_since = "1609854028 -0600",
 )
 
+git_repository(
+    name = "engine",
+    remote = "https://github.com/mattlangford/engine",
+    commit = "cc9fe14910f1198acbc2f32ca815ba34ef701f2f",
+    shallow_since = "1617376401 -0400"
+)
+
 new_git_repository(
     name = "glfw",
     remote = "https://github.com/glfw/glfw.git",

@@ -2,9 +2,9 @@ cc_binary(
     name = "main",
     srcs = ["main.cc"],
     deps = [
-        "//ecs",
-        "//engine",
-        "//window",
+        "@engine//ecs",
+        "@engine//engine",
+        "@engine//window",
         "//objects",
     ]
 )
@@ -13,8 +13,8 @@ cc_binary(
     name = "test_main",
     srcs = ["test.cc"],
     deps = [
-        "//ecs",
-        "//engine",
+        "@engine//ecs",
+        "@engine//engine",
         "//objects",
     ]
 )
